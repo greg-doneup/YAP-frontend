@@ -1,0 +1,27 @@
+name: Frontend CD
+
+on:
+  push:
+    branches: [ master ]
+  release:
+    types: [ created ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'push' && 'staging' || 'production' }}
+    needs: dockerize
+    steps:
+      - uses: actions/checkout@v3
+      - uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: us-east-1
+      - run: |
+          aws eks update-kubeconfig \
+            --name yap-frontend-${{ job.environment }} \
+            --region us-east-1
+      - run: |
+          kubectl set image deployment/frontend-deployment \
+            frontend=$IMAGE \
+            --record
+      - run: kubectl rollout status deployment/frontend-deployment
