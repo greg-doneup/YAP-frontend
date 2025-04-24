@@ -1,0 +1,55 @@
+/* To learn more about this file see: https://angular.io/config/tsconfig. */
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "outDir": "./dist/out-tsc",
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "declaration": false,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "target": "es2022",
+    "module": "es2020",
+    "paths": {
+      "@auth/*": ["app/core/auth/*"],
+      "@marketplace/*": ["app/core/marketplace/*"],
+	    "@gsap/*": ["app/core/gsap/*"],
+      "@tools/*": ["app/core/tools/*"],
+	    "@resolvers/*": ["app/core/resolvers/*"],
+	    "@guards/*": ["app/core/guards/*"],
+	    "@environment/*": ["environments/*"],
+	    "@modules/*": ["app/modules/*"],
+	    "@modals/*": ["app/shared/modals/*"],
+	    "@directives/*": ["app/shared/directives/*"],
+      "@pipes/*": ["app/shared/pipes/*"],
+      "@utils/*": ["utils/*"],
+      "@classes/*": ["app/shared/classes/*"],
+      "crypto": ["../node_modules/crypto-browserify"],
+      "stream": ["../node_modules/stream-browserify"],
+      "assert": ["../node_modules/assert"],
+      "http": ["../node_modules/stream-http"],
+      "https": ["../node_modules/https-browserify"],
+      "os": ["../node_modules/os-browserify"],
+      "url": ["../node_modules/url"]
+    },
+    "lib": [
+      "es2018", 
+      "dom"
+    ],
+    "useDefineForClassFields": false
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
+  }
+}

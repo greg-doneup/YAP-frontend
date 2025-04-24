@@ -1,0 +1,40 @@
+name: CD‑Production (Ionic/Angular)
+
+on:
+  push:
+    branches: [ production ]     # merge of promotion PR
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 123456789012.dkr.ecr.us-east-1.amazonaws.com
+  IMAGE_NAME: yap-frontend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Production      # human approval gate
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set image tag
+        id: img
+        run: echo "IMAGE=$ECR_REGISTRY/$IMAGE_NAME:${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+      # Prod deploy
+      - name: Configure kubectl
+        run: aws eks update-kubeconfig --name yap-frontend-prod --region $AWS_REGION
+
+      - name: Rollout image
+        run: |
+          kubectl set image deployment/frontend deployment=${{ steps.img.outputs.IMAGE }} --record
+          kubectl rollout status deployment/frontend
+
+      # Fast‑forward master
+      - name: FF master
+        run: |
+          git config --global user.email "bot@users.noreply.github.com"
+          git config --global user.name  "github-actions[bot]"
+          git fetch origin master
+          git switch master
+          git merge --ff-only $GITHUB_SHA
+          git push origin master
