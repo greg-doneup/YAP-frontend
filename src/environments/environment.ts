@@ -3,7 +3,10 @@
 // The list of file replacements can be found in `angular.json`.
 
 export const environment = {
-  production: false
+  production: false,
+  apiUrl: 'http://localhost:3000/api',
+  rpcUrl: 'https://sei-testnet-rpc.com', // Added rpcUrl for blockchain connection
+  enableErrorLogging: true // Added for error service logging control
 };
 
 /*
