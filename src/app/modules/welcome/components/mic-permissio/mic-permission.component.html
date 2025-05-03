@@ -1,0 +1,17 @@
+<ion-header translucent>
+    <ion-toolbar>
+      <ion-title>Microphone Access</ion-title>
+    </ion-toolbar>
+  </ion-header>
+  
+  <ion-content class="ion-padding">
+    <p>
+      We need microphone access to check your pronunciation in real time.
+    </p>
+    <ion-button expand="block" [disabled]="requesting" (click)="allow()">
+      Allow Microphone
+    </ion-button>
+  
+    <ion-text color="danger" *ngIf="error">{{ error }}</ion-text>
+  </ion-content>
+  

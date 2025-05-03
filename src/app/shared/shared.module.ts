@@ -1,0 +1,46 @@
+import { NgModule, NO_ERRORS_SCHEMA, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { IonicModule } from '@ionic/angular';
+import { FormsModule } from "@angular/forms";
+import { ReactiveFormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
+import { ClipboardModule } from '@angular/cdk/clipboard';
+
+//dynamic components
+
+
+//tools modules
+import { FontAwesomeLibraryModule } from './font-awesome-library/font-awesome-library.module';
+import { MaterialModule } from './material/material.module';
+
+//directives
+
+//pipes
+
+//modals
+
+@NgModule({
+    declarations: [
+       
+    ],
+    imports: [
+        CommonModule,
+        IonicModule,
+        FormsModule,
+        ReactiveFormsModule,
+        FontAwesomeLibraryModule,
+        MaterialModule,
+        ClipboardModule,
+    ],
+    exports: [
+        CommonModule,
+        IonicModule,
+        FormsModule,
+        ReactiveFormsModule,
+        FontAwesomeLibraryModule,
+        MaterialModule,
+        ClipboardModule,
+    ],
+    schemas: [NO_ERRORS_SCHEMA, CUSTOM_ELEMENTS_SCHEMA]
+})
+export class SharedModule { }
