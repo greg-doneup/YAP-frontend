@@ -20,6 +20,52 @@ export interface VocabItem {
 }
 
 /**
+ * Lesson model matching the backend schema
+ */
+export interface Lesson {
+  _id?: string;
+  lesson_id: string;
+  language: string;
+  level: string;
+  focus: string;
+  new_vocabulary: VocabItem[];
+  speaking_exercises: SpeakingExercise[];
+  review_points: string[];
+}
+
+/**
+ * Speaking exercise model
+ */
+export interface SpeakingExercise {
+  type: string;
+  prompt: string;
+  items: ExerciseItem[];
+  leveling_note: string;
+}
+
+/**
+ * Exercise item model
+ */
+export interface ExerciseItem {
+  question: string;
+  example_answer: string;
+}
+
+/**
+ * User's lesson progress data
+ */
+export interface LessonProgress {
+  currentLessonId: string;
+  currentWordId: string;
+  nextWordAvailableAt: string;
+  completedLessons?: string[];
+  completedWords?: string[];
+  streak?: number;
+  level?: number;
+  totalXp?: number;
+}
+
+/**
  * Daily lesson completion results
  */
 export interface LessonCompletion {
@@ -155,15 +201,61 @@ export class LearningService {
   }
 
   /**
-   * Get lesson completions history for a user
-   * @param walletAddress User's wallet address
-   * @param limit Maximum number of results to return
+   * Get user's detailed lesson progress
+   * @param userId User ID (can be wallet address)
    */
-  getLessonHistory(walletAddress: string, limit: number = 10): Observable<LessonCompletion[]> {
-    return this.apiService.get<{results: LessonCompletion[]}>('learning/daily/results', 
-      { wallet: walletAddress, limit: limit.toString() }
-    ).pipe(
-      map(response => response.results || []),
+  getLessonProgress(userId: string): Observable<LessonProgress> {
+    return this.apiService.get<LessonProgress>('learning/progress', { userId }).pipe(
+      catchError(error => {
+        this.errorService.handleError(error, 'lesson-progress-fetch');
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Update user's lesson progress
+   * @param userId User ID (can be wallet address)
+   * @param progress Progress fields to update
+   */
+  updateLessonProgress(userId: string, progress: Partial<LessonProgress>): Observable<LessonProgress> {
+    const payload = {
+      userId,
+      ...progress
+    };
+    
+    return this.apiService.post<LessonProgress>('learning/progress', payload).pipe(
+      catchError(error => {
+        this.errorService.handleError(error, 'lesson-progress-update');
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Get lesson details by lesson ID
+   * @param lessonId The lesson ID to fetch
+   */
+  getLesson(lessonId: string): Observable<Lesson> {
+    return this.apiService.get<Lesson>(`learning/lessons/${lessonId}`).pipe(
+      catchError(error => {
+        this.errorService.handleError(error, 'lesson-fetch');
+        return throwError(() => error);
+      })
+    );
+  }
+  
+  /**
+   * Get lesson completion history
+   * @param userId User ID (can be wallet address)
+   * @param limit Maximum number of completions to return (default: 10)
+   */
+  getLessonHistory(userId: string, limit: number = 10): Observable<LessonCompletion[]> {
+    return this.apiService.get<{completions: LessonCompletion[]}>('learning/progress/history', { 
+      userId, 
+      limit 
+    }).pipe(
+      map(response => response.completions || []),
       catchError(error => {
         this.errorService.handleError(error, 'lesson-history-fetch');
         return throwError(() => error);
