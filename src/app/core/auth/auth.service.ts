@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Observable, BehaviorSubject, throwError } from 'rxjs';
-import { catchError, tap, map } from 'rxjs/operators';
+import { Observable, BehaviorSubject, throwError, of } from 'rxjs';
+import { catchError, tap, map, switchMap } from 'rxjs/operators';
 import { ApiService } from '../api-service.service';
 import { ErrorService } from '../error/error.service';
 
@@ -10,6 +10,7 @@ export interface User {
   username?: string;
   roles?: string[];
   walletAddress?: string;
+  ethWalletAddress?: string;
 }
 
 export interface LoginCredentials {
@@ -25,10 +26,13 @@ export interface RegisterData {
 
 export interface AuthResponse {
   token: string;
+  refreshToken: string;
   userId: string;
   email: string;
   name?: string;
   role?: string;
+  walletAddress?: string;
+  ethWalletAddress?: string;
 }
 
 @Injectable({
@@ -38,6 +42,9 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   private tokenKey = 'auth_token';
+  private refreshTokenKey = 'refresh_token';
+  private refreshingToken = false;
+  private refreshTokenSubject = new BehaviorSubject<string | null>(null);
 
   constructor(
     private apiService: ApiService,
@@ -65,6 +72,10 @@ export class AuthService {
     return localStorage.getItem(this.tokenKey);
   }
 
+  public get refreshToken(): string | null {
+    return localStorage.getItem(this.refreshTokenKey);
+  }
+
   login(credentials: LoginCredentials): Observable<User> {
     return this.apiService.post<AuthResponse>('auth/login', credentials)
       .pipe(
@@ -88,42 +99,84 @@ export class AuthService {
   }
 
   logout(): Observable<void> {
-    return this.apiService.post<void>('auth/logout', {})
-      .pipe(
-        tap(() => {
-          localStorage.removeItem(this.tokenKey);
-          this.currentUserSubject.next(null);
-        }),
-        catchError(error => {
-          localStorage.removeItem(this.tokenKey);
-          this.currentUserSubject.next(null);
-          this.errorService.handleError(error, 'logout-failed');
-          return throwError(() => error);
-        })
-      );
+    const refreshToken = this.refreshToken;
+    this.clearAuthData();
+    if (refreshToken) {
+      return this.apiService.post<void>('auth/revoke', { refreshToken })
+        .pipe(
+          catchError(error => {
+            console.error("Failed to revoke refresh token:", error);
+            return of(void 0);
+          })
+        );
+    } else {
+      return of(void 0);
+    }
   }
 
   validateToken(token: string): Observable<User> {
     return this.apiService.get<AuthResponse>('auth/validate')
       .pipe(
-        map(response => this.handleAuthResponse(response)),
+        map(response => {
+          if (!response.refreshToken) {
+            response.refreshToken = this.refreshToken || '';
+          }
+          return this.handleAuthResponse(response);
+        }),
         catchError(error => {
-          localStorage.removeItem(this.tokenKey);
-          this.currentUserSubject.next(null);
+          this.clearAuthData();
           this.errorService.handleError(error, 'token-validation-failed');
           return throwError(() => error);
         })
       );
   }
 
-  refreshToken(): Observable<string> {
-    return this.apiService.post<{ token: string }>('auth/refresh', {})
+  refreshAccessToken(): Observable<string> {
+    if (this.refreshingToken) {
+      return this.refreshTokenSubject.asObservable()
+        .pipe(
+          switchMap(token => {
+            if (token) {
+              return of(token);
+            }
+            return throwError(() => new Error('Refresh token is null during refresh process'));
+          })
+        );
+    }
+    
+    this.refreshingToken = true;
+    this.refreshTokenSubject.next(null);
+    
+    const refreshToken = this.refreshToken;
+    
+    if (!refreshToken) {
+      this.refreshingToken = false;
+      return throwError(() => new Error('No refresh token available'));
+    }
+    
+    return this.apiService.post<AuthResponse>('auth/refresh', { refreshToken })
       .pipe(
-        tap(response => {
+        map(response => {
           localStorage.setItem(this.tokenKey, response.token);
+          localStorage.setItem(this.refreshTokenKey, response.refreshToken);
+          
+          if (response.userId && this.currentUserValue) {
+            const updatedUser = { ...this.currentUserValue };
+            if (response.walletAddress) updatedUser.walletAddress = response.walletAddress;
+            if (response.ethWalletAddress) updatedUser.ethWalletAddress = response.ethWalletAddress;
+            this.currentUserSubject.next(updatedUser);
+          }
+          
+          this.refreshingToken = false;
+          this.refreshTokenSubject.next(response.token);
+          
+          return response.token;
         }),
-        map(response => response.token),
         catchError(error => {
+          this.refreshingToken = false;
+          if (error?.status === 401) {
+            this.clearAuthData();
+          }
           this.errorService.handleError(error, 'token-refresh-failed');
           return throwError(() => error);
         })
@@ -151,16 +204,38 @@ export class AuthService {
       })
     );
   }
+  
+  revokeToken(token: string): Observable<void> {
+    return this.apiService.post<void>('auth/revoke', { refreshToken: token })
+      .pipe(
+        catchError(error => {
+          this.errorService.handleError(error, 'token-revocation-failed');
+          return throwError(() => error);
+        })
+      );
+  }
 
   private handleAuthResponse(response: AuthResponse): User {
-    const user = {
+    const user: User = {
       id: response.userId,
       email: response.email,
-      name: response.name,
-      role: response.role
+      walletAddress: response.walletAddress,
+      ethWalletAddress: response.ethWalletAddress
     };
+    
     localStorage.setItem(this.tokenKey, response.token);
+    if (response.refreshToken) {
+      localStorage.setItem(this.refreshTokenKey, response.refreshToken);
+    }
+    
     this.currentUserSubject.next(user);
     return user;
+  }
+  
+  private clearAuthData(): void {
+    localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.refreshTokenKey);
+    this.currentUserSubject.next(null);
+    this.refreshTokenSubject.next(null);
   }
 }
