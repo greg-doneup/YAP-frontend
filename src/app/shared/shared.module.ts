@@ -7,7 +7,7 @@ import { RouterModule } from '@angular/router';
 import { ClipboardModule } from '@angular/cdk/clipboard';
 
 //dynamic components
-
+import { PronunciationFeedbackComponent } from './pronunciation-feedback/pronunciation-feedback.component';
 
 //tools modules
 import { FontAwesomeLibraryModule } from './font-awesome-library/font-awesome-library.module';
@@ -21,7 +21,7 @@ import { MaterialModule } from './material/material.module';
 
 @NgModule({
     declarations: [
-       
+       PronunciationFeedbackComponent
     ],
     imports: [
         CommonModule,
@@ -40,6 +40,7 @@ import { MaterialModule } from './material/material.module';
         FontAwesomeLibraryModule,
         MaterialModule,
         ClipboardModule,
+        PronunciationFeedbackComponent
     ],
     schemas: [NO_ERRORS_SCHEMA, CUSTOM_ELEMENTS_SCHEMA]
 })

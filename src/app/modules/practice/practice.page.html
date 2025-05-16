@@ -1,13 +1,99 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>practice</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/daily"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Pronunciation Practice</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">practice</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content [fullscreen]="true" class="ion-padding">
+  <div class="practice-container" *ngIf="currentVocab">
+    <!-- Vocabulary Term -->
+    <div class="vocab-section">
+      <h1 class="term">{{ currentVocab.term }}</h1>
+      <p class="translation" *ngIf="currentVocab.translation">{{ currentVocab.translation }}</p>
+      
+      <!-- Language variant selector -->
+      <div class="language-variant-selector">
+        <ion-label class="accent-label">Accent variant:</ion-label>
+        <ion-select 
+          [value]="languageCode" 
+          (ionChange)="onLanguageVariantChange($event)"
+          interface="popover"
+          class="accent-select">
+          <ion-select-option *ngFor="let variant of availableLanguageVariants" [value]="variant.code">
+            {{ variant.name }}
+          </ion-select-option>
+        </ion-select>
+      </div>
+    </div>
+    
+    <!-- Recording Controls -->
+    <div class="controls-section">
+      <div [ngSwitch]="recordingState">
+        <!-- Ready state -->
+        <div *ngSwitchCase="'ready'" class="control-buttons">
+          <ion-button class="main-button" expand="full" color="primary" (click)="startRecording()">
+            <ion-icon name="mic-outline" slot="start"></ion-icon>
+            Start Recording
+          </ion-button>
+          <ion-button expand="full" color="medium" (click)="playSample()">
+            <ion-icon name="volume-high-outline" slot="start"></ion-icon>
+            Hear Pronunciation
+          </ion-button>
+        </div>
+        
+        <!-- Recording state -->
+        <div *ngSwitchCase="'recording'" class="recording-controls">
+          <div class="pulse-animation">
+            <ion-icon name="mic" color="danger"></ion-icon>
+          </div>
+          <p class="recording-text">Recording...</p>
+          <div class="control-buttons recording-buttons">
+            <ion-button expand="block" color="danger" (click)="stopRecording()">
+              <ion-icon name="stop-circle-outline" slot="start"></ion-icon>
+              Stop
+            </ion-button>
+            <ion-button expand="block" color="medium" (click)="cancelRecording()">
+              <ion-icon name="close-circle-outline" slot="start"></ion-icon>
+              Cancel
+            </ion-button>
+          </div>
+        </div>
+        
+        <!-- Processing state -->
+        <div *ngSwitchCase="'processing'" class="processing">
+          <ion-spinner name="circles"></ion-spinner>
+          <p>Processing your pronunciation...</p>
+        </div>
+        
+        <!-- Complete state -->
+        <div *ngSwitchCase="'complete'" class="control-buttons">
+          <ion-button expand="full" color="primary" (click)="startRecording()">
+            <ion-icon name="refresh-outline" slot="start"></ion-icon>
+            Record Again
+          </ion-button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Pronunciation Feedback -->
+    <div class="feedback-section" *ngIf="pronunciationResult">
+      <app-pronunciation-feedback 
+        [result]="pronunciationResult"
+        [showDetails]="true"
+        [languageCode]="languageCode"
+        (playSample)="playSample()"
+        (playRecording)="playRecording()"
+        (playPhoneme)="playPhoneme($event)">
+      </app-pronunciation-feedback>
+    </div>
+  </div>
+  
+  <!-- Loading state when no vocab -->
+  <div class="loading-container" *ngIf="!currentVocab">
+    <ion-spinner name="dots"></ion-spinner>
+    <p>Loading vocabulary...</p>
+  </div>
 </ion-content>

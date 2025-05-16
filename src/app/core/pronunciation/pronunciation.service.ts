@@ -6,6 +6,13 @@ import { ErrorService } from '../error/error.service';
 import { ConnectivityService } from '../connectivity/connectivity.service';
 import { VocabItem } from '../learning/learning.service';
 import { ApiService } from '../api-service.service';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { 
+  DetailedPronunciationResult,
+  WordPronunciationDetail, 
+  PhonemePronunciationDetail,
+  PronunciationHistoryItem 
+} from './pronunciation.model';
 
 // Import Capacitor core
 import { Capacitor } from '@capacitor/core';
@@ -36,7 +43,8 @@ const VoiceRecorder: VoiceRecorderPlugin = (Capacitor.isPluginAvailable('VoiceRe
   (Capacitor as any).Plugins?.VoiceRecorder : mockVoiceRecorder);
 
 /**
- * Pronunciation evaluation result
+ * Pronunciation evaluation result (simple version)
+ * @deprecated Use DetailedPronunciationResult for more complete feedback
  */
 export interface PronunciationResult {
   score: number;
@@ -65,11 +73,14 @@ export interface AudioRecording {
 export class PronunciationService {
   private baseUrl = `${environment.apiUrl}`;
   private isRecording = false;
+  private audioCache = new Map<string, { blob: Blob, timestamp: number }>();
+  private readonly CACHE_EXPIRY_MS = 3600000; // 1 hour cache expiry
   
   constructor(
     private apiService: ApiService,
     private errorService: ErrorService,
-    private connectivityService: ConnectivityService
+    private connectivityService: ConnectivityService,
+    private http: HttpClient
   ) { }
 
   /**
@@ -200,64 +211,141 @@ export class PronunciationService {
   }
 
   /**
-   * Get sample audio for a specific vocabulary item
-   * @param item Vocabulary item
+   * Submit audio for pronunciation evaluation with detailed feedback
+   * @param walletAddress User's wallet address
+   * @param vocabId ID of the vocabulary word being practiced
+   * @param audioRecording Audio recording to evaluate
+   * @returns Observable with detailed pronunciation result
    */
-  getSampleAudio(item: VocabItem): Observable<string> {
-    if (item.audioUrl) {
-      // If the vocab item already has an audio URL, use it
-      return this.apiService.get<Blob>(item.audioUrl, {}, undefined, 'blob').pipe(
-        map(blob => URL.createObjectURL(blob)),
-        catchError(error => {
-          this.errorService.handleError(error, 'sample-audio-fetch');
-          return throwError(() => error);
-        })
-      );
-    }
+  evaluatePronunciationDetailed(
+    walletAddress: string,
+    vocabId: string,
+    audioRecording: AudioRecording
+  ): Observable<DetailedPronunciationResult> {
+    // Create form data for multipart upload
+    const formData = new FormData();
+    formData.append('wallet', walletAddress);
+    formData.append('expectedId', vocabId);
+    formData.append('audio', this._base64ToBlob(audioRecording.value, audioRecording.mimeType), 'recording.wav');
+    formData.append('detailLevel', 'detailed');
     
-    // Otherwise, request from the TTS service
-    return this.apiService.get<{url: string}>(
-      `learning/tts`, { text: item.term }
-    ).pipe(
-      map(response => response.url),
+    return this.apiService.post<DetailedPronunciationResult>('learning/daily/complete', formData).pipe(
       catchError(error => {
-        this.errorService.handleError(error, 'tts-audio-fetch');
+        this.errorService.handleError(error, 'pronunciation-evaluation-detailed');
         return throwError(() => error);
       })
     );
   }
-
+  
   /**
-   * Play audio from a URL or base64 string
-   * @param audioSource URL or base64 string of the audio
-   */
-  playAudio(audioSource: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        const audio = new Audio(audioSource);
-        audio.onended = () => resolve();
-        audio.onerror = (e) => reject(e);
-        audio.play();
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
-  /**
-   * Get pronunciation history for a user
+   * Get pronunciation history for a user with a specific word
    * @param walletAddress User's wallet address
+   * @param wordId ID of the vocabulary word
+   * @param detailed Whether to return detailed feedback
    */
-  getPronunciationHistory(walletAddress: string): Observable<PronunciationResult[]> {
-    return this.apiService.get<{results: PronunciationResult[]}>(
-      `${this.baseUrl}/learning/daily/results?wallet=${walletAddress}`
+  getPronunciationHistory(
+    walletAddress: string,
+    wordId?: string,
+    detailed: boolean = false
+  ): Observable<PronunciationHistoryItem[]> {
+    let endpoint = `learning/daily/pronunciation/history`;
+    
+    if (wordId) {
+      endpoint += `/${wordId}`;
+    }
+    
+    return this.apiService.get<{attempts: PronunciationHistoryItem[]}>(
+      endpoint,
+      { 
+        wallet: walletAddress,
+        detailed: detailed ? 'true' : 'false'
+      }
     ).pipe(
-      map(response => response.results || []),
+      map(response => response.attempts || []),
       catchError(error => {
         this.errorService.handleError(error, 'pronunciation-history');
         return throwError(() => error);
       })
     );
+  }
+  
+  /**
+   * Get TTS audio for text
+   * @param text Text to generate TTS for
+   * @param languageCode Language code (e.g., 'en-US')
+   */
+  getTTS(text: string, languageCode: string = 'en-US'): Observable<Blob> {
+    // Check cache first
+    const cacheKey = `${languageCode}:${text}`;
+    const cached = this.audioCache.get(cacheKey);
+    if (cached) {
+      const isExpired = (Date.now() - cached.timestamp) > this.CACHE_EXPIRY_MS;
+      if (!isExpired) {
+        // Return cached blob as observable
+        return new Observable<Blob>(observer => {
+          observer.next(cached.blob);
+          observer.complete();
+        });
+      } else {
+        // Remove expired cache
+        this.audioCache.delete(cacheKey);
+      }
+    }
+    
+    // Need to handle blob response with a different approach
+    const url = `${this.baseUrl}/learning/daily/tts/sentence`;
+    const options = {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/json'
+      }),
+      responseType: 'blob' as 'json'
+    };
+    
+    return this.http.post<Blob>(
+      url, 
+      { text, languageCode }, 
+      options
+    ).pipe(
+      map(blob => {
+        // Cache the audio blob
+        this.audioCache.set(cacheKey, { blob, timestamp: Date.now() });
+        return blob;
+      }),
+      catchError(error => {
+        this.errorService.handleError(error, 'tts-generation');
+        return throwError(() => error);
+      })
+    );
+  }
+  
+  /**
+   * Visualize pronunciation feedback
+   * @param result Detailed pronunciation result
+   * @returns HTML string with highlighted issues
+   */
+  visualizePronunciationFeedback(result: DetailedPronunciationResult): string {
+    if (!result.wordDetails || result.wordDetails.length === 0) {
+      return result.expected;
+    }
+    
+    // Sort word details by time
+    const sortedWords = [...result.wordDetails].sort((a, b) => a.start_time - b.start_time);
+    
+    // Generate HTML with color-coded feedback
+    return sortedWords.map(word => {
+      let color = 'inherit';
+      if (word.score < 0.3) {
+        color = '#ff4d4d'; // Red for poor
+      } else if (word.score < 0.7) {
+        color = '#ffcc00'; // Yellow for adequate
+      } else {
+        color = '#66cc66'; // Green for good
+      }
+      
+      return `<span style="color: ${color};" title="Score: ${Math.round(word.score * 100)}%${
+        word.issues.length ? '\nIssues: ' + word.issues.join(', ') : ''
+      }">${word.word}</span>`;
+    }).join(' ');
   }
 
   /**
@@ -301,5 +389,55 @@ export class PronunciationService {
     }
     
     return new Blob(byteArrays, { type: mimeType });
+  }
+
+  /**
+   * Get cached audio blob
+   * @private
+   * @param key Cache key
+   * @returns Blob or null if not found/expired
+   */
+  private getCachedAudio(key: string): Blob | null {
+    const cached = this.audioCache.get(key);
+    if (cached) {
+      const isExpired = (Date.now() - cached.timestamp) > this.CACHE_EXPIRY_MS;
+      if (!isExpired) {
+        return cached.blob;
+      } else {
+        // Remove expired cache
+        this.audioCache.delete(key);
+      }
+    }
+    return null;
+  }
+  
+  /**
+   * Cache audio blob with timestamp
+   * @private
+   * @param key Cache key
+   * @param blob Audio blob to cache
+   */
+  private cacheAudio(key: string, blob: Blob): void {
+    this.audioCache.set(key, { 
+      blob, 
+      timestamp: Date.now() 
+    });
+    
+    // Limit cache size (if more than 50 items, remove oldest)
+    if (this.audioCache.size > 50) {
+      let oldestKey: string | null = null;
+      let oldestTimestamp = Date.now();
+      
+      this.audioCache.forEach((value, mapKey) => {
+        if (value.timestamp < oldestTimestamp) {
+          oldestTimestamp = value.timestamp;
+          oldestKey = mapKey;
+        }
+      });
+      
+      if (oldestKey) {
+        this.audioCache.delete(oldestKey);
+      }
+    }
   }
 }

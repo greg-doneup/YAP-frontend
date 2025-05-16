@@ -12,6 +12,7 @@ This document provides a comprehensive overview of all backend API endpoints in 
 6. [Reward Service](#reward-service)
 7. [Gateway Service](#gateway-service)
 8. [Error Handling](#error-handling)
+9. [Pronunciation Assessment and TTS Services](#pronunciation-assessment-and-tts-services)
 
 ## Authentication
 
@@ -388,16 +389,19 @@ Base URL: `/learning`
 
 | Endpoint | Method | Auth Required | Description |
 |----------|--------|---------------|-------------|
-| `/progress` | GET | No | Get user's learning progress |
-| `/progress` | POST | No | Update user's learning progress |
-| `/progress/history` | GET | No | Get lesson completion history |
-| `/daily` | GET | No | Get daily vocabulary |
-| `/daily/complete` | POST | No | Complete a daily word |
-| `/lessons/:lessonId` | GET | No | Get lesson details |
-| `/lessons` | GET | No | Get lessons by language and level |
-| `/lessons/next/:lessonId` | GET | No | Get next lesson |
-| `/quiz` | GET | No | Get quiz words |
-| `/quiz/submit` | POST | No | Submit quiz answers |
+| `/learning/progress` | GET | No | Get user's learning progress |
+| `/learning/progress` | POST | No | Update user's learning progress |
+| `/learning/progress/history` | GET | No | Get lesson completion history |
+| `/learning/daily` | GET | No | Get daily vocabulary |
+| `/learning/daily/complete` | POST | No | Complete a daily word |
+| `/learning/daily/tts/sentence` | POST | No | Generate TTS audio for a sentence |
+| `/learning/daily/tts/:wordId` | GET | No | Get TTS audio for a vocabulary word |
+| `/learning/daily/pronunciation/history/:wordId` | GET | No | Get pronunciation history for a word |
+| `/learning/lessons/:lessonId` | GET | No | Get lesson details |
+| `/learning/lessons` | GET | No | Get lessons by language and level |
+| `/learning/lessons/next/:lessonId` | GET | No | Get next lesson |
+| `/learning/quiz` | GET | No | Get quiz words |
+| `/learning/quiz/submit` | POST | No | Submit quiz answers |
 
 ### GET /learning/progress
 
@@ -510,7 +514,7 @@ Get vocabulary for the current lesson.
 
 ### POST /learning/daily/complete
 
-Submit a daily word completion.
+Submit a daily word completion with pronunciation assessment.
 
 **Request Body**:
 ```json
@@ -519,11 +523,13 @@ Submit a daily word completion.
   "lessonId": "lesson-1",
   "wordId": "word-1",
   "audio": "base64_audio_data", // Optional
-  "transcript": "I am saying hello." // Optional
+  "transcript": "I am saying hello.", // Optional
+  "detailLevel": "phoneme", // Optional: "summary" or "phoneme" or "detailed" (default: "phoneme")
+  "languageCode": "en-US" // Optional: The language code for assessment (default: "en-US")
 }
 ```
 
-**Response (200 OK)**:
+**Response (200 OK)** - Summary Level:
 ```json
 {
   "pass": true,
@@ -534,9 +540,189 @@ Submit a daily word completion.
 }
 ```
 
+**Response (200 OK)** - Detailed Level:
+```json
+{
+  "pass": true,
+  "pronunciationScore": 0.85,
+  "grammarScore": 0.9,
+  "expected": "I am saying hello.",
+  "corrected": "I am saying hello.",
+  "wordDetails": [
+    {
+      "word": "hello",
+      "score": 0.82,
+      "startTime": 0.5,
+      "endTime": 0.9,
+      "confidence": 0.95,
+      "issues": ["stress"]
+    }
+  ],
+  "phonemeDetails": [
+    {
+      "phoneme": "HH",
+      "score": 0.75,
+      "startTime": 0.5,
+      "endTime": 0.6,
+      "issues": []
+    },
+    {
+      "phoneme": "AH",
+      "score": 0.9,
+      "startTime": 0.6,
+      "endTime": 0.7,
+      "issues": []
+    },
+    {
+      "phoneme": "L",
+      "score": 0.95,
+      "startTime": 0.7,
+      "endTime": 0.8,
+      "issues": []
+    },
+    {
+      "phoneme": "OW",
+      "score": 0.8,
+      "startTime": 0.8,
+      "endTime": 0.9,
+      "issues": ["stress"]
+    }
+  ],
+  "feedback": ["Work on the stress pattern in the word 'hello'", "Your pronunciation of 'h' sound could be improved"],
+  "transcript": "I am saying hello."
+}
+```
+
 **Error Responses**:
 - `400 Bad Request`: Missing required fields
 - `500 Internal Server Error`: Server error
+
+### POST /learning/daily/tts/sentence
+
+Generate TTS (Text-to-Speech) audio for a given sentence or text.
+
+**Request Body**:
+```json
+{
+  "text": "The text to convert to speech",
+  "languageCode": "en-US" // Optional: The language code for TTS (default: "en-US")
+}
+```
+
+**Response (200 OK)**:
+- Returns raw audio data as a binary stream with `Content-Type: audio/mp3`
+- The following headers are included:
+  - `Content-Type: audio/mp3`
+  - `Content-Disposition: attachment; filename="pronunciation_example.mp3"`
+
+**Error Responses**:
+- `400 Bad Request`: Missing required text
+- `500 Internal Server Error`: Failed to generate TTS
+
+### GET /learning/daily/tts/:wordId
+
+Get TTS (Text-to-Speech) audio for a specific vocabulary word.
+
+**Parameters**:
+- `wordId`: Word ID (path parameter)
+
+**Query Parameters**:
+- `languageCode`: Language code for TTS (optional, default: "en-US")
+
+**Response (200 OK)**:
+- Returns raw audio data as a binary stream with `Content-Type: audio/mp3`
+- The following headers are included:
+  - `Content-Type: audio/mp3`
+  - `Content-Disposition: attachment; filename="word_[wordId].mp3"`
+
+**Error Responses**:
+- `400 Bad Request`: Missing word ID
+- `404 Not Found`: Word not found
+- `500 Internal Server Error`: Failed to generate TTS audio
+
+### GET /learning/daily/pronunciation/history/:wordId
+
+Get pronunciation history for a specific word.
+
+**Parameters**:
+- `wordId`: Word ID (path parameter)
+
+**Query Parameters**:
+- `userId`: User ID (required)
+- `view`: View type, either "summary" or "detailed" (optional, default: "summary")
+
+**Response (200 OK)** - Summary View:
+```json
+{
+  "wordId": "word-1",
+  "userId": "user-123",
+  "attempts": [
+    {
+      "date": "2023-01-01",
+      "timestamp": "2023-01-01T00:00:00.000Z",
+      "pronunciationScore": 0.85,
+      "pass": true,
+      "feedback": ["Work on the stress pattern in the word"]
+    }
+  ],
+  "count": 1
+}
+```
+
+**Response (200 OK)** - Detailed View:
+```json
+{
+  "wordId": "word-1",
+  "userId": "user-123",
+  "attempts": [
+    {
+      "userId": "user-123",
+      "lessonId": "lesson-1",
+      "wordId": "word-1",
+      "date": "2023-01-01",
+      "pronunciationScore": 0.85,
+      "grammarScore": 0.9,
+      "pass": true,
+      "timestamp": "2023-01-01T00:00:00.000Z",
+      "wordDetails": [
+        {
+          "word": "hello",
+          "score": 0.82,
+          "startTime": 0.5,
+          "endTime": 0.9,
+          "confidence": 0.95,
+          "issues": ["stress"]
+        }
+      ],
+      "phonemeDetails": [
+        {
+          "phoneme": "HH",
+          "score": 0.75,
+          "startTime": 0.5,
+          "endTime": 0.6,
+          "issues": []
+        },
+        {
+          "phoneme": "AH",
+          "score": 0.9,
+          "startTime": 0.6,
+          "endTime": 0.7,
+          "issues": []
+        }
+      ],
+      "pronunciationFeedback": ["Work on the stress pattern in the word 'hello'"],
+      "alignmentId": "align-123",
+      "scoringId": "score-123",
+      "evaluationId": "eval-123"
+    }
+  ],
+  "count": 1
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Missing word ID or user ID
+- `500 Internal Server Error`: Failed to retrieve pronunciation history
 
 ### GET /learning/lessons/:lessonId
 
@@ -798,5 +984,365 @@ Rate limit exceeded response (429 Too Many Requests):
   "error": "rate_limit_exceeded",
   "message": "Rate limit exceeded. Try again later.",
   "retryAfter": 60
+}
+```
+
+## Pronunciation Assessment and TTS Services
+
+The YAP platform provides advanced pronunciation assessment and Text-to-Speech (TTS) capabilities. These services are exposed through the Learning Service API endpoints.
+
+### Pronunciation Assessment
+
+Pronunciation assessment is performed using a three-stage pipeline:
+1. **Alignment** - Aligns the user's speech with the expected text at phoneme level
+2. **Pronunciation Scoring** - Scores pronunciation quality at word and phoneme levels
+3. **Feedback Generation** - Provides actionable feedback for improvement
+
+#### Assessment Detail Levels
+
+The API supports different levels of detail in pronunciation assessment:
+- **summary** - Basic score information with pass/fail status
+- **phoneme** - Word and phoneme level detail
+- **detailed** - Word and phoneme level detail plus comprehensive feedback
+
+#### Audio Handling
+
+The pronunciation assessment endpoints support the following audio formats:
+- **WAV** - 16-bit PCM, mono or stereo (recommended)
+- **MP3** - 128kbps or higher
+- **OGG** - Vorbis encoded
+- **WEBM** - Opus encoded
+
+Audio should be:
+- **Duration**: 0.5 to 30 seconds
+- **Sample rate**: 16kHz or higher
+- **Channels**: Mono preferred, stereo accepted
+- **Format**: Base64 encoded in API requests
+
+For optimal results, audio recordings should:
+- Have minimal background noise
+- Be recorded in a quiet environment
+- Have the speaker's voice clearly audible
+- Not contain multiple speakers
+
+#### Language Support
+
+The pronunciation assessment system supports multiple languages and regional variants:
+
+| Language | Codes |
+|----------|-------|
+| English | en-US (American), en-GB (British), en-AU (Australian) |
+| Spanish | es-ES (Spain), es-MX (Mexico), es-AR (Argentina) |
+| French | fr-FR (France), fr-CA (Canada) |
+| German | de-DE |
+| Chinese | zh-CN (Simplified), zh-TW (Traditional) |
+| Japanese | ja-JP |
+| Korean | ko-KR |
+| Portuguese | pt-BR (Brazil), pt-PT (Portugal) |
+| Italian | it-IT |
+| Russian | ru-RU |
+
+### Text-to-Speech (TTS)
+
+The TTS system converts text to natural-sounding speech with the following features:
+- Multiple languages and regional variants
+- Male and female voices
+- Neural voices for high-quality, natural-sounding speech
+- Caching for frequently accessed audio to improve performance
+- Control over speaking rate, pitch, and other parameters
+- Support for SSML (Speech Synthesis Markup Language)
+
+#### Audio Output Formats
+
+TTS endpoints can return audio in the following formats:
+- **MP3** - Default format, good balance of quality and size
+- **WAV** - Higher quality but larger file size
+- **OGG** - Efficient compression for web applications
+
+All TTS audio responses include appropriate Content-Type headers and are returned as binary data.
+
+### Examples for Frontend Development
+
+#### Example: Pronunciation Assessment Request
+
+```javascript
+// Example using Fetch API
+async function assessPronunciation(audioBlob, userId, wordId) {
+  try {
+    // Convert audio blob to base64
+    const reader = new FileReader();
+    reader.readAsDataURL(audioBlob);
+    
+    await new Promise(resolve => {
+      reader.onloadend = () => resolve();
+    });
+    
+    // Remove data URL prefix (e.g., "data:audio/wav;base64,")
+    const base64Audio = reader.result.split(',')[1];
+    
+    const response = await fetch('/learning/daily/complete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        userId: userId,
+        lessonId: 'lesson-1',
+        wordId: wordId,
+        audio: base64Audio,
+        detailLevel: 'detailed',
+        languageCode: 'en-US'
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error assessing pronunciation:', error);
+    throw error;
+  }
+}
+```
+
+#### Example: TTS Request
+
+```javascript
+// Example using Fetch API
+async function getWordPronunciation(wordId, languageCode = 'en-US') {
+  try {
+    const response = await fetch(`/learning/daily/tts/${wordId}?languageCode=${languageCode}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    
+    // Get audio blob from response
+    const audioBlob = await response.blob();
+    
+    // Create an audio element and play
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audio.play();
+    
+    return audioUrl;
+  } catch (error) {
+    console.error('Error fetching TTS:', error);
+    throw error;
+  }
+}
+```
+
+#### Example: Generate Custom TTS
+
+```javascript
+// Example using Fetch API
+async function generateSpeech(text, languageCode = 'en-US') {
+  try {
+    const response = await fetch('/learning/daily/tts/sentence', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        text: text,
+        languageCode: languageCode
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    
+    // Get audio blob from response
+    const audioBlob = await response.blob();
+    
+    // Create an audio element and play
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audio.play();
+    
+    return audioUrl;
+  } catch (error) {
+    console.error('Error generating speech:', error);
+    throw error;
+  }
+}
+```
+
+#### Example: Mock Responses for Development
+
+Here are example responses that can be used for frontend development without the backend services:
+
+**Pronunciation Assessment Response (Detailed Level):**
+
+```json
+{
+  "pass": true,
+  "pronunciationScore": 0.82,
+  "grammarScore": 0.95,
+  "expected": "I am saying hello.",
+  "corrected": "I am saying hello.",
+  "wordDetails": [
+    {
+      "word": "I",
+      "score": 0.9,
+      "startTime": 0.1,
+      "endTime": 0.3,
+      "confidence": 0.98,
+      "issues": []
+    },
+    {
+      "word": "am",
+      "score": 0.88,
+      "startTime": 0.3,
+      "endTime": 0.5,
+      "confidence": 0.95,
+      "issues": []
+    },
+    {
+      "word": "saying",
+      "score": 0.85,
+      "startTime": 0.5,
+      "endTime": 0.9,
+      "confidence": 0.93,
+      "issues": []
+    },
+    {
+      "word": "hello",
+      "score": 0.78,
+      "startTime": 0.9,
+      "endTime": 1.4,
+      "confidence": 0.92,
+      "issues": ["stress", "vowel-length"]
+    }
+  ],
+  "phonemeDetails": [
+    {
+      "phoneme": "AY",
+      "score": 0.9,
+      "startTime": 0.1,
+      "endTime": 0.3,
+      "issues": []
+    },
+    {
+      "phoneme": "AE",
+      "score": 0.88,
+      "startTime": 0.3,
+      "endTime": 0.4,
+      "issues": []
+    },
+    {
+      "phoneme": "M",
+      "score": 0.92,
+      "startTime": 0.4,
+      "endTime": 0.5,
+      "issues": []
+    },
+    {
+      "phoneme": "S",
+      "score": 0.85,
+      "startTime": 0.5,
+      "endTime": 0.6,
+      "issues": []
+    },
+    {
+      "phoneme": "EY",
+      "score": 0.86,
+      "startTime": 0.6,
+      "endTime": 0.7,
+      "issues": []
+    },
+    {
+      "phoneme": "IH",
+      "score": 0.89,
+      "startTime": 0.7,
+      "endTime": 0.8,
+      "issues": []
+    },
+    {
+      "phoneme": "NG",
+      "score": 0.84,
+      "startTime": 0.8,
+      "endTime": 0.9,
+      "issues": []
+    },
+    {
+      "phoneme": "HH",
+      "score": 0.75,
+      "startTime": 0.9,
+      "endTime": 1.0,
+      "issues": ["aspiration"]
+    },
+    {
+      "phoneme": "EH",
+      "score": 0.77,
+      "startTime": 1.0,
+      "endTime": 1.1,
+      "issues": ["vowel-quality"]
+    },
+    {
+      "phoneme": "L",
+      "score": 0.9,
+      "startTime": 1.1,
+      "endTime": 1.2,
+      "issues": []
+    },
+    {
+      "phoneme": "OW",
+      "score": 0.78,
+      "startTime": 1.2,
+      "endTime": 1.4,
+      "issues": ["vowel-length"]
+    }
+  ],
+  "feedback": [
+    "Your pronunciation of 'hello' could be improved by working on the stress pattern.",
+    "Try making the 'h' sound more breathy at the beginning of 'hello'.",
+    "The vowel in the second syllable of 'hello' should be longer."
+  ],
+  "transcript": "I am saying hello."
+}
+```
+
+**Pronunciation History Response:**
+
+```json
+{
+  "wordId": "word-1",
+  "userId": "user-123",
+  "attempts": [
+    {
+      "date": "2023-05-10",
+      "timestamp": "2023-05-10T14:23:45.000Z",
+      "pronunciationScore": 0.82,
+      "pass": true,
+      "feedback": ["Work on the stress pattern in 'hello'"]
+    },
+    {
+      "date": "2023-05-09",
+      "timestamp": "2023-05-09T11:17:32.000Z",
+      "pronunciationScore": 0.75,
+      "pass": false,
+      "feedback": ["The 'h' sound needs more emphasis in 'hello'"]
+    },
+    {
+      "date": "2023-05-07",
+      "timestamp": "2023-05-07T09:45:12.000Z",
+      "pronunciationScore": 0.79,
+      "pass": true,
+      "feedback": ["Good improvement on the vowel sounds"]
+    }
+  ],
+  "count": 3
 }
 ```
