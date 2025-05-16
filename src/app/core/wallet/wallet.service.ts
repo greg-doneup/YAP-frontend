@@ -151,4 +151,13 @@ export class WalletService {
         })
       );
   }
+
+  /**
+   * Get the wallet address of the currently logged in user
+   * @returns The wallet address or an empty string if not logged in
+   */
+  getWalletAddress(): string {
+    const address = localStorage.getItem(this.WALLET_KEY);
+    return address || '';
+  }
 }

@@ -1,0 +1,129 @@
+<!-- Pronunciation feedback component -->
+<div class="pronunciation-feedback-container" *ngIf="result">
+  <!-- Overall score section -->
+  <div class="score-section">
+    <div class="overall-score">
+      <div class="score-title">Overall Score</div>
+      <div class="score-value" [ngClass]="overallScoreClass">
+        {{ (result.score * 100).toFixed(0) }}%
+      </div>
+      <div class="score-label">{{ result.pass ? 'PASSED' : 'NEEDS PRACTICE' }}</div>
+    </div>
+    
+    <!-- Audio control buttons -->
+    <div class="audio-controls">
+      <ion-button color="primary" (click)="onPlaySample()">
+        <ion-icon name="volume-high" slot="start"></ion-icon>
+        Listen to Sample
+      </ion-button>
+      <ion-button color="secondary" (click)="onPlayRecording()" *ngIf="result.audioUrl">
+        <ion-icon name="mic" slot="start"></ion-icon>
+        Play Your Recording
+      </ion-button>
+    </div>
+  </div>
+  
+  <!-- Visual feedback section -->
+  <div class="visual-feedback">
+    <h3>Pronunciation Feedback</h3>
+    <div class="visualization" [innerHTML]="visualFeedback"></div>
+    
+    <!-- Legend -->
+    <div class="legend">
+      <span class="legend-item">
+        <span class="color-sample excellent"></span>Excellent
+      </span>
+      <span class="legend-item">
+        <span class="color-sample good"></span>Good
+      </span>
+      <span class="legend-item">
+        <span class="color-sample fair"></span>Fair
+      </span>
+      <span class="legend-item">
+        <span class="color-sample poor"></span>Needs Work
+      </span>
+    </div>
+  </div>
+  
+  <!-- Feedback tips section -->
+  <div class="feedback-tips" *ngIf="showDetails && getFeedbackTips().length > 0">
+    <h3>Pronunciation Feedback</h3>
+    <ul>
+      <li *ngFor="let tip of getFeedbackTips()">{{ tip }}</li>
+    </ul>
+  </div>
+  
+  <!-- Language-specific tips -->
+  <div class="language-tips" *ngIf="showDetails && getLanguageSpecificTips().length > 0">
+    <h3>Language Tips</h3>
+    <div class="language-tips-card">
+      <p class="language-name">Tips for {{ languageCode }} speakers:</p>
+      <ul>
+        <li *ngFor="let tip of getLanguageSpecificTips()">{{ tip }}</li>
+      </ul>
+    </div>
+  </div>
+  
+  <!-- Phoneme issues section -->
+  <div class="phoneme-issues" *ngIf="showDetails && getIssues().length">
+    <div class="details-header">
+      <h3>Pronunciation Issues</h3>
+      <ion-button fill="clear" (click)="togglePhonemeDetails()">
+        {{ showPhonemeDetails ? 'Hide Details' : 'Show Details' }}
+      </ion-button>
+    </div>
+    
+    <div *ngIf="showPhonemeDetails" class="issues-details">
+      <div *ngFor="let issue of getIssues()" class="issue-group">
+        <h4 class="issue-type">{{ issue }}</h4>
+        <div class="phonemes-list">
+          <div *ngFor="let phoneme of getPhonemesByIssue(issue)" class="phoneme-item" 
+               [ngClass]="phoneme.score < 0.4 ? 'poor' : phoneme.score < 0.7 ? 'fair' : 'good'">
+            <div class="phoneme-info">
+              <span class="phoneme-symbol">{{ formatPhoneme(phoneme.phoneme) }}</span>
+              <span class="phoneme-word">in "{{ phoneme.word }}"</span>
+              <span class="phoneme-score">{{ (phoneme.score * 100).toFixed(0) }}%</span>
+            </div>
+            <div class="phoneme-actions">
+              <ion-button fill="clear" size="small" (click)="onPlayPhoneme(phoneme.phoneme)">
+                <ion-icon name="play-circle-outline"></ion-icon>
+              </ion-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Phoneme details section -->
+  <div class="phoneme-details" *ngIf="showDetails && showPhonemeDetails && result.phonemeDetails?.length">
+    <h3>All Phonemes</h3>
+    <div class="phoneme-table-container">
+      <table class="phoneme-table">
+        <thead>
+          <tr>
+            <th>Phoneme</th>
+            <th>Word</th>
+            <th>Score</th>
+            <th>Issue</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let phoneme of result.phonemeDetails">
+            <td>{{ phoneme.phoneme }}</td>
+            <td>{{ phoneme.word }}</td>
+            <td [ngClass]="phoneme.score < 0.5 ? 'poor' : phoneme.score < 0.7 ? 'fair' : 'good'">
+              {{ (phoneme.score * 100).toFixed(0) }}%
+            </td>
+            <td>{{ phoneme.issue || 'None' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Display when no result is available -->
+<div class="no-result" *ngIf="!result">
+  <p>No pronunciation results available</p>
+</div>
