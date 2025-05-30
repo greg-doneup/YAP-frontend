@@ -2,15 +2,30 @@ import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
 
 import { WelcomePage } from './welcome.page';
-// Update the import path to match the actual location of the CarouselPage
+import { IntroPage } from './pages/intro.page';
 import { CarouselPage } from './pages/carousel.page';
+import { WaitlistSignupPage } from './pages/waitlist-signup.page';
+import { WaitlistRecoveryPage } from './pages/waitlist-recovery.page';
 import { ShowOnceGuard } from './guards/show-once.guard';
 
 const routes: Routes = [
   {
     path: '',
+    component: IntroPage,
+    // Temporarily disable guard for testing
+    // canActivate: [ShowOnceGuard],
+  },
+  {
+    path: 'legacy',
     component: CarouselPage,
-    canActivate: [ShowOnceGuard],
+  },
+  {
+    path: 'waitlist-signup',
+    component: WaitlistSignupPage,
+  },
+  {
+    path: 'waitlist-recovery',
+    component: WaitlistRecoveryPage,
   },
 ];
 

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="300px" height="300px" viewBox="0 0 300 300" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background Circle -->
+    <circle cx="150" cy="150" r="120" fill="#FFFFFF" opacity="0.9"/>
+    
+    <!-- Calendar background -->
+    <rect x="90" y="80" width="120" height="140" rx="10" fill="#26a6db"/>
+    <rect x="100" y="90" width="100" height="25" fill="#FFFFFF"/>
+    
+    <!-- Calendar Days -->
+    <rect x="105" y="125" width="20" height="20" rx="3" fill="#FFFFFF"/>
+    <rect x="135" y="125" width="20" height="20" rx="3" fill="#FFFFFF"/>
+    <rect x="165" y="125" width="20" height="20" rx="3" fill="#FFFFFF"/>
+    
+    <rect x="105" y="155" width="20" height="20" rx="3" fill="#FFFFFF"/>
+    <rect x="135" y="155" width="20" height="20" rx="3" fill="#26a6db" stroke="#FFFFFF" stroke-width="2"/>
+    <rect x="165" y="155" width="20" height="20" rx="3" fill="#FFFFFF"/>
+    
+    <rect x="105" y="185" width="20" height="20" rx="3" fill="#FFFFFF"/>
+    <rect x="135" y="185" width="20" height="20" rx="3" fill="#FFFFFF"/>
+    <rect x="165" y="185" width="20" height="20" rx="3" fill="#FFFFFF"/>
+    
+    <!-- Check mark for completed day -->
+    <path d="M140,155 L145,165 L155,145" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Streaks -->
+    <circle cx="195" cy="105" r="25" fill="#efc52a"/>
+    <text x="195" y="110" font-family="Arial" font-size="15" font-weight="bold" text-anchor="middle" fill="#FFFFFF">7</text>
+    <text x="195" y="125" font-family="Arial" font-size="10" text-anchor="middle" fill="#FFFFFF">DAY</text>
+    
+    <!-- Sound wave for speaking practice -->
+    <path d="M65,130 C70,120 75,110 75,130 C75,150 80,140 85,130" stroke="#FFFFFF" stroke-width="3" fill="none"/>
+    <path d="M55,130 C65,110 75,90 75,130 C75,170 85,150 95,130" stroke="#FFFFFF" stroke-width="2" fill="none"/>
+    <path d="M45,130 C60,100 75,70 75,130 C75,190 90,160 105,130" stroke="#FFFFFF" stroke-width="1" fill="none"/>
+</svg>

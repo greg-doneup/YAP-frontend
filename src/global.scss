@@ -40,3 +40,153 @@
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
 @import "@ionic/angular/css/palettes/dark.system.css";
+
+/**
+ * YAP Custom Color Classes
+ * -----------------------------------------------------
+ */
+.yap-main-bg {
+  background-color: var(--yap-main-background) !important;
+}
+
+.yap-primary-text {
+  color: var(--yap-primary-text) !important;
+}
+
+.yap-body-text {
+  color: var(--yap-body-text) !important;
+}
+
+.yap-body-text-on-dark {
+  color: var(--yap-body-text-on-dark) !important;
+}
+
+.yap-cta-button {
+  background-color: var(--yap-cta-buttons) !important;
+  color: white !important;
+}
+
+.yap-secondary-button {
+  background-color: var(--yap-secondary-buttons) !important;
+  color: white !important;
+}
+
+.yap-highlight {
+  color: var(--yap-highlights) !important;
+}
+
+.yap-highlight-bg {
+  background-color: var(--yap-highlights) !important;
+  color: white !important;
+}
+
+/**
+ * YAP Custom Color Utility Classes
+ * -----------------------------------------------------
+ */
+
+// Background colors
+.yap-bg-primary { background-color: var(--yap-primary-color) !important; }
+.yap-bg-secondary { background-color: var(--yap-secondary-color) !important; }
+.yap-bg-red { background-color: var(--yap-tertiary-red) !important; }
+.yap-bg-green { background-color: var(--yap-tertiary-green) !important; }
+.yap-bg-main { background-color: var(--yap-main-background) !important; }
+
+// Text colors
+.yap-text-primary { color: var(--yap-primary-color) !important; }
+.yap-text-secondary { color: var(--yap-secondary-color) !important; }
+.yap-text-red { color: var(--yap-tertiary-red) !important; }
+.yap-text-green { color: var(--yap-tertiary-green) !important; }
+.yap-text-body { color: var(--yap-body-text) !important; }
+
+// Button variants
+.yap-btn-primary {
+  --background: var(--yap-primary-color);
+  --color: white;
+  --border-color: var(--yap-primary-color);
+}
+
+.yap-btn-secondary {
+  --background: var(--yap-secondary-color);
+  --color: var(--yap-primary-text);
+  --border-color: var(--yap-secondary-color);
+}
+
+.yap-btn-outline-primary {
+  --background: transparent;
+  --color: var(--yap-primary-color);
+  --border-color: var(--yap-primary-color);
+}
+
+/**
+ * YAP Splash Screen
+ * -----------------------------------------------------
+ */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--yap-primary-color) 0%, var(--yap-secondary-color) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.5s ease-out;
+}
+
+.splash-screen.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-logo {
+  max-width: 200px;
+  max-height: 200px;
+  animation: logoZoom 2s ease-out forwards;
+}
+
+@keyframes logoZoom {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/**
+ * YAP Typography
+ * -----------------------------------------------------
+ */
+h1, h2, h3, h4, h5, h6, .yap-headline {
+  color: var(--yap-primary-text) !important;
+  font-weight: 600;
+}
+
+p, span, .yap-body {
+  color: var(--yap-body-text) !important;
+}
+
+.yap-dark-bg {
+  background-color: var(--yap-primary-text) !important;
+}
+
+.yap-dark-bg h1, 
+.yap-dark-bg h2, 
+.yap-dark-bg h3, 
+.yap-dark-bg h4, 
+.yap-dark-bg h5, 
+.yap-dark-bg h6,
+.yap-dark-bg p,
+.yap-dark-bg span {
+  color: var(--yap-body-text-on-dark) !important;
+}

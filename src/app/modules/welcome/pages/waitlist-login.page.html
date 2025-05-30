@@ -1,0 +1,95 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()" fill="clear">
+        <ion-icon name="chevron-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Waitlist Access</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="waitlist-content">
+  <div class="container">
+    <!-- Header Section -->
+    <div class="header-section">
+      <div class="logo-container">
+        <img src="assets/logo/YAP-LOGO.png" alt="YAP Logo" class="logo">
+      </div>
+      <h1>Welcome Back!</h1>
+      <p class="subtitle">Enter your waitlist details to access YAP</p>
+    </div>
+
+    <!-- Form Section -->
+    <form class="waitlist-form" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Email Address</ion-label>
+          <ion-input
+            type="email"
+            [(ngModel)]="email"
+            name="email"
+            placeholder="Enter the email you used for the waitlist"
+            required
+            [disabled]="isLoading">
+          </ion-input>
+        </ion-item>
+      </div>
+
+      <div class="form-group">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Secure Phrase</ion-label>
+          <ion-input
+            type="password"
+            [(ngModel)]="securePhrase"
+            name="securePhrase"
+            placeholder="Enter your secure phrase"
+            required
+            [disabled]="isLoading">
+          </ion-input>
+        </ion-item>
+        <p class="help-text">
+          This is the secure phrase you'll remember to protect your account
+        </p>
+      </div>
+
+      <div class="button-container">
+        <ion-button
+          expand="block"
+          type="submit"
+          class="primary-button"
+          [disabled]="!isFormValid() || isLoading">
+          <ion-spinner name="crescent" *ngIf="isLoading"></ion-spinner>
+          <span *ngIf="!isLoading">Verify Access</span>
+          <span *ngIf="isLoading">Verifying...</span>
+        </ion-button>
+      </div>
+    </form>
+
+    <!-- Info Section -->
+    <div class="info-section">
+      <div class="info-card">
+        <ion-icon name="shield-checkmark" class="info-icon"></ion-icon>
+        <div class="info-content">
+          <h3>Secure Access</h3>
+          <p>Your secure phrase helps protect your account and ensures only you can access it.</p>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <ion-icon name="people" class="info-icon"></ion-icon>
+        <div class="info-content">
+          <h3>Waitlist Priority</h3>
+          <p>As a waitlist member, you get early access to YAP's language learning features.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-section">
+      <p class="footer-text">
+        Need help? <a href="mailto:support@yap.com">Contact Support</a>
+      </p>
+    </div>
+  </div>
+</ion-content>

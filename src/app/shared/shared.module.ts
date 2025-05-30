@@ -8,6 +8,7 @@ import { ClipboardModule } from '@angular/cdk/clipboard';
 
 //dynamic components
 import { PronunciationFeedbackComponent } from './pronunciation-feedback/pronunciation-feedback.component';
+import { SplashScreenComponent } from './splash-screen/splash-screen.component';
 
 //tools modules
 import { FontAwesomeLibraryModule } from './font-awesome-library/font-awesome-library.module';
@@ -21,7 +22,8 @@ import { MaterialModule } from './material/material.module';
 
 @NgModule({
     declarations: [
-       PronunciationFeedbackComponent
+       PronunciationFeedbackComponent,
+       SplashScreenComponent
     ],
     imports: [
         CommonModule,
@@ -40,7 +42,8 @@ import { MaterialModule } from './material/material.module';
         FontAwesomeLibraryModule,
         MaterialModule,
         ClipboardModule,
-        PronunciationFeedbackComponent
+        PronunciationFeedbackComponent,
+        SplashScreenComponent
     ],
     schemas: [NO_ERRORS_SCHEMA, CUSTOM_ELEMENTS_SCHEMA]
 })

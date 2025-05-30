@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="300px" height="300px" viewBox="0 0 300 300" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background Circle -->
+    <circle cx="150" cy="150" r="120" fill="#FFFFFF" opacity="0.9"/>
+    
+    <!-- Speech Bubble -->
+    <path d="M100,90 C70,90 50,110 50,140 C50,170 70,190 100,190 L110,190 L110,210 C110,210 140,190 150,190 C180,190 200,170 200,140 C200,110 180,90 150,90 L100,90 Z" fill="#8044db"/>
+    
+    <!-- Microphone -->
+    <rect x="115" y="110" width="20" height="40" rx="10" fill="#FFFFFF"/>
+    <path d="M105,150 L145,150 L145,160 C145,170 135,180 125,180 C115,180 105,170 105,160 L105,150 Z" fill="#FFFFFF"/>
+    <rect x="120" y="180" width="10" height="15" fill="#FFFFFF"/>
+    <rect x="110" y="195" width="30" height="5" rx="2" fill="#FFFFFF"/>
+    
+    <!-- Coin 1 -->
+    <circle cx="170" cy="135" r="20" fill="#efc52a"/>
+    <circle cx="170" cy="135" r="15" fill="#d6ae1c"/>
+    <text x="170" y="141" font-family="Arial" font-size="15" font-weight="bold" text-anchor="middle" fill="#FFFFFF">¥</text>
+    
+    <!-- Coin 2 -->
+    <circle cx="190" cy="160" r="15" fill="#efc52a"/>
+    <circle cx="190" cy="160" r="11" fill="#d6ae1c"/>
+    <text x="190" y="165" font-family="Arial" font-size="12" font-weight="bold" text-anchor="middle" fill="#FFFFFF">¥</text>
+</svg>

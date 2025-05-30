@@ -1,6 +1,6 @@
-# Yap Frontend (Ionic/Angular)
+# YAP Frontend (Ionic/Angular)
 
-This repository contains the Ionic/Angular mobile client for Yap: the Talk‑to‑Earn language learning app. It interfaces with the backend microservices and SEI blockchain via the middleware.
+This repository contains the Ionic/Angular mobile client for YAP: the Talk‑to‑Earn language learning app. It interfaces with the backend microservices and SEI blockchain via the middleware.
 
 ---
 
@@ -22,7 +22,7 @@ This repository contains the Ionic/Angular mobile client for Yap: the Talk‑to�
 
 ## Overview
 
-The Yap frontend is a cross‑platform mobile app (iOS & Android) built with Ionic and Angular. It provides:
+The YAP frontend is a cross‑platform mobile app (iOS & Android) built with Ionic and Angular. It provides:
 
 - **Onboarding Flow**: Web3Auth login → automatic wallet creation
 - **Daily Lessons**: Vocab card UI with voice capture for pronunciation verification
@@ -86,8 +86,8 @@ The app communicates with:
 
 1. **Clone the repo**:
    ```bash
-   git clone git@github.com:greg-doneup/Yap-frontend.git
-   cd Yap-frontend
+   git clone git@github.com:greg-doneup/YAP-frontend.git
+   cd YAP-frontend
    ```
 2. **Install dependencies**:
    ```bash

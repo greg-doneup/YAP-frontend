@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { CanActivate, CanDeactivate, Router } from '@angular/router';
+import { CanActivate, CanDeactivate, Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { SettingsService } from '../../../core/settings/settings.service';
 import { Observable } from 'rxjs';
 import { CarouselPage } from '../pages/carousel.page';
@@ -17,7 +17,12 @@ export class ShowOnceGuard implements CanActivate, CanDeactivate<CarouselPage> {
     return true;
   }
 
-  async canDeactivate(): Promise<boolean | Observable<boolean>> {
+  async canDeactivate(
+    component: CarouselPage,
+    currentRoute: ActivatedRouteSnapshot,
+    currentState: RouterStateSnapshot,
+    nextState?: RouterStateSnapshot
+  ): Promise<boolean> {
     await this.settings.set('welcomeShown', true);
     return true;
   }

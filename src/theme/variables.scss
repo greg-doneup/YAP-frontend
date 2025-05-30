@@ -1,54 +1,65 @@
 // For information on how to create your own theme, please see:
 // http://ionicframework.com/docs/theming/
 
-/** Ionic CSS Variables **/
+/** YAP Custom Color Scheme **/
 :root {
-    /** primary **/
-    --ion-color-primary: #3880ff;
-    --ion-color-primary-rgb: 56, 128, 255;
-    --ion-color-primary-contrast: #ffffff;
-    --ion-color-primary-contrast-rgb: 255, 255, 255;
-    --ion-color-primary-shade: #3171e0;
-    --ion-color-primary-tint: #4c8dff;
+    /** YAP Color Variables **/
+    --yap-main-background: #4372c4;
+    --yap-primary-color: #ffdb45;
+    --yap-secondary-color: #f5f5f5;
+    --yap-tertiary-red: #e13a3f;
+    --yap-tertiary-green: #49cf8c;
+    --yap-primary-text: #f5f5f5;
+    --yap-body-text: #f5f5f5;
+    --yap-body-text-on-dark: #333333;
+
+    /** primary - Yellow primary color (for buttons/CTAs) **/
+    --ion-color-primary: #ffdb45;
+    --ion-color-primary-rgb: 255, 219, 69;
+    --ion-color-primary-contrast: #333333;
+    --ion-color-primary-contrast-rgb: 51, 51, 51;
+    --ion-color-primary-shade: #e0c03d;
+    --ion-color-primary-tint: #ffdf58;
   
-    --ion-background-color: #ffffff;
-    --ion-color: #2F3031;
-    --ion-base-text-color: #090a0c ;
-    --ion-placeholder-text-color: rgba(0, 0, 0, 0.65);
-    --ion-reverse: #121212;
-    --ion-inverse: #ffffff;
+    --ion-background-color: #4372c4;
+    --ion-color: #f5f5f5;
+    --ion-base-text-color: #f5f5f5;
+    --ion-placeholder-text-color: rgba(245, 245, 245, 0.65);
+    --ion-reverse: #f5f5f5;
+    --ion-inverse: #4372c4;
   
-    --biz-descript: blue;
-    --service-header: #353737;
-    --service-info: #868686;
-    --review-title: #333;
-    --date-selected: #6b03fc;
+    --biz-descript: #ffdb45;
+    --service-header: #f5f5f5;
+    --service-info: #f5f5f5;
+    --review-title: #f5f5f5;
+    --date-selected: #4372c4;
   
-    --post-outer: #EFF1F3;
-    --clb-btn: #C8C8C8;
+    --post-outer: #4372c4;
+    --clb-btn: #4372c4;
   
-    /** secondary **/
-    --ion-color-secondary: #3dc2ff;
-    --ion-color-secondary-rgb: 61, 194, 255;
-    --ion-color-secondary-contrast: #ffffff;
-    --ion-color-secondary-contrast-rgb: 255, 255, 255;
-    --ion-color-secondary-shade: #36abe0;
-    --ion-color-secondary-tint: #50c8ff;
+    /** secondary - Yellow secondary/accent color **/
+    --ion-color-secondary: #ffdb45;
+    --ion-color-secondary-rgb: 255, 219, 69;
+    --ion-color-secondary-contrast: #333333;
+    --ion-color-secondary-contrast-rgb: 51, 51, 51;
+    --ion-color-secondary-shade: #e0c03d;
+    --ion-color-secondary-tint: #ffdf58;
   
-    /** tertiary **/
-    --ion-color-tertiary: #5260ff;
-    --ion-color-tertiary-rgb: 82, 96, 255;
+    /** tertiary - Red accent/error color **/
+    --ion-color-tertiary: #e13a3f;
+    --ion-color-tertiary-rgb: 225, 58, 63;
     --ion-color-tertiary-contrast: #ffffff;
     --ion-color-tertiary-contrast-rgb: 255, 255, 255;
-    --ion-color-tertiary-shade: #4854e0;
-    --ion-color-tertiary-tint: #6370ff;
+    --ion-color-tertiary-shade: #c63238;
+    --ion-color-tertiary-tint: #e44e52;
   
-    /** success **/
-    --ion-color-success: #2dd36f;
-    --ion-color-success-rgb: 45, 211, 111;
+    /** success - Green tertiary color **/
+    --ion-color-success: #49cf8c;
+    --ion-color-success-rgb: 73, 207, 140;
     --ion-color-success-contrast: #ffffff;
     --ion-color-success-contrast-rgb: 255, 255, 255;
-    --ion-color-success-shade: #28ba62;
+    --ion-color-success-shade: #40b67b;
+    --ion-color-success-tint: #5bd498;
     --ion-color-success-tint: #42d77d;
   
     /** warning **/
@@ -92,12 +103,50 @@
     --ion-color-light-tint: #f5f6f9;
   }
   
-  // @media (prefers-color-scheme: dark) {
-    /*
-     * Dark Colors
-     * -------------------------------------------
-     */
+  /*
+   * Force Light Mode - Override device dark mode setting
+   * -------------------------------------------
+   */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      /* Force light mode colors even when device is in dark mode */
+      --ion-background-color: #4372c4 !important; // Blue primary background
+      --ion-background-color-rgb: 67, 114, 196 !important;
+      --ion-text-color: #f5f5f5 !important; // Light gray text
+      --ion-text-color-rgb: 245, 245, 245 !important;
+      
+      /* Ensure primary colors stay consistent */
+      --ion-color-primary: #ffdb45 !important; // Yellow primary
+      --ion-color-primary-rgb: 255, 219, 69 !important;
+      --ion-color-primary-contrast: #333333 !important;
+      --ion-color-primary-contrast-rgb: 51, 51, 51 !important;
+    }
+    
+    /* Force body and html to use light colors */
+    body {
+      background-color: #4372c4 !important;
+      color: #f5f5f5 !important;
+    }
+    
+    /* Override any ion-content dark mode styles */
+    ion-content {
+      --background: #4372c4 !important;
+      --color: #f5f5f5 !important;
+    }
+    
+    /* Override any card or item dark mode styles */
+    ion-card, ion-item {
+      --background: #4372c4 !important;
+      --color: #f5f5f5 !important;
+    }
+  }
   
+  /*
+   * Dark mode styles disabled to maintain light mode appearance
+   * regardless of device dark mode setting
+   */
+  /*
+  // @media (prefers-color-scheme: dark) {
     body[color-scheme="dark"] {
       --ion-color-primary: #428cff;
       --ion-color-primary-rgb: 66,140,255;
@@ -271,12 +320,13 @@
       --ion-color-light-shade: #1e2023;
       --ion-color-light-tint: #383a3e;
     }
+    */
   
     /*
-     * iOS Dark Theme
+     * iOS Dark Theme - DISABLED
      * -------------------------------------------
      */
-  
+    /*
     .ios body[color-scheme="dark"] {
       --ion-background-color: #090a0c ;
       --ion-background-color-rgb: 54,57,62;
@@ -317,6 +367,7 @@
         --ion-toolbar-border-color: #090a0c ;
       }
     }
+    */
   
     .ios ion-modal {
       --ion-background-color: #fff;
@@ -326,10 +377,10 @@
   
   
     /*
-     * Material Design Dark Theme
+     * Material Design Dark Theme - DISABLED
      * -------------------------------------------
      */
-  
+    /*
     .md body[color-scheme="dark"] {
       --ion-background-color: #090a0c ;
       --ion-background-color-rgb: 54,57,62;
@@ -367,5 +418,6 @@
   
       --ion-card-background: #090a0c ;
     }
+    */
   // }
   

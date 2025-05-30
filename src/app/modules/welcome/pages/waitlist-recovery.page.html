@@ -1,0 +1,71 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()" fill="clear">
+        <ion-icon name="arrow-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Waitlist Recovery</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <div class="recovery-container">
+    <div class="logo-section">
+      <img src="assets/logo/YAP-LOGO.png" alt="YAP Logo" class="logo">
+      <h1>Welcome Back!</h1>
+      <p class="subtitle">Enter your email and passphrase to recover your wallet</p>
+    </div>
+
+    <form [formGroup]="recoveryForm" (ngSubmit)="onSubmit()" class="recovery-form">
+      <ion-item fill="outline" class="form-item">
+        <ion-label position="floating">Email Address</ion-label>
+        <ion-input 
+          type="email" 
+          formControlName="email"
+          [class.ion-invalid]="recoveryForm.get('email')?.invalid && recoveryForm.get('email')?.touched"
+          placeholder="Enter your waitlist email">
+        </ion-input>
+      </ion-item>
+      
+      <ion-item fill="outline" class="form-item">
+        <ion-label position="floating">Secure Passphrase</ion-label>
+        <ion-input 
+          type="password" 
+          formControlName="passphrase"
+          [class.ion-invalid]="recoveryForm.get('passphrase')?.invalid && recoveryForm.get('passphrase')?.touched"
+          placeholder="Enter your secure passphrase">
+        </ion-input>
+      </ion-item>
+
+      <div class="error-messages">
+        <ion-text color="danger" *ngIf="recoveryForm.get('email')?.invalid && recoveryForm.get('email')?.touched">
+          <small>Please enter a valid email address</small>
+        </ion-text>
+        
+        <ion-text color="danger" *ngIf="recoveryForm.get('passphrase')?.invalid && recoveryForm.get('passphrase')?.touched">
+          <small>Passphrase must be at least 8 characters long</small>
+        </ion-text>
+      </div>
+
+      <ion-button 
+        expand="block" 
+        type="submit" 
+        [disabled]="!recoveryForm.valid || isLoading"
+        class="recovery-button">
+        <ion-spinner *ngIf="isLoading" name="crescent"></ion-spinner>
+        <span *ngIf="!isLoading">Recover Wallet</span>
+      </ion-button>
+    </form>
+
+    <div class="help-section">
+      <ion-text color="medium">
+        <p>Don't remember your passphrase? Contact support for assistance.</p>
+      </ion-text>
+      
+      <ion-button fill="clear" size="small" (click)="goBack()">
+        Back to Welcome
+      </ion-button>
+    </div>
+  </div>
+</ion-content>

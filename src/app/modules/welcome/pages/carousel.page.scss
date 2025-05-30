@@ -1,0 +1,19 @@
+// Carousel Page Styles
+ion-slides {
+  height: 100%;
+}
+
+ion-slide {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+}
+
+ion-button {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 300px;
+}
