@@ -1,0 +1,135 @@
+<ion-content>
+  <!-- Skip button with enhanced styling -->
+  <div *ngIf="currentSlide < totalSlides - 1" class="skip-button">
+    <ion-button fill="clear" color="light" (click)="skipIntro()">
+      <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
+      Skip
+    </ion-button>
+  </div>
+  
+  <!-- Enhanced Swiper container without pagination -->
+  <swiper-container 
+    (swiperslidechange)="onSlideChange($event)"
+    pagination="false"
+    effect="fade"
+    speed="800">
+    
+    <!-- Generate slides dynamically with enhanced animations -->
+    <swiper-slide *ngFor="let slide of introSlides; let i = index" [ngClass]="slide.backgroundClass">
+      <!-- Animated background elements -->
+      <div class="background-animation">
+        <!-- Language greeting orbs -->
+        <div class="language-orbs" *ngIf="i === 0">
+          <div class="orb greeting-orb" *ngFor="let language of languages; let j = index" 
+               [attr.data-lang]="language.code"
+               [attr.data-hello]="language.hello"
+               [style.animation-delay]="j * 0.8 + 's'">
+            <span class="hello-text">{{language.hello}}</span>
+          </div>
+        </div>
+        
+        <!-- Country code orbs (positioned near their greeting counterparts) -->
+        <div class="country-orbs" *ngIf="i === 0">
+          <div class="orb country-orb" *ngFor="let language of languages; let j = index" 
+               [attr.data-lang]="language.code"
+               [style.animation-delay]="j * 0.8 + 0.4 + 's'">
+            <span class="country-text">{{language.code}}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-content">
+        <!-- Enhanced logo with animation -->
+        <div *ngIf="i === 0" class="yap-logo animated-logo">
+          <img src="assets/logo/YAP.png" alt="YAP Logo" />
+          <div class="logo-glow"></div>
+        </div>
+        
+        <!-- Main image with enhanced container -->
+        <div class="slide-image-container" [attr.data-slide]="i">
+          <div class="image-wrapper">
+            <img [src]="slide.image" [alt]="slide.title" class="slide-image" />
+            <div class="image-glow"></div>
+          </div>
+          
+          <!-- Animated elements for specific slides -->
+          <div class="slide-animation" *ngIf="i === 1">
+            <div class="earning-coins">
+              <div class="coin" *ngFor="let coin of [1,2,3]" 
+                   [style.animation-delay]="coin * 0.4 + 's'">💰</div>
+            </div>
+          </div>
+          
+          <div class="slide-animation" *ngIf="i === 2">
+            <div class="progress-rings">
+              <div class="ring" *ngFor="let ring of [1,2,3]" 
+                   [style.animation-delay]="ring * 0.2 + 's'"></div>
+            </div>
+          </div>
+          
+          <div class="slide-animation" *ngIf="i === 3">
+            <div class="community-avatars">
+              <div class="avatar" *ngFor="let avatar of [1,2,3,4]" 
+                   [style.animation-delay]="avatar * 0.15 + 's'">🌟</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Enhanced text content -->
+        <div class="slide-text-container">
+          <h1 class="slide-title" [attr.data-slide]="i">{{ slide.title }}</h1>
+          <p class="slide-description" *ngIf="slide.description">{{ slide.description }}</p>
+        </div>
+        
+        <!-- Enhanced navigation -->
+        <div class="slide-navigation" [ngClass]="{'final-slide': slide.isLastSlide}">
+          <!-- Custom progress indicator -->
+          <div class="progress-indicator" *ngIf="!slide.isLastSlide">
+            <div class="progress-line">
+              <div class="progress-fill" [style.width]="((currentSlide + 1) / totalSlides) * 100 + '%'"></div>
+            </div>
+            <span class="progress-text">{{currentSlide + 1}} of {{totalSlides}}</span>
+          </div>
+          
+          <!-- Enhanced buttons -->
+          <ng-container *ngIf="!slide.isLastSlide">
+            <ion-button 
+              expand="block"
+              class="yap-button next-button"
+              (click)="nextSlide()">
+              <span>{{ slide.buttonText }}</span>
+              <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
+            </ion-button>
+          </ng-container>
+          
+          <!-- Special styling for the final slide -->
+          <ng-container *ngIf="slide.isLastSlide">
+            <!-- Animated final slide content -->
+            <div class="final-slide-animation">
+              <div class="pulsing-glow"></div>
+            </div>
+            
+            <!-- Get Started button -->
+            <ion-button 
+              expand="block"
+              class="yap-button get-started-button" 
+              (click)="getStarted()">
+              <ion-icon name="rocket-outline" slot="start"></ion-icon>
+              <span>{{ slide.buttonText }}</span>
+            </ion-button>
+            
+            <!-- I already have an account button -->
+            <ion-button 
+              expand="block"
+              class="yap-button account-button" 
+              fill="outline"
+              (click)="loginExisting()">
+              <ion-icon name="person-outline" slot="start"></ion-icon>
+              <span>{{ slide.secondButtonText }}</span>
+            </ion-button>
+          </ng-container>
+        </div>
+      </div>
+    </swiper-slide>
+  </swiper-container>
+</ion-content>

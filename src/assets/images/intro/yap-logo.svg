@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- YAP Logo with green styling similar to Duolingo -->
+  <circle cx="100" cy="120" r="30" fill="#444444" opacity="0.6"/>
+  <g transform="translate(50, 50)">
+    <!-- Stylized YAP character -->
+    <circle cx="50" cy="50" r="50" fill="#8cd81b"/>
+    <!-- Eyes -->
+    <ellipse cx="35" cy="45" rx="10" ry="12" fill="white"/>
+    <ellipse cx="65" cy="45" rx="10" ry="12" fill="white"/>
+    <ellipse cx="35" cy="45" rx="5" ry="6" fill="#333"/>
+    <ellipse cx="65" cy="45" rx="5" ry="6" fill="#333"/>
+    <!-- Beak -->
+    <path d="M50 65 L40 70 L60 70 Z" fill="#ff9f1c"/>
+    <!-- Wings -->
+    <path d="M20 50 C10 60 10 90 30 90 L20 70 Z" fill="#7cbe19"/>
+    <path d="M80 50 C90 60 90 90 70 90 L80 70 Z" fill="#7cbe19"/>
+  </g>
+</svg>

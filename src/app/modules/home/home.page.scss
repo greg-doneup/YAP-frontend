@@ -1,11 +1,21 @@
 #container {
   text-align: center;
-
+  padding: 20px;
   position: absolute;
   left: 0;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.mt-2 {
+  margin-top: 10px;
+}
+
+.mt-4 {
+  margin-top: 20px;
 }
 
 #container strong {

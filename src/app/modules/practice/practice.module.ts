@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 
 import { PracticePageRoutingModule } from './practice-routing.module';
+import { SharedModule } from '../../shared/shared.module';
 
 import { PracticePage } from './practice.page';
 
@@ -13,7 +14,8 @@ import { PracticePage } from './practice.page';
     CommonModule,
     FormsModule,
     IonicModule,
-    PracticePageRoutingModule
+    PracticePageRoutingModule,
+    SharedModule
   ],
   declarations: [PracticePage]
 })

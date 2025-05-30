@@ -12,8 +12,8 @@ import { ApiService } from '../api-service.service';
  */
 export interface UserStats {
   pointTotal: string;
-  mintableYap: string;
-  totalYapMinted: string;
+  mintableYAP: string;
+  totalYAPMinted: string;
 }
 
 /**
@@ -137,7 +137,7 @@ export class RewardService {
    * Mint user's accumulated YAP tokens
    * @param walletAddress User's wallet address
    */
-  mintAccumulatedYap(walletAddress: string): Observable<TransactionResponse> {
+  mintAccumulatedYAP(walletAddress: string): Observable<TransactionResponse> {
     return this.rateLimiter.executeIfAllowed(
       RewardService.RL_MINT_TOKENS,
       () => this.apiService.post<TransactionResponse>('reward/mint', { walletAddress }).pipe(

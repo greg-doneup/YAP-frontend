@@ -1,0 +1,24 @@
+// YAP App Component Styles
+ion-app {
+  background-color: var(--yap-main-background);
+}
+
+.hidden {
+  display: none !important;
+}
+
+// Ensure smooth transitions
+ion-router-outlet {
+  transition: opacity 0.3s ease-in-out;
+}
+
+// Override any default ionic styling for our color scheme
+ion-content {
+  --background: var(--yap-main-background);
+  --color: var(--yap-primary-text);
+}
+
+ion-toolbar {
+  --background: var(--yap-primary-color);
+  --color: white;
+}

@@ -361,4 +361,33 @@ export class VoiceService {
       this.audioElement.src = '';
     }
   }
+
+  /**
+   * Request microphone permission
+   * @returns Promise<boolean> True if permission granted, false otherwise
+   */
+  async requestPermission(): Promise<boolean> {
+    try {
+      // Check if MediaDevices API is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error('MediaDevices API not supported');
+        return false;
+      }
+
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          channelCount: this.channelCount,
+          sampleRate: this.sampleRate
+        }
+      });
+      
+      // Permission granted, clean up the stream
+      stream.getTracks().forEach(track => track.stop());
+      return true;
+    } catch (error) {
+      console.error('Microphone permission denied or error:', error);
+      return false;
+    }
+  }
 }
