@@ -9,10 +9,20 @@
   
   <!-- Enhanced Swiper container without pagination -->
   <swiper-container 
+    #swiperContainer
     (swiperslidechange)="onSlideChange($event)"
+    (slidechange)="onSlideChange($event)"
     pagination="false"
     effect="fade"
-    speed="800">
+    speed="800"
+    slides-per-view="1"
+    space-between="0"
+    allow-touch-move="true"
+    centered-slides="true"
+    loop="false"
+    grab-cursor="true"
+    simulate-touch="true"
+    init="false">
     
     <!-- Generate slides dynamically with enhanced animations -->
     <swiper-slide *ngFor="let slide of introSlides; let i = index" [ngClass]="slide.backgroundClass">
@@ -46,7 +56,7 @@
         </div>
         
         <!-- Main image with enhanced container -->
-        <div class="slide-image-container" [attr.data-slide]="i">
+        <div *ngIf="slide.image" class="slide-image-container" [attr.data-slide]="i">
           <div class="image-wrapper">
             <img [src]="slide.image" [alt]="slide.title" class="slide-image" />
             <div class="image-glow"></div>
@@ -54,23 +64,173 @@
           
           <!-- Animated elements for specific slides -->
           <div class="slide-animation" *ngIf="i === 1">
-            <div class="earning-coins">
-              <div class="coin" *ngFor="let coin of [1,2,3]" 
-                   [style.animation-delay]="coin * 0.4 + 's'">💰</div>
+            <!-- Talk & Earn specialized animations -->
+            <div class="talk-earn-animation">
+              <!-- Speech bubbles with different languages -->
+              <div class="speech-bubbles">
+                <div class="speech-bubble" *ngFor="let language of languages; let j = index"
+                     [attr.data-lang]="language.code"
+                     [style.animation-delay]="j * 0.6 + 's'">
+                  <span class="bubble-text">{{language.hello}}</span>
+                </div>
+              </div>
+              
+              <!-- Earning coins animation -->
+              <div class="earning-coins">
+                <div class="coin" *ngFor="let coin of [1,2,3,4,5]" 
+                     [style.animation-delay]="coin * 0.3 + 's'">💰</div>
+              </div>
+              
+              <!-- Reward tokens floating -->
+              <div class="reward-tokens">
+                <div class="token" *ngFor="let token of [1,2,3]"
+                     [style.animation-delay]="token * 0.8 + 's'">🪙</div>
+              </div>
+              
+              <!-- Microphone pulse effect -->
+              <div class="mic-pulse">
+                <ion-icon name="mic-outline"></ion-icon>
+                <div class="pulse-ring"></div>
+                <div class="pulse-ring" style="animation-delay: 0.5s;"></div>
+              </div>
+              
+              <!-- Sound waves -->
+              <div class="sound-waves">
+                <div class="wave" *ngFor="let wave of [1,2,3,4]"
+                     [style.animation-delay]="wave * 0.1 + 's'"></div>
+              </div>
             </div>
           </div>
           
-          <div class="slide-animation" *ngIf="i === 2">
-            <div class="progress-rings">
-              <div class="ring" *ngFor="let ring of [1,2,3]" 
-                   [style.animation-delay]="ring * 0.2 + 's'"></div>
+          <!-- Daily Practice - Pronunciation Feedback Animation (Slide 2) -->
+          <div *ngIf="i === 2" class="slide-animation">
+            <div class="daily-practice-container">
+              <div class="pronunciation-practice">
+                <!-- Microphone icon with pulse -->
+                <div class="practice-mic">
+                  <ion-icon name="mic" class="mic-icon"></ion-icon>
+                  <div class="mic-pulse-ring"></div>
+                  <div class="mic-pulse-ring" style="animation-delay: 0.3s;"></div>
+                </div>
+                
+                <!-- Spanish sentence with word-by-word feedback -->
+                <div class="practice-sentence">
+                  <div class="sentence-container">
+                    <span 
+                      *ngFor="let wordData of practiceData.spanish.feedback; let j = index"
+                      class="practice-word"
+                      [attr.data-word]="wordData.word"
+                      [attr.data-correct]="wordData.correct">
+                      {{ wordData.word }}
+                      <div class="word-underline" 
+                           [ngClass]="{'correct': wordData.correct, 'incorrect': !wordData.correct}"></div>
+                    </span>
+                  </div>
+                  
+                  <!-- English translation -->
+                  <div class="sentence-translation">
+                    {{ practiceData.spanish.translation }}
+                  </div>
+                </div>
+                
+                <!-- Pronunciation score display -->
+                <div class="pronunciation-scores">
+                  <div class="score-item">
+                    <div class="score-circle pronunciation">
+                      <span class="score-number">68</span>
+                    </div>
+                    <span class="score-label">Pronunciation</span>
+                  </div>
+                  <div class="score-item">
+                    <div class="score-circle speed">
+                      <span class="score-number">92</span>
+                    </div>
+                    <span class="score-label">Speed</span>
+                  </div>
+                  <div class="score-item">
+                    <div class="score-circle similarity">
+                      <span class="score-number">95</span>
+                    </div>
+                    <span class="score-label">Similarity</span>
+                  </div>
+                </div>
+                
+                <!-- Sound waves visualization -->
+                <div class="practice-waves">
+                  <div class="wave-bar" *ngFor="let bar of [1,2,3,4,5,6,7,8]"></div>
+                </div>
+              </div>
             </div>
           </div>
           
-          <div class="slide-animation" *ngIf="i === 3">
-            <div class="community-avatars">
-              <div class="avatar" *ngFor="let avatar of [1,2,3,4]" 
-                   [style.animation-delay]="avatar * 0.15 + 's'">🌟</div>
+          <!-- Community Network Animation (Slide 3) -->
+          <div *ngIf="i === 3" class="slide-animation">
+            <div class="community-animation-container">
+              <div class="community-network">
+                <!-- Central globe/connection hub -->
+                <div class="community-hub">
+                  <div class="globe-icon">🌐</div>
+                  <div class="hub-pulse"></div>
+                </div>
+                
+                <!-- Floating user avatars in orbit -->
+                <div class="community-users">
+                  <div class="user-avatar" 
+                       *ngFor="let user of communityData.users; let j = index"
+                       [attr.data-country]="user.country"
+                       [style.animation-delay]="j * 0.3 + 's'">
+                    <div class="avatar-circle">
+                      <span class="flag">{{ user.flag }}</span>
+                      <div class="connection-line"></div>
+                    </div>
+                    <div class="user-info">
+                      <span class="user-name">{{ user.name }}</span>
+                      <span class="learning">Learning {{ user.learning }}</span>
+                    </div>
+                    <div class="achievement-badge">{{ user.badge }}</div>
+                  </div>
+                </div>
+                
+                <!-- Language exchange bubbles -->
+                <div class="language-exchanges">
+                  <div class="exchange-bubble"
+                       *ngFor="let exchange of communityData.exchanges; let k = index"
+                       [style.animation-delay]="k * 0.8 + 1.5 + 's'">
+                    <div class="from-language">{{ exchange.from }}</div>
+                    <div class="exchange-arrow">↔️</div>
+                    <div class="to-language">{{ exchange.to }}</div>
+                  </div>
+                </div>
+                
+                <!-- Statistics counters -->
+                <div class="community-stats">
+                  <div class="stat-item">
+                    <span class="stat-number">10K+</span>
+                    <span class="stat-label">Active Learners</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-number">50+</span>
+                    <span class="stat-label">Languages</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-number">1M+</span>
+                    <span class="stat-label">Conversations</span>
+                  </div>
+                </div>
+                
+                <!-- Floating success messages -->
+                <div class="success-messages">
+                  <div class="success-message" [style.animation-delay]="'2.5s'">
+                    "Made my first friend in Spanish! 🎉"
+                  </div>
+                  <div class="success-message" [style.animation-delay]="'3.8s'">
+                    "Level up! Arabic pronunciation improved! 📈"
+                  </div>
+                  <div class="success-message" [style.animation-delay]="'5.1s'">
+                    "Helped someone with English today! 🤝"
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -96,7 +256,8 @@
             <ion-button 
               expand="block"
               class="yap-button next-button"
-              (click)="nextSlide()">
+              (click)="nextSlide()"
+              [disabled]="false">
               <span>{{ slide.buttonText }}</span>
               <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
             </ion-button>

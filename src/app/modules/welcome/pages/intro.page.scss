@@ -290,6 +290,32 @@ swiper-slide {
     }
   }
   
+  // Talk & Earn slide with character image - larger scaling for engagement
+  &[data-slide="1"] {
+    .slide-image {
+      max-width: 100%;
+      max-height: 320px; // Larger base size for character visibility
+      opacity: 1;
+      
+      // Scale up progressively with screen size
+      @media (min-width: 375px) {
+        max-height: 330px;
+      }
+      
+      @media (min-width: 414px) {
+        max-height: 340px;
+      }
+      
+      @media (min-width: 768px) {
+        max-height: 350px;
+      }
+      
+      @media (min-width: 1024px) {
+        max-height: 360px; // Maximum size for larger screens
+      }
+    }
+  }
+  
   // Responsive adjustments for landing image - remove conflicting styles
   .slide-image-container {
     padding: 15px 0;
@@ -549,6 +575,152 @@ swiper-slide {
   }
 }
 
+// Talk & Earn slide specialized animations
+.talk-earn-animation {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  
+  // Speech bubbles with language greetings
+  .speech-bubbles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    
+    .speech-bubble {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 20px 20px 20px 5px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      animation: speechBubbleFloat 4s infinite ease-in-out;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      
+      .bubble-text {
+        white-space: nowrap;
+      }
+      
+      // Position bubbles around the character
+      &[data-lang="ES"] { 
+        top: 20%; 
+        left: 15%; 
+        animation-delay: 0s; 
+      }
+      &[data-lang="ZH"] { 
+        top: 30%; 
+        right: 20%; 
+        animation-delay: 0.6s; 
+      }
+      &[data-lang="AR"] { 
+        bottom: 45%; 
+        left: 25%; 
+        animation-delay: 1.2s; 
+      }
+      &[data-lang="FR"] { 
+        top: 25%; 
+        right: 10%; 
+        animation-delay: 1.8s; 
+      }
+      &[data-lang="DE"] { 
+        bottom: 40%; 
+        right: 15%; 
+        animation-delay: 2.4s; 
+      }
+    }
+  }
+  
+  // Enhanced earning coins
+  .earning-coins {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    
+    .coin {
+      position: absolute;
+      font-size: 20px;
+      animation: coinEarnFloat 3s infinite ease-in-out;
+      
+      &:nth-child(1) { top: 40%; left: 70%; }
+      &:nth-child(2) { top: 35%; left: 75%; }
+      &:nth-child(3) { top: 45%; left: 80%; }
+      &:nth-child(4) { top: 50%; left: 85%; }
+      &:nth-child(5) { top: 30%; left: 65%; }
+    }
+  }
+  
+  // Reward tokens
+  .reward-tokens {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    
+    .token {
+      position: absolute;
+      font-size: 16px;
+      animation: tokenFloat 4s infinite ease-in-out;
+      
+      &:nth-child(1) { bottom: 30%; right: 20%; }
+      &:nth-child(2) { bottom: 25%; right: 30%; }
+      &:nth-child(3) { bottom: 35%; right: 15%; }
+    }
+  }
+  
+  // Microphone pulse effect
+  .mic-pulse {
+    position: absolute;
+    bottom: 8vh;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    ion-icon {
+      font-size: 32px;
+      color: #efc52a;
+      z-index: 10;
+      animation: micBounce 1.5s infinite ease-in-out;
+    }
+    
+    .pulse-ring {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border: 3px solid rgba(239, 197, 42, 0.6);
+      border-radius: 50%;
+      animation: micPulse 2s infinite ease-out;
+    }
+  }
+  
+  // Sound waves
+  .sound-waves {
+    position: absolute;
+    bottom: 8vh;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    
+    .wave {
+      width: 4px;
+      height: 20px;
+      background: linear-gradient(to top, #efc52a, #f2cc42);
+      border-radius: 2px;
+      animation: soundWave 1.2s infinite ease-in-out;
+      
+      &:nth-child(1) { animation-delay: 0s; }
+      &:nth-child(2) { animation-delay: 0.1s; }
+      &:nth-child(3) { animation-delay: 0.2s; }
+      &:nth-child(4) { animation-delay: 0.3s; }
+    }
+  }
+}
+
 // Final slide special animations
 .final-slide-animation {
   position: absolute;
@@ -565,6 +737,515 @@ swiper-slide {
     background: radial-gradient(circle, var(--yap-glow) 0%, transparent 70%);
     border-radius: 50%;
     animation: finalPulse 3s infinite ease-in-out;
+  }
+}
+
+// Daily Practice Container - Full screen layout
+.daily-practice-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  padding: 20px;
+}
+
+// Pronunciation Practice Animation (Daily Practice Slide)
+.pronunciation-practice {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 30px;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+
+  .practice-mic {
+    position: relative;
+    margin-bottom: 40px;
+    
+    .mic-icon {
+      font-size: 36px;
+      color: white;
+      animation: micBounce 2s ease-in-out infinite;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+    }
+    
+    .mic-pulse-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60px;
+      height: 60px;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      animation: micPulse 2s ease-out infinite;
+      
+      &:nth-child(3) {
+        animation-delay: 0.3s;
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+    }
+  }
+
+  .practice-sentence {
+    text-align: center;
+    margin-bottom: 35px;
+    width: 100%;
+    
+    .sentence-container {
+      font-size: 20px;
+      font-weight: 600;
+      color: white;
+      margin-bottom: 20px;
+      line-height: 1.6;
+      padding: 20px;
+      
+      .practice-word {
+        position: relative;
+        display: inline-block;
+        margin: 0 6px;
+        padding-bottom: 10px;
+        opacity: 1;
+        transform: none;
+        
+        .word-underline {
+          position: absolute;
+          bottom: 2px;
+          left: 0;
+          right: 0;
+          height: 4px;
+          border-radius: 2px;
+          transform: scaleX(0);
+          transform-origin: left;
+          opacity: 0;
+          
+          &.correct {
+            background: linear-gradient(90deg, #10dc60, #0cd1e8);
+            box-shadow: 0 2px 12px rgba(16, 220, 96, 0.4);
+          }
+          
+          &.incorrect {
+            background: linear-gradient(90deg, #f04141, #ff6b6b);
+            box-shadow: 0 2px 12px rgba(240, 65, 65, 0.4);
+          }
+        }
+        
+        // Word-specific animation delays
+        &[data-word="Me"] .word-underline { animation-delay: 0.8s; }
+        &[data-word="gusta"] .word-underline { animation-delay: 1.5s; }
+        &[data-word="aprender"] .word-underline { animation-delay: 2.3s; }
+        &[data-word="idiomas"] .word-underline { animation-delay: 3.2s; }
+        &[data-word="nuevos"] .word-underline { animation-delay: 4.0s; }
+      }
+    }
+    
+    .sentence-translation {
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.8);
+      font-style: italic;
+      opacity: 1;
+      padding: 12px 20px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  .pronunciation-scores {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    margin-bottom: 30px;
+    
+    .score-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      opacity: 0;
+      
+      .score-circle {
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        
+        .score-number {
+          font-size: 16px;
+          font-weight: 700;
+          color: white;
+          z-index: 2;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        &.pronunciation {
+          background: linear-gradient(135deg, #ff9500, #ffb143);
+        }
+        
+        &.speed {
+          background: linear-gradient(135deg, #10dc60, #0cd1e8);
+        }
+        
+        &.similarity {
+          background: linear-gradient(135deg, #10dc60, #36d399);
+        }
+      }
+      
+      .score-label {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.9);
+        text-align: center;
+        font-weight: 500;
+      }
+    }
+  }
+
+  .practice-waves {
+    display: flex;
+    justify-content: center;
+    align-items: end;
+    gap: 4px;
+    height: 40px;
+    margin-top: 20px;
+    
+    .wave-bar {
+      width: 6px;
+      background: linear-gradient(to top, #efc52a, #f2cc42);
+      border-radius: 3px;
+      opacity: 0.6;
+      transition: all 0.3s ease;
+      
+      // Base heights for each wave bar
+      &:nth-child(1) { height: 15px; }
+      &:nth-child(2) { height: 25px; }
+      &:nth-child(3) { height: 35px; }
+      &:nth-child(4) { height: 30px; }
+      &:nth-child(5) { height: 40px; }
+      &:nth-child(6) { height: 20px; }
+      &:nth-child(7) { height: 28px; }
+      &:nth-child(8) { height: 18px; }
+    }
+  }
+
+  // Slide-activated animations (triggered when slide 3 becomes active)
+  &.slide-active {
+    .practice-word .word-underline {
+      animation: underlineReveal 0.6s ease-out forwards;
+      
+      // Realistic speaking pace timing (approximate syllable timing)
+      &[data-word="Me"] { animation-delay: 1.0s; }
+      &[data-word="gusta"] { animation-delay: 1.8s; }  // "GUS-ta" - 2 syllables
+      &[data-word="aprender"] { animation-delay: 2.8s; }  // "a-pren-DER" - 3 syllables
+      &[data-word="idiomas"] { animation-delay: 4.0s; }  // "i-dio-MAS" - 3 syllables  
+      &[data-word="nuevos"] { animation-delay: 5.2s; }  // "nue-VOS" - 2 syllables
+    }
+    
+    .score-item {
+      animation: scoreReveal 0.8s ease-out forwards;
+      
+      &:nth-child(1) { animation-delay: 5.0s; }
+      &:nth-child(2) { animation-delay: 5.3s; }
+      &:nth-child(3) { animation-delay: 5.6s; }
+    }
+    
+    // Animate the practice waves when slide becomes active
+    .practice-waves .wave-bar {
+      animation: practiceWaveAnimation 1.8s ease-in-out infinite;
+      
+      &:nth-child(1) { animation-delay: 0.2s; }
+      &:nth-child(2) { animation-delay: 0.4s; }
+      &:nth-child(3) { animation-delay: 0.6s; }
+      &:nth-child(4) { animation-delay: 0.8s; }
+      &:nth-child(5) { animation-delay: 1.0s; }
+      &:nth-child(6) { animation-delay: 1.2s; }
+      &:nth-child(7) { animation-delay: 1.4s; }
+      &:nth-child(8) { animation-delay: 1.6s; }
+    }
+  }
+}
+
+// Community Animation Container - Full screen layout
+.community-animation-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+// Community Network Animation (Join the Community Slide)
+.community-network {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 20px;
+  
+  .community-hub {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    
+    .globe-icon {
+      font-size: 48px;
+      animation: hubFloat 3s ease-in-out infinite;
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3));
+    }
+    
+    .hub-pulse {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80px;
+      height: 80px;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
+      animation: hubPulse 2s ease-out infinite;
+    }
+  }
+  
+  .community-users {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    
+    .user-avatar {
+      position: absolute;
+      opacity: 0;
+      animation: userOrbit 4s ease-in-out infinite, fadeInScale 0.8s ease-out forwards;
+      
+      &:nth-child(1) { 
+        top: 20%; 
+        left: 15%;
+        animation-delay: 0.3s;
+      }
+      &:nth-child(2) { 
+        top: 15%; 
+        right: 20%;
+        animation-delay: 0.6s;
+      }
+      &:nth-child(3) { 
+        bottom: 25%; 
+        right: 15%;
+        animation-delay: 0.9s;
+      }
+      &:nth-child(4) { 
+        bottom: 20%; 
+        left: 20%;
+        animation-delay: 1.2s;
+      }
+      &:nth-child(5) { 
+        top: 35%; 
+        left: 5%;
+        animation-delay: 1.5s;
+      }
+      &:nth-child(6) { 
+        top: 40%; 
+        right: 5%;
+        animation-delay: 1.8s;
+      }
+      
+      .avatar-circle {
+        position: relative;
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        
+        .flag {
+          font-size: 24px;
+          animation: flagWave 2s ease-in-out infinite;
+        }
+        
+        .connection-line {
+          position: absolute;
+          width: 2px;
+          height: 60px;
+          background: linear-gradient(to bottom, rgba(255, 255, 255, 0.6), transparent);
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          animation: connectionPulse 3s ease-in-out infinite;
+        }
+      }
+      
+      .user-info {
+        text-align: center;
+        margin-top: 8px;
+        
+        .user-name {
+          display: block;
+          font-size: 12px;
+          font-weight: 600;
+          color: white;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        .learning {
+          display: block;
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.8);
+          font-style: italic;
+        }
+      }
+      
+      .achievement-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        font-size: 16px;
+        animation: badgeBounce 2s ease-in-out infinite;
+      }
+    }
+  }
+  
+  .language-exchanges {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    
+    .exchange-bubble {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 8px 12px;
+      border-radius: 20px;
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: white;
+      opacity: 0;
+      animation: bubbleFloat 3s ease-in-out infinite, fadeInUp 0.8s ease-out forwards;
+      
+      &:nth-child(1) { 
+        top: 30%; 
+        left: 30%;
+      }
+      &:nth-child(2) { 
+        top: 45%; 
+        right: 25%;
+      }
+      &:nth-child(3) { 
+        bottom: 35%; 
+        left: 35%;
+      }
+      
+      .from-language, .to-language {
+        font-weight: 600;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+      
+      .exchange-arrow {
+        font-size: 16px;
+        animation: arrowBounce 1.5s ease-in-out infinite;
+      }
+    }
+  }
+  
+  .community-stats {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    opacity: 0;
+    animation: fadeInUp 0.8s ease-out 3.5s forwards;
+    
+    .stat-item {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px 16px;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      
+      .stat-number {
+        display: block;
+        font-size: 18px;
+        font-weight: 700;
+        color: white;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+      
+      .stat-label {
+        display: block;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.8);
+        margin-top: 2px;
+      }
+    }
+  }
+  
+  .success-messages {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    
+    .success-message {
+      position: absolute;
+      background: rgba(16, 220, 96, 0.2);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 20px;
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(16, 220, 96, 0.3);
+      font-size: 12px;
+      font-style: italic;
+      max-width: 180px;
+      opacity: 0;
+      animation: messageFloat 4s ease-in-out infinite, fadeInScale 0.6s ease-out forwards;
+      
+      &:nth-child(1) { 
+        top: 25%; 
+        right: 10%;
+      }
+      &:nth-child(2) { 
+        top: 60%; 
+        left: 10%;
+      }
+      &:nth-child(3) { 
+        bottom: 15%; 
+        right: 15%;
+      }
+    }
   }
 }
 
@@ -660,6 +1341,161 @@ swiper-slide {
   50% { opacity: 0.8; transform: scale(1.2); }
 }
 
+// Talk & Earn specific animations
+@keyframes speechBubbleFloat {
+  0%, 100% { 
+    transform: translateY(0px) scale(1); 
+    opacity: 0.8; 
+  }
+  25% { 
+    transform: translateY(-8px) scale(1.05); 
+    opacity: 1; 
+  }
+  50% { 
+    transform: translateY(-12px) scale(1.1); 
+    opacity: 0.9; 
+  }
+  75% { 
+    transform: translateY(-8px) scale(1.05); 
+    opacity: 1; 
+  }
+}
+
+@keyframes coinEarnFloat {
+  0% { 
+    transform: translateY(0px) rotate(0deg); 
+    opacity: 0; 
+  }
+  20% { 
+    opacity: 1; 
+  }
+  50% { 
+    transform: translateY(-40px) rotate(180deg); 
+    opacity: 1; 
+  }
+  100% { 
+    transform: translateY(-80px) rotate(360deg); 
+    opacity: 0; 
+  }
+}
+
+@keyframes tokenFloat {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+    opacity: 0.7; 
+  }
+  33% { 
+    transform: translateY(-15px) rotate(120deg); 
+    opacity: 1; 
+  }
+  66% { 
+    transform: translateY(-25px) rotate(240deg); 
+    opacity: 0.8; 
+  }
+}
+
+@keyframes micBounce {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  50% { 
+    transform: scale(1.1); 
+  }
+}
+
+@keyframes micPulse {
+  0% { 
+    transform: scale(0.8); 
+    opacity: 0.8; 
+  }
+  50% { 
+    transform: scale(1.5); 
+    opacity: 0.2; 
+  }
+  100% { 
+    transform: scale(2); 
+    opacity: 0; 
+  }
+}
+
+@keyframes soundWave {
+  0%, 100% { 
+    height: 8px; 
+    opacity: 0.5; 
+  }
+  50% { 
+    height: 24px; 
+    opacity: 1; 
+  }
+}
+
+// Community animation keyframes
+@keyframes hubFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes hubPulse {
+  0% { 
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.8;
+  }
+  50% { 
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.4;
+  }
+  100% { 
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes userOrbit {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(2deg); }
+}
+
+@keyframes flagWave {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+@keyframes connectionPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes badgeBounce {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.1) rotate(5deg); }
+}
+
+@keyframes bubbleFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes arrowBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+@keyframes messageFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+
+@keyframes fadeInScale {
+  0% { 
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 // Responsive styles
 @media (max-height: 700px) {
   .yap-logo img {
@@ -721,5 +1557,58 @@ swiper-slide {
   
   .slide-navigation .yap-button {
     max-width: 320px;
+  }
+}
+
+// Missing keyframes for pronunciation practice animations
+@keyframes underlineReveal {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scoreReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes practiceWaveAnimation {
+  0%, 100% { 
+    transform: scaleY(1);
+    opacity: 0.6;
+  }
+  25% { 
+    transform: scaleY(1.8);
+    opacity: 0.9;
+  }
+  50% { 
+    transform: scaleY(1.3);
+    opacity: 1;
+  }
+  75% { 
+    transform: scaleY(2.2);
+    opacity: 0.8;
   }
 }
