@@ -19,18 +19,99 @@
         <img src="assets/logo/YAP.png" alt="YAP Logo" class="yap-logo" />
       </div>
       <div class="user-avatar" (click)="navigateToProfile()">
-        <img src="assets/images/avatars/default-avatar.png" alt="User Avatar" />
+        <img src="assets/images/avi/yap_default_avatar.svg" alt="User Avatar" />
       </div>
     </div>
     
     <!-- Level Indicator Section -->
-    <div class="level-indicator-card">
+    <div class="level-indicator-card" [class.dropdown-active]="showLevelDropdown" (click)="toggleLevelDropdown($event)">
       <div class="level-content">
         <div class="level-icon">
           <ion-icon name="trending-up"></ion-icon>
         </div>
         <h2 class="level-title">{{ userLevel || 'A1 - Beginner' }}</h2>
-        <ion-icon name="chevron-down" class="dropdown-icon"></ion-icon>
+        <ion-icon [name]="showLevelDropdown ? 'chevron-up' : 'chevron-down'" class="dropdown-icon"></ion-icon>
+      </div>
+      
+      <!-- Level Dropdown -->
+      <div class="level-dropdown" *ngIf="showLevelDropdown">
+        <div class="level-category">
+          <h3 class="category-title">Beginner</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:0:3" 
+               [class.active]="userLevel === level.title"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">{{ level.level }}</div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="level-category">
+          <h3 class="category-title">Elementary</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:3:6" 
+               [class.active]="userLevel === level.title"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">{{ level.level }}</div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="level-category">
+          <h3 class="category-title">Intermediate</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:6:9" 
+               [class.active]="userLevel === level.title"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">{{ level.level }}</div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="level-category">
+          <h3 class="category-title">Upper Intermediate</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:9:12" 
+               [class.active]="userLevel === level.title"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">{{ level.level }}</div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="level-category">
+          <h3 class="category-title">Advanced</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:12:15" 
+               [class.active]="userLevel === level.title"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">{{ level.level }}</div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="level-category">
+          <h3 class="category-title">Proficient</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:15:18" 
+               [class.active]="userLevel === level.title"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">{{ level.level }}</div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     
@@ -48,7 +129,7 @@
         <div class="day-circle"></div>
         <span>Tue</span>
       </div>
-      <div class="day-item active" [class.active]="selectedDay === 'Wed'" (click)="selectDay('Wed')">
+      <div class="day-item" [class.active]="selectedDay === 'Wed'" (click)="selectDay('Wed')">
         <div class="day-circle"></div>
         <span>Wed</span>
       </div>
@@ -68,54 +149,96 @@
     
     <!-- Lessons Section -->
     <div class="lessons-section">
-      <h2 class="section-title">Today's Lessons</h2>
-      
-      <!-- Lesson Card - Video -->
-      <div class="lesson-card" (click)="startLesson('video')">
-        <div class="lesson-media">
-          <img src="assets/images/lesson-thumbnail.jpg" alt="Lesson Thumbnail" class="lesson-thumbnail">
-          <div class="lesson-type-icon">
-            <ion-icon name="videocam"></ion-icon>
-          </div>
+      <div class="lessons-header">
+        <h2 class="section-title" *ngIf="selectedDay">{{ selectedDay }}'s Lessons</h2>
+        <h2 class="section-title" *ngIf="!selectedDay">Today's Lessons</h2>
+        
+        <!-- Lesson Plan Type Selector -->
+        <div class="lesson-view-toggle">
+          <span class="toggle-option" [class.active]="!showingRecommended" (click)="showingRecommended = false">
+            Daily
+          </span>
+          <span class="toggle-option" [class.active]="showingRecommended" (click)="showingRecommended = true">
+            Recommended
+          </span>
         </div>
-        <div class="lesson-details">
-          <h3 class="lesson-title">Greetings</h3>
-          <div class="lesson-badge">
-            <ion-icon name="videocam"></ion-icon>
-            <span>Video</span>
+      </div>
+      
+      <!-- Daily Lessons --> 
+      <div *ngIf="!showingRecommended">
+        <!-- Lesson Cards - Dynamic -->
+        <div *ngIf="todaysLessons.length === 0" class="no-lessons-message">
+          <p>No lessons available for {{ selectedDay }}</p>
+          <ion-button expand="block" fill="outline" color="light" (click)="continueLearning()">
+            <span class="button-text">View all lessons</span>
+          </ion-button>
+        </div>
+        
+        <div *ngFor="let lesson of todaysLessons" class="lesson-card" [attr.data-id]="lesson.id" (click)="startLesson(lesson)">
+          <div class="lesson-media">
+            <img [src]="lesson.imageUrl || 'assets/images/card-banner/yap_composed_banner.jpg'" [alt]="lesson.title + ' Thumbnail'" class="lesson-thumbnail">
+            <div class="lesson-type-icon" [ngClass]="lesson.type">
+              <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
+            </div>
+            <div *ngIf="lesson.isNextLevel" class="next-level-badge">Next Level</div>
           </div>
-          <div class="lesson-progress">
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 75%"></div>
+          <div class="lesson-details">
+            <h3 class="lesson-title">{{ lesson.title }}</h3>
+            <div class="lesson-badge" [ngClass]="lesson.type + '-badge'">
+              <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
+              <span>{{ lesson.type | titlecase }}</span>
+            </div>
+            <div class="lesson-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="lesson.progress"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
       
-      <!-- Lesson Card - Practice -->
-      <div class="lesson-card" (click)="startLesson('practice')">
-        <div class="lesson-media">
-          <img src="assets/images/lesson-practice.jpg" alt="Practice Thumbnail" class="lesson-thumbnail">
-          <div class="lesson-type-icon practice">
-            <ion-icon name="bulb"></ion-icon>
-          </div>
+      <!-- Recommended Lessons -->
+      <div *ngIf="showingRecommended">
+        <div *ngIf="recommendedLessons.length === 0" class="no-lessons-message">
+          <p>Great job! You've completed all lessons at this level.</p>
+          <ion-button expand="block" fill="outline" color="light" (click)="checkNextLevel()">
+            <span class="button-text">Try the next level</span>
+          </ion-button>
         </div>
-        <div class="lesson-details">
-          <h3 class="lesson-title">Greetings</h3>
-          <div class="lesson-badge practice-badge">
-            <ion-icon name="bulb"></ion-icon>
-            <span>General</span>
+        
+        <div *ngFor="let lesson of recommendedLessons" class="lesson-card" [attr.data-id]="lesson.id" (click)="startLesson(lesson)">
+          <div class="lesson-media">
+            <img [src]="lesson.imageUrl || 'assets/images/card-banner/yap_composed_banner.jpg'" [alt]="lesson.title + ' Thumbnail'" class="lesson-thumbnail">
+            <div class="lesson-type-icon" [ngClass]="lesson.type">
+              <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
+            </div>
+            <div *ngIf="lesson.isNextLevel" class="next-level-badge">Next Level</div>
+            <div *ngIf="!lesson.isNextLevel" class="recommended-badge">Recommended</div>
           </div>
-          <div class="lesson-progress">
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 25%"></div>
+          <div class="lesson-details">
+            <h3 class="lesson-title">{{ lesson.title }}</h3>
+            <div class="lesson-meta">
+              <div class="lesson-badge" [ngClass]="lesson.type + '-badge'">
+                <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
+                <span>{{ lesson.type | titlecase }}</span>
+              </div>
+              <div class="lesson-time">
+                <ion-icon name="time-outline"></ion-icon>
+                <span>{{ lesson.estimatedTime }} min</span>
+              </div>
+            </div>
+            <div class="lesson-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="lesson.progress"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
       
-      <button class="next-up-button" (click)="goToNextLesson()">
-        NEXT UP
+      <button *ngIf="nextLesson" class="next-up-button" (click)="goToNextLesson()">
+        <span class="next-up-label">NEXT UP</span>
+        <span class="next-up-title">{{ nextLesson.title }}</span>
       </button>
     </div>
 
@@ -123,7 +246,7 @@
     <div *ngIf="isNewUser" class="welcome-card">
       <div class="welcome-content">
         <h2>Welcome to YAP!</h2>
-        <p>Congratulations on creating your account! You're now ready to start your language learning journey and earn YAP tokens with every lesson you complete.</p>
+        <p>Congratulations on creating your account! You're now ready to start your language learning journey and earn points with every lesson you complete.</p>
         <div class="welcome-info">
           <div class="welcome-item">
             <ion-icon name="flame" color="light"></ion-icon>
@@ -131,7 +254,7 @@
           </div>
           <div class="welcome-item">
             <ion-icon name="diamond" color="light"></ion-icon>
-            <span>Earn YAP tokens for each achievement</span>
+            <span>Earn points for each achievement</span>
           </div>
         </div>
         <ion-button 
@@ -148,7 +271,17 @@
     <!-- Today's Goal Card -->
     <div class="goal-card">
       <div class="goal-content">
-        <h2 class="goal-title">{{ todaysGoal.title }}</h2>
+        <div class="goal-header">
+          <h2 class="goal-title">{{ todaysGoal.title }}</h2>
+          
+          <!-- Level Progress Badge -->
+          <div class="level-progress-badge" *ngIf="userProgress">
+            <div class="badge-icon">
+              <ion-icon name="school"></ion-icon>
+            </div>
+            <span>{{ userProgress.ceferLevel }}</span>
+          </div>
+        </div>
         <p class="goal-description">{{ todaysGoal.description }}</p>
         
         <!-- Progress Bar -->
@@ -158,8 +291,19 @@
                  [style.width.%]="(todaysGoal.progress / todaysGoal.total) * 100"></div>
           </div>
           <div class="progress-info">
-            <span class="progress-text">{{ todaysGoal.progress }}/{{ todaysGoal.total }} words</span>
+            <span class="progress-text">{{ todaysGoal.progress }}/{{ todaysGoal.total }} lessons</span>
             <span class="progress-reward">{{ todaysGoal.reward }}</span>
+          </div>
+        </div>
+        
+        <!-- Level Progress (only shown for existing users with progress) -->
+        <div class="level-progress" *ngIf="userProgress && !showNewUserGuide">
+          <div class="level-progress-label">
+            <span>{{ userLevel }} progress:</span>
+            <span class="level-percent">{{ getLevelProgress() }}%</span>
+          </div>
+          <div class="level-progress-bar">
+            <div class="level-progress-fill" [style.width.%]="getLevelProgress()"></div>
           </div>
         </div>
         
@@ -226,7 +370,7 @@
               <div class="guide-icon">
                 <ion-icon name="library" color="warning"></ion-icon>
               </div>
-              <span>Learn new words</span>
+              <span>Master new phrases</span>
             </div>
             
             <div class="guide-item">
@@ -264,7 +408,7 @@
               <ion-icon name="library" color="warning"></ion-icon>
             </div>
             <div class="stat-info">
-              <span class="stat-label">Words learned</span>
+              <span class="stat-label">Phrases learned</span>
               <span class="stat-value">{{ progress.wordsLearned }}</span>
             </div>
           </div>
@@ -346,11 +490,11 @@
       <!-- Top User -->
       <div class="top-user">
         <div class="user-avatar">
-          <img src="assets/images/avatars/default-avatar.png" alt="User Avatar" />
+          <img src="assets/images/avi/yap_default_avatar.svg" alt="User Avatar" />
         </div>
         <div class="user-info">
           <h4 class="user-name">{{ leaderboard.topUser.name }}</h4>
-          <p class="user-earnings">{{ leaderboard.topUser.earnings }} $YAP</p>
+          <p class="user-earnings">{{ leaderboard.topUser.earnings }} points</p>
         </div>
         <div class="user-rank-badge">
           <span class="rank-number">1</span>

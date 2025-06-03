@@ -244,10 +244,42 @@ ion-button {
     color: white;
   }
 
+  .goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    
+    .level-progress-badge {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 5px 10px;
+      border-radius: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      
+      .badge-icon {
+        margin-right: 6px;
+        
+        ion-icon {
+          color: #8cd81b;
+          font-size: 16px;
+        }
+      }
+      
+      span {
+        color: white;
+        font-weight: 700;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
   .goal-title {
     font-size: 1.5rem;
     font-weight: 700;
-    margin: 0 0 0.5rem 0;
+    margin: 0;
     color: #ffffff;
   }
 
@@ -291,6 +323,42 @@ ion-button {
     .progress-reward {
       font-weight: 600;
       color: #ffa726;
+    }
+  }
+  
+  .level-progress {
+    margin-bottom: 1.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    
+    .level-progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      
+      span {
+        color: rgba(255, 255, 255, 0.9);
+      }
+      
+      .level-percent {
+        font-weight: 700;
+        color: #8cd81b;
+      }
+    }
+    
+    .level-progress-bar {
+      background: rgba(255, 255, 255, 0.1);
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      
+      .level-progress-fill {
+        background: #8cd81b;
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
     }
   }
 
@@ -1055,7 +1123,7 @@ ion-button {
     flex: 1;
     font-size: 1.4rem;
     font-weight: 600;
-    margin: 0 0 0 1rem;
+    margin: 0 0 0.5rem 0;
     color: #ffffff;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
@@ -1064,6 +1132,149 @@ ion-button {
     font-size: 1.25rem;
     color: #ffffff;
     opacity: 0.8;
+  }
+  
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  &.dropdown-active {
+    background: linear-gradient(135deg, rgba(80, 130, 200, 0.7), rgba(50, 95, 150, 0.7));
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  }
+  
+  // Level Dropdown
+  .level-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    right: 0;
+    background: #0D3052;
+    border-radius: 16px;
+    padding: 1rem;
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    max-height: 70vh;
+    overflow-y: auto;
+    animation: fadeIn 0.3s ease-out;
+    
+    // Custom scrollbar for the dropdown
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+    }
+    
+    .level-category {
+      margin-bottom: 1.5rem;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      .category-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.8);
+        margin: 0 0 0.75rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 0.5rem;
+      }
+      
+      .level-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        border-radius: 8px;
+        transition: background-color 0.2s ease;
+        cursor: pointer;
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+        
+        &.active {
+          background: rgba(var(--ion-color-primary-rgb), 0.2);
+          
+          .level-badge {
+            background: var(--ion-color-primary);
+          }
+          
+          .level-name {
+            color: var(--ion-color-primary);
+          }
+        }
+        
+        .level-badge {
+          min-width: 45px;
+          height: 24px;
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: white;
+          margin-right: 0.75rem;
+        }
+        
+        .level-info {
+          flex: 1;
+          
+          .level-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: white;
+            margin: 0 0 0.25rem 0;
+          }
+          
+          .level-desc {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin: 0;
+            line-height: 1.2;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Backdrop for level dropdown
+.level-dropdown-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.3s ease;
+  pointer-events: none;
+  
+  &.active {
+    background: rgba(0, 0, 0, 0.5);
+    pointer-events: all;
   }
 }
 
@@ -1131,119 +1342,161 @@ ion-button {
 // Lessons Section
 .lessons-section {
   margin-bottom: 2rem;
+  
+  .lessons-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    
+    .section-title {
+      margin: 0;
+    }
+    
+    .lesson-view-toggle {
+      display: flex;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 4px;
+      
+      .toggle-option {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        border-radius: 12px;
+        color: rgba(255, 255, 255, 0.7);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        
+        &.active {
+          background: rgba(255, 255, 255, 0.25);
+          color: white;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+      }
+    }
+  }
+  
+  .no-lessons-message {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    
+    p {
+      color: #ffffff;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+  }
 }
 
 // Lesson Card
 .lesson-card {
+  position: relative;
   background: rgba(18, 55, 95, 0.7);
   border-radius: 16px;
-  overflow: hidden;
-  margin-bottom: 1.2rem;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  cursor: pointer;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-  }
-  
+
   .lesson-media {
     position: relative;
-    height: 160px;
+    border-radius: 12px;
     overflow: hidden;
-    
-    .lesson-thumbnail {
+    height: 200px;
+    margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+
+    img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       transition: transform 0.3s ease;
     }
     
-    .lesson-type-icon {
+    // Recommended badge
+    .recommended-badge {
       position: absolute;
       top: 10px;
-      right: 10px;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      
-      ion-icon {
-        color: #12375F;
-        font-size: 20px;
-      }
-      
-      &.practice {
-        background: #9C27B0;
-        
-        ion-icon {
-          color: white;
-        }
-      }
+      left: 10px;
+      background: linear-gradient(135deg, #8cd81b 0%, #00BFB3 100%);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    // Next level badge
+    .next-level-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
   }
   
   .lesson-details {
-    padding: 1rem;
-    
+    color: white;
+
     .lesson-title {
-      font-size: 1.3rem;
-      color: white;
+      font-size: 1.25rem;
+      font-weight: 700;
       margin: 0 0 0.5rem 0;
-      font-weight: 600;
+      line-height: 1.2;
+      color: #ffffff;
+      text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
     }
-    
-    .lesson-badge {
-      display: inline-flex;
+
+    .lesson-meta {
+      display: flex;
       align-items: center;
-      background: rgba(0, 119, 255, 0.2);
-      border-radius: 12px;
-      padding: 0.25rem 0.75rem;
+      justify-content: space-between;
       margin-bottom: 0.75rem;
       
-      ion-icon {
-        font-size: 16px;
-        color: #ffffff;
-        margin-right: 0.25rem;
-      }
-      
-      span {
+      .lesson-time {
+        display: flex;
+        align-items: center;
         font-size: 0.8rem;
-        color: #ffffff;
-        font-weight: 500;
-      }
-      
-      &.practice-badge {
-        background: rgba(156, 39, 176, 0.2);
-      }
-    }
-    
-    .lesson-progress {
-      .progress-bar {
-        height: 4px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 2px;
-        overflow: hidden;
+        color: rgba(255, 255, 255, 0.8);
         
-        .progress-fill {
-          height: 100%;
-          background: #00BFB3;
-          border-radius: 2px;
+        ion-icon {
+          font-size: 16px;
+          margin-right: 4px;
         }
       }
+    }
+
+    .lesson-description {
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0 0 1rem 0;
     }
   }
 }
 
-// Next Up Button
+// Updated Next Up Button
 .next-up-button {
   background: #0D3052;
   color: white;
@@ -1253,11 +1506,24 @@ ion-button {
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 1px;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   margin: 1.5rem auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   cursor: pointer;
   transition: all 0.3s ease;
+  
+  .next-up-label {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    letter-spacing: 2px;
+    margin-bottom: 3px;
+  }
+  
+  .next-up-title {
+    font-size: 0.9rem;
+  }
   
   &:hover {
     background: #0A2441;
@@ -1504,6 +1770,38 @@ ion-button {
   
   .community-card {
     margin-bottom: 3.5rem; // Added extra margin for medium screens
+  }
+  
+  .level-indicator-card {
+    .level-dropdown {
+      max-height: 60vh;
+      
+      .level-category {
+        .category-title {
+          font-size: 0.9rem;
+        }
+        
+        .level-item {
+          padding: 0.6rem;
+          
+          .level-badge {
+            min-width: 40px;
+            height: 22px;
+            font-size: 0.7rem;
+          }
+          
+          .level-info {
+            .level-name {
+              font-size: 0.85rem;
+            }
+            
+            .level-desc {
+              font-size: 0.75rem;
+            }
+          }
+        }
+      }
+    }
   }
 }
 
