@@ -66,8 +66,12 @@ export class WaitlistSignupPage {
       // Show success message with wallet details
       await this.showWalletCreatedAlert(result);
       
-      // Navigate to main app
-      this.router.navigate(['/home']); // Adjust as needed
+      // Wait longer to ensure authentication state is fully set before navigation
+      console.log('Waitlist signup successful, preparing for dashboard navigation');
+      setTimeout(() => {
+        console.log('Navigating to dashboard after successful wallet creation');
+        this.router.navigate(['/dashboard']);
+      }, 1000);
       
     } catch (error: any) {
       await loading.dismiss();

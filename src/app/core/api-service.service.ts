@@ -4,6 +4,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, retry, timeout } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
 import { environment } from '../../environments/environment';
+import { TokenService } from './token/token.service';
 
 @Injectable({
   providedIn: 'root'
@@ -13,14 +14,10 @@ export class ApiService {
   private defaultTimeout = 30000; // 30 seconds
   private maxRetries = 2;
 
-  constructor(private http: HttpClient) { }
-
-  /**
-   * Get authentication token from storage
-   */
-  private getAuthToken(): string | null {
-    return localStorage.getItem('auth_token');
-  }
+  constructor(
+    private http: HttpClient,
+    private tokenService: TokenService
+  ) { }
 
   /**
    * Create headers for HTTP requests including auth token and request ID
@@ -31,7 +28,7 @@ export class ApiService {
       'x-request-id': uuidv4(), // Generate unique request ID for tracking
     });
 
-    const token = this.getAuthToken();
+    const token = this.tokenService.getToken();
     if (token) {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }

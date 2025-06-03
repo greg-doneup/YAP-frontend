@@ -3,6 +3,7 @@ import { Observable, BehaviorSubject, throwError, of } from 'rxjs';
 import { catchError, tap, map, switchMap } from 'rxjs/operators';
 import { ApiService } from '../api-service.service';
 import { ErrorService } from '../error/error.service';
+import { TokenService } from '../token/token.service';
 
 export interface User {
   id: string;
@@ -35,26 +36,32 @@ export interface AuthResponse {
   ethWalletAddress?: string;
 }
 
+export interface WalletAuthRequest {
+  email: string;
+  passphrase: string;
+  walletAddress: string;
+  ethWalletAddress: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
-  private tokenKey = 'auth_token';
-  private refreshTokenKey = 'refresh_token';
   private refreshingToken = false;
   private refreshTokenSubject = new BehaviorSubject<string | null>(null);
 
   constructor(
     private apiService: ApiService,
-    private errorService: ErrorService
+    private errorService: ErrorService,
+    private tokenService: TokenService
   ) {
     this.loadUserFromStorage();
   }
 
   private loadUserFromStorage(): void {
-    const token = localStorage.getItem(this.tokenKey);
+    const token = this.tokenService.getToken();
     if (token) {
       this.validateToken(token).subscribe();
     }
@@ -69,11 +76,11 @@ export class AuthService {
   }
 
   public get authToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
+    return this.tokenService.getToken();
   }
 
   public get refreshToken(): string | null {
-    return localStorage.getItem(this.refreshTokenKey);
+    return this.tokenService.getRefreshToken();
   }
 
   login(credentials: LoginCredentials): Observable<User> {
@@ -157,8 +164,8 @@ export class AuthService {
     return this.apiService.post<AuthResponse>('auth/refresh', { refreshToken })
       .pipe(
         map(response => {
-          localStorage.setItem(this.tokenKey, response.token);
-          localStorage.setItem(this.refreshTokenKey, response.refreshToken);
+          this.tokenService.setToken(response.token);
+          this.tokenService.setRefreshToken(response.refreshToken);
           
           if (response.userId && this.currentUserValue) {
             const updatedUser = { ...this.currentUserValue };
@@ -215,6 +222,22 @@ export class AuthService {
       );
   }
 
+  authenticateWithWallet(walletData: WalletAuthRequest): Observable<User> {
+    return this.apiService.post<AuthResponse>('auth/wallet', {
+      userId: walletData.email, // Using email as userId for wallet auth
+      walletAddress: walletData.walletAddress,
+      ethWalletAddress: walletData.ethWalletAddress,
+      signupMethod: 'wallet'
+    })
+      .pipe(
+        map(response => this.handleAuthResponse(response)),
+        catchError(error => {
+          this.errorService.handleError(error, 'wallet-auth-failed');
+          return throwError(() => error);
+        })
+      );
+  }
+
   private handleAuthResponse(response: AuthResponse): User {
     const user: User = {
       id: response.userId,
@@ -223,9 +246,9 @@ export class AuthService {
       ethWalletAddress: response.ethWalletAddress
     };
     
-    localStorage.setItem(this.tokenKey, response.token);
+    this.tokenService.setToken(response.token);
     if (response.refreshToken) {
-      localStorage.setItem(this.refreshTokenKey, response.refreshToken);
+      this.tokenService.setRefreshToken(response.refreshToken);
     }
     
     this.currentUserSubject.next(user);
@@ -233,8 +256,8 @@ export class AuthService {
   }
   
   private clearAuthData(): void {
-    localStorage.removeItem(this.tokenKey);
-    localStorage.removeItem(this.refreshTokenKey);
+    this.tokenService.removeToken();
+    this.tokenService.removeRefreshToken();
     this.currentUserSubject.next(null);
     this.refreshTokenSubject.next(null);
   }

@@ -1,0 +1,72 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="listenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4372c4"/>
+      <stop offset="100%" stop-color="#5a8ad6"/>
+    </linearGradient>
+    <filter id="dropShadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-opacity="0.3"/>
+    </filter>
+    <!-- Add glow filter for hover/active states -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1" result="blur"/>
+      <feFlood flood-color="#8cd81b" flood-opacity="0.6" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glowBlur"/>
+      <feComposite in="SourceGraphic" in2="glowBlur" operator="over"/>
+    </filter>
+    
+    <!-- Sound wave animation -->
+    <clipPath id="waveClip">
+      <rect x="8" y="6" width="8" height="12" />
+    </clipPath>
+  </defs>
+  
+  <!-- Base headphone shape with animation -->
+  <path d="M3 18V12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12V18" 
+        stroke="url(#listenGradient)" stroke-width="2.5" stroke-linecap="round">
+    <animate attributeName="stroke-dasharray" from="0,70" to="70,0" dur="1s" fill="freeze" />
+  </path>
+  
+  <!-- Left ear cup with animation -->
+  <path d="M3 19C3 20.1046 3.89543 21 5 21C6.10457 21 7 20.1046 7 19V16C7 14.8954 6.10457 14 5 14C3.89543 14 3 14.8954 3 16V19Z" 
+        fill="url(#listenGradient)" filter="url(#dropShadow)">
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="0.7s" fill="freeze" />
+    <animate attributeName="transform" from="translate(4,0)" to="translate(0,0)" dur="0.5s" begin="0.7s" fill="freeze" />
+  </path>
+  
+  <!-- Right ear cup with animation -->
+  <path d="M21 19C21 20.1046 20.1046 21 19 21C17.8954 21 17 20.1046 17 19V16C17 14.8954 17.8954 14 19 14C20.1046 14 21 14.8954 21 16V19Z" 
+        fill="url(#listenGradient)" filter="url(#dropShadow)">
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="0.7s" fill="freeze" />
+    <animate attributeName="transform" from="translate(-4,0)" to="translate(0,0)" dur="0.5s" begin="0.7s" fill="freeze" />
+  </path>
+  
+  <!-- Animated sound waves -->
+  <g clip-path="url(#waveClip)">
+    <!-- Center wave -->
+    <path d="M12 8V16" stroke="#8cd81b" stroke-width="2" stroke-linecap="round">
+      <animate attributeName="opacity" values="0;1;1" dur="0.8s" begin="1s" fill="freeze" />
+      <animate attributeName="stroke-width" values="2;2.5;2;2.5;2" dur="1.5s" begin="1.8s" repeatCount="indefinite" />
+    </path>
+    
+    <!-- Left wave -->
+    <path d="M9 10V14" stroke="#8cd81b" stroke-width="1.5" stroke-linecap="round">
+      <animate attributeName="opacity" values="0;1;1" dur="0.8s" begin="1.1s" fill="freeze" />
+      <animate attributeName="stroke-width" values="1.5;2;1.5;2;1.5" dur="1.5s" begin="2s" repeatCount="indefinite" />
+    </path>
+    
+    <!-- Right wave -->
+    <path d="M15 10V14" stroke="#8cd81b" stroke-width="1.5" stroke-linecap="round">
+      <animate attributeName="opacity" values="0;1;1" dur="0.8s" begin="1.2s" fill="freeze" />
+      <animate attributeName="stroke-width" values="1.5;2;1.5;2;1.5" dur="1.5s" begin="2.2s" repeatCount="indefinite" />
+    </path>
+    
+    <!-- Extra waves that appear with animation -->
+    <path d="M6 11V13" stroke="#8cd81b" stroke-width="1" stroke-linecap="round" opacity="0">
+      <animate attributeName="opacity" values="0;0.7;0" dur="2s" begin="1.5s" repeatCount="indefinite" />
+    </path>
+    <path d="M18 11V13" stroke="#8cd81b" stroke-width="1" stroke-linecap="round" opacity="0">
+      <animate attributeName="opacity" values="0;0.7;0" dur="2s" begin="1.7s" repeatCount="indefinite" />
+    </path>
+  </g>
+</svg>

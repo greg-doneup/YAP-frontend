@@ -1,0 +1,18 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="learnGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4372c4"/>
+      <stop offset="100%" stop-color="#5a8ad6"/>
+    </linearGradient>
+    <filter id="dropShadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Book with more rounded corners -->
+  <path d="M6.5 2H20V22H6.5C5.11929 22 4 20.8807 4 19.5V4.5C4 3.11929 5.11929 2 6.5 2Z" 
+        fill="url(#learnGradient)" stroke="#3060a8" stroke-width="0.5" filter="url(#dropShadow)" rx="2" ry="2"/>
+  <path d="M4 19.5C4 18.1193 5.11929 17 6.5 17H20" 
+        stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Add a small decorative bookmark -->
+  <rect x="16" y="2" width="2.5" height="6" fill="#8cd81b" rx="1"/>
+</svg>

@@ -1,0 +1,52 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="profileGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4372c4"/>
+      <stop offset="100%" stop-color="#5a8ad6"/>
+    </linearGradient>
+    <filter id="dropShadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-opacity="0.3"/>
+    </filter>
+    <!-- Add glow filter for hover/active states -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1" result="blur"/>
+      <feFlood flood-color="#8cd81b" flood-opacity="0.6" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glowBlur"/>
+      <feComposite in="SourceGraphic" in2="glowBlur" operator="over"/>
+    </filter>
+  </defs>
+  
+  <!-- Animated head circle -->
+  <circle cx="12" cy="7" r="5" fill="url(#profileGradient)" filter="url(#dropShadow)">
+    <animate attributeName="r" from="0" to="5" dur="0.6s" fill="freeze" />
+    <animate attributeName="opacity" from="0" to="1" dur="0.6s" fill="freeze" />
+  </circle>
+  
+  <!-- Animated body -->
+  <path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21H20Z" 
+        fill="url(#profileGradient)" filter="url(#dropShadow)" rx="3" ry="3">
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="0.3s" fill="freeze" />
+    <!-- Animation for growing from center -->
+    <animate attributeName="d" 
+             from="M12 21V19C12 16.7909 12 15 12 15H12C12 15 12 16.7909 12 19V21H12Z" 
+             to="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21H20Z" 
+             dur="0.7s" begin="0.3s" fill="freeze" />
+  </path>
+  
+  <!-- Animated facial features -->
+  <circle cx="9" cy="7" r="1" fill="#ffffff" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="0.7s" fill="freeze" />
+    <!-- Subtle blink animation -->
+    <animate attributeName="ry" values="1;0.1;1" dur="3s" begin="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="15" cy="7" r="1" fill="#ffffff" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="0.7s" fill="freeze" />
+    <!-- Slightly offset blink animation -->
+    <animate attributeName="ry" values="1;0.1;1" dur="3s" begin="2.1s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Animated smile -->
+  <path d="M9.5 9.5C10.3 10.7 13.7 10.7 14.5 9.5" stroke="#ffffff" stroke-width="0.75" stroke-linecap="round" fill="none" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="0.9s" fill="freeze" />
+  </path>
+</svg>

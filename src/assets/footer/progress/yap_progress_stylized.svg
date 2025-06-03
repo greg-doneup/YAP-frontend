@@ -1,0 +1,19 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4372c4"/>
+      <stop offset="100%" stop-color="#5a8ad6"/>
+    </linearGradient>
+    <filter id="dropShadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <path d="M23 6L13.5 15.5L8.5 10.5L1 18" stroke="url(#progressGradient)" stroke-width="2.5" 
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M17 6H23V12" stroke="url(#progressGradient)" stroke-width="2.5" 
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Add decorative data points in brand green -->
+  <circle cx="13.5" cy="15.5" r="2.5" fill="#8cd81b" filter="url(#dropShadow)"/>
+  <circle cx="8.5" cy="10.5" r="1.5" fill="#8cd81b" filter="url(#dropShadow)"/>
+  <circle cx="23" cy="6" r="2" fill="#8cd81b" filter="url(#dropShadow)"/>
+</svg>

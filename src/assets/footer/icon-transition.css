@@ -1,0 +1,134 @@
+/* Animation classes for tab transitions */
+@keyframes tab-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tab-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.tab-transition-enter {
+  animation: tab-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.tab-transition-leave {
+  animation: tab-out 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Shine effect animation for icon hover */
+@keyframes icon-shine {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 0%;
+  }
+}
+
+.icon-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.icon-shine::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 20%;
+  height: 200%;
+  opacity: 0;
+  transform: rotate(30deg);
+  background: rgba(255, 255, 255, 0.13);
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.13) 0%,
+    rgba(255, 255, 255, 0.13) 77%,
+    rgba(255, 255, 255, 0.5) 92%,
+    rgba(255, 255, 255, 0.0) 100%
+  );
+}
+
+/* Trigger the shine effect animation on hover */
+.icon-shine:hover::after {
+  opacity: 1;
+  animation: icon-shine 0.75s;
+}
+
+/* Animation for Listen button wave effect */
+@keyframes listen-wave-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.listen-wave-animation {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(140, 216, 27, 0.2);
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0;
+  z-index: -1;
+}
+
+.listen-active .listen-wave-animation {
+  animation: listen-wave-pulse 2s infinite;
+}
+
+/* Icon interaction animations */
+.icon-click-effect {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  background: radial-gradient(circle, rgba(140, 216, 27, 0.7) 0%, rgba(255, 255, 255, 0) 70%);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.icon-clicked .icon-click-effect {
+  animation: icon-click 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes icon-click {
+  0% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+}

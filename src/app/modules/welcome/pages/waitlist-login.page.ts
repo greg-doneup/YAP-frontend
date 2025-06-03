@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { LoadingController, AlertController } from '@ionic/angular';
+import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-waitlist-login',
@@ -15,7 +16,8 @@ export class WaitlistLoginPage {
   constructor(
     private router: Router,
     private loadingController: LoadingController,
-    private alertController: AlertController
+    private alertController: AlertController,
+    private authService: AuthService
   ) {}
 
   /** Navigate back to intro */
@@ -56,8 +58,16 @@ export class WaitlistLoginPage {
       await loading.dismiss();
       this.isLoading = false;
       
-      // Navigate to main app or specific waitlist user flow
-      this.router.navigate(['/home']); // Adjust as needed
+      console.log('Waitlist login successful, preparing navigation to dashboard');
+      
+      // Wait longer to ensure authentication state is fully set before navigation
+      // Increased timeout to 1000ms to ensure auth state has time to propagate
+      setTimeout(() => {
+        console.log('Auth service isLoggedIn state:', this.authService.isLoggedIn);
+        console.log('Auth service current user:', this.authService.currentUserValue);
+        console.log('Navigating to dashboard after waitlist login verification');
+        this.router.navigate(['/dashboard']);
+      }, 1000);
       
     } catch (error) {
       await loading.dismiss();

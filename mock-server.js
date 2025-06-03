@@ -232,11 +232,11 @@ function createMockOffchainProfile(userId, ethWalletAddress) {
 // AUTH SERVICE ENDPOINTS
 // =============================================================================
 
-// POST /auth/wallet - Handle signup with user info (matching real auth service)
-apiRouter.post('/auth/wallet', (req, res) => {
+// POST /auth/wallet/signup - Handle initial signup with user info
+apiRouter.post('/auth/wallet/signup', (req, res) => {
   const { name, email, language_to_learn } = req.body;
 
-  // Validate required fields (matching real auth service)
+  // Validate required fields
   if (!email) {
     return res.status(400).json({ message: "email required" });
   }
@@ -311,6 +311,63 @@ apiRouter.post('/auth/wallet', (req, res) => {
     token: accessToken,
     refreshToken,
     userId
+  });
+});
+
+// POST /auth/wallet - Handle wallet authentication for existing users
+apiRouter.post('/auth/wallet', (req, res) => {
+  const { userId, walletAddress, ethWalletAddress, signupMethod } = req.body;
+
+  console.log('Wallet authentication request:', req.body);
+
+  // For wallet auth, userId should be the email
+  if (!userId) {
+    return res.status(400).json({ message: "userId (email) required" });
+  }
+
+  // Find existing user profile by email
+  const existingProfile = Array.from(mockDatabase.profiles.values())
+    .find(profile => profile.email === userId);
+  
+  if (!existingProfile) {
+    return res.status(404).json({ message: "User not found. Please complete account setup first." });
+  }
+
+  // Check if user has completed wallet setup
+  if (!existingProfile.encrypted_mnemonic) {
+    return res.status(400).json({ message: "Wallet setup not completed. Please complete setup first." });
+  }
+
+  // Find corresponding user in users table
+  const user = Array.from(mockDatabase.users.values())
+    .find(u => u.userId === existingProfile.userId);
+
+  if (!user) {
+    return res.status(404).json({ message: "User account not found" });
+  }
+
+  // Generate authentication token
+  const accessToken = generateToken({
+    sub: existingProfile.userId,
+    type: 'access',
+    walletAddress: walletAddress || user.walletAddress,
+    ethWalletAddress: ethWalletAddress || user.ethWalletAddress,
+    currentLessonId: 'lesson-1',
+    currentWordId: 'word-1',
+    nextWordAvailableAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+  });
+
+  const refreshToken = generateRefreshToken(existingProfile.userId);
+
+  console.log('Wallet authentication successful for user:', existingProfile.userId);
+
+  res.json({
+    token: accessToken,
+    refreshToken,
+    userId: existingProfile.userId,
+    email: existingProfile.email,
+    walletAddress,
+    ethWalletAddress
   });
 });
 
@@ -705,6 +762,18 @@ apiRouter.post('/wallet/waitlist-signup', (req, res) => {
     return res.status(400).json({
       error: 'wallet_exists',
       message: 'User already has a wallet'
+    });
+  }
+
+  // Create user entry in users table if it doesn't exist
+  if (!mockDatabase.users.has(existingProfile.userId)) {
+    mockDatabase.users.set(existingProfile.userId, {
+      userId: existingProfile.userId,
+      email: existingProfile.email,
+      name: existingProfile.name,
+      language_to_learn: existingProfile.initial_language_to_learn,
+      walletAddress: sei_address,
+      ethWalletAddress: eth_address
     });
   }
 

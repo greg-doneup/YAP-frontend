@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { LoadingController, AlertController, ToastController } from '@ionic/angular';
 import { WalletService } from '../../../shared/services/wallet.service';
 import { CryptoService } from '../../../shared/services/crypto.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-waitlist-recovery',
@@ -11,8 +12,13 @@ import { CryptoService } from '../../../shared/services/crypto.service';
   styleUrls: ['./waitlist-recovery.page.scss'],
 })
 export class WaitlistRecoveryPage implements OnInit {
-  recoveryForm: FormGroup;
+  setupForm: FormGroup;
   isLoading = false;
+  hidePassphrase = true;
+  passphraseValidation: any = null;
+  securityAudit: any = null;
+  showRecoveryOptions = false;
+  isPerformingAudit = false;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -21,192 +27,129 @@ export class WaitlistRecoveryPage implements OnInit {
     private alertCtrl: AlertController,
     private toastCtrl: ToastController,
     private walletService: WalletService,
-    private cryptoService: CryptoService
+    private cryptoService: CryptoService,
+    private authService: AuthService
   ) {
-    this.recoveryForm = this.formBuilder.group({
+    this.setupForm = this.formBuilder.group({
       email: ['', [Validators.required, Validators.email]],
-      passphrase: ['', [Validators.required, Validators.minLength(8)]]
+      passphrase: ['', [Validators.required, Validators.minLength(12)]], // Updated to 12 chars minimum
+      recoveryPhrase: [''] // For emergency recovery
     });
   }
 
-  ngOnInit() {}
+  ngOnInit() {
+    // Listen for passphrase changes to provide real-time validation
+    this.setupForm.get('passphrase')?.valueChanges.subscribe(passphrase => {
+      if (passphrase && passphrase.length > 0) {
+        this.passphraseValidation = this.cryptoService.validatePassphraseStrength(passphrase);
+      } else {
+        this.passphraseValidation = null;
+      }
+    });
 
-  async onSubmit() {
-    if (this.recoveryForm.valid) {
-      await this.recoverWallet();
+    // Perform security audit when component loads
+    this.performSecurityAuditCheck();
+  }
+
+  async performSecurityAuditCheck() {
+    try {
+      this.isPerformingAudit = true;
+      this.securityAudit = await this.cryptoService.performSecurityAudit();
+    } catch (error) {
+      console.warn('Security audit failed:', error);
+    } finally {
+      this.isPerformingAudit = false;
     }
   }
 
-  private async recoverWallet() {
+  onPassphraseInput() {
+    const passphrase = this.setupForm.get('passphrase')?.value;
+    if (passphrase) {
+      this.passphraseValidation = this.cryptoService.validatePassphraseStrength(passphrase);
+    }
+  }
+
+  toggleRecoveryOptions() {
+    this.showRecoveryOptions = !this.showRecoveryOptions;
+  }
+
+  async performEmergencyRecovery() {
+    const email = this.setupForm.get('email')?.value;
+    const recoveryPhrase = this.setupForm.get('recoveryPhrase')?.value;
+    const newPassphrase = this.setupForm.get('passphrase')?.value;
+
+    if (!email || !recoveryPhrase || !newPassphrase) {
+      await this.showAlert('Missing Information', 'Please fill in all required fields for emergency recovery.');
+      return;
+    }
+
     const loading = await this.loadingCtrl.create({
-      message: 'Recovering your wallet...',
+      message: 'Performing emergency recovery...',
+      spinner: 'crescent'
+    });
+    await loading.present();
+
+    try {
+      const result = await this.cryptoService.emergencyRecovery(email, recoveryPhrase, newPassphrase);
+      
+      if (result.success) {
+        await loading.dismiss();
+        await this.showSuccessToast('Emergency recovery completed successfully!');
+        this.router.navigate(['/dashboard']);
+      } else {
+        await loading.dismiss();
+        await this.showAlert('Recovery Failed', result.message || 'Emergency recovery failed. Please verify your recovery phrase.');
+      }
+    } catch (error: any) {
+      await loading.dismiss();
+      await this.showAlert('Recovery Error', 'An error occurred during emergency recovery. Please try again.');
+    }
+  }
+
+  async onSubmit() {
+    if (this.setupForm.valid) {
+      await this.completeSetup();
+    }
+  }
+
+  private async completeSetup() {
+    const loading = await this.loadingCtrl.create({
+      message: 'Setting up your account...',
       spinner: 'crescent'
     });
     await loading.present();
 
     try {
       this.isLoading = true;
-      const { email, passphrase } = this.recoveryForm.value;
+      const { email, passphrase } = this.setupForm.value;
 
-      // Step 1: Validate passphrase strength
+      // Step 1: Enhanced passphrase validation
       const validation = this.cryptoService.validatePassphraseStrength(passphrase);
-      if (!validation.isValid) {
+      if (!validation.isValid || validation.score < 4) { // Require minimum score of 4/7
         await loading.dismiss();
-        await this.showAlert('Weak Passphrase', 
-          'Please use a stronger passphrase:\n' + validation.feedback.join('\n'));
+        await this.showAlert('Passphrase Too Weak', 
+          `Please use a stronger passphrase (Score: ${validation.score}/7):\n` + validation.feedback.join('\n'));
         return;
       }
 
-      // Step 2: Check if we have locally stored encrypted wallet (offline-first)
-      const hasLocalWallet = await this.cryptoService.hasStoredWallet(email);
-      
-      if (hasLocalWallet) {
-        // Try to decrypt local wallet first
-        try {
-          const walletData = await this.cryptoService.loadWalletSecurely(email, passphrase);
-          if (walletData) {
-            await loading.dismiss();
-            await this.showSuccessToast('Wallet recovered from secure local storage!');
-            
-            // Navigate to main app
-            this.router.navigate(['/dashboard']);
-            return;
-          }
-        } catch (error) {
-          console.warn('Local wallet decryption failed, trying server recovery:', error);
-        }
-      }
-
-      // Step 3: Check if user exists on server
+      // Step 2: Check if user exists on waitlist
       const userProfile = await this.walletService.getUserProfile(email);
       if (!userProfile) {
         await loading.dismiss();
-        await this.showAlert('User Not Found', 
-          'No account found with this email address. Please check your email or sign up first.');
+        await this.showAlert('Email Not Found', 
+          'This email was not found in our waitlist. Please check your email address or contact support.');
         return;
       }
 
-      // Step 4: Check if user has wallet data on server
-      if (!userProfile.encrypted_mnemonic) {
-        // User exists but hasn't set up wallet yet
+      // Step 3: Check if user already completed setup
+      if (userProfile.encrypted_mnemonic) {
         await loading.dismiss();
-        await this.createWalletForWaitlistUser(email, passphrase);
+        await this.showAlert('Account Already Setup', 
+          'Your account has already been set up. Please use the login option instead.');
         return;
       }
 
-      // Step 5: Try server-based recovery using the new two-layer security model
-      try {
-        const recoveryResult = await this.walletService.recoverWallet(email, passphrase);
-        
-        if (recoveryResult && recoveryResult.success) {
-          // Server authenticated the passphrase and returned encrypted wallet data
-          // Now decrypt it client-side using the same passphrase
-          const encryptedWalletData = recoveryResult.encrypted_wallet_data;
-          
-          if (encryptedWalletData && encryptedWalletData.encrypted_mnemonic) {
-            const decryptedMnemonic = await this.cryptoService.decryptMnemonic(
-              encryptedWalletData.encrypted_mnemonic,
-              passphrase,
-              encryptedWalletData.salt,
-              encryptedWalletData.nonce
-            );
-
-            const wallets = await this.cryptoService.deriveWalletsFromMnemonic(decryptedMnemonic);
-            
-            const walletData = {
-              mnemonic: decryptedMnemonic,
-              seiWallet: wallets.seiWallet,
-              evmWallet: wallets.evmWallet
-            };
-
-            // Store the recovered wallet securely in local IndexedDB
-            await this.cryptoService.storeWalletSecurely(email, walletData, passphrase);
-
-            await loading.dismiss();
-            await this.showSuccessToast('Wallet recovered successfully!');
-            
-            // Navigate to main app
-            this.router.navigate(['/dashboard']);
-            return;
-          } else {
-            throw new Error('No encrypted wallet data returned from server');
-          }
-        } else {
-          throw new Error('Server authentication failed');
-        }
-
-      } catch (serverError: any) {
-        // Handle specific error cases from the two-layer security model
-        if (serverError.error === 'setup_required' || serverError.setup_required) {
-          // User needs to setup secure account first
-          await loading.dismiss();
-          await this.setupSecureAccount(email, passphrase);
-          return;
-        }
-        
-        if (serverError.error === 'invalid_passphrase') {
-          await loading.dismiss();
-          await this.showAlert('Invalid Passphrase', 
-            'The passphrase you entered is incorrect. Please try again.');
-          return;
-        }
-        
-        // If server recovery fails, try client-side decryption as fallback
-        console.warn('Server recovery failed, trying client-side decryption:', serverError);
-        
-        try {
-          if (userProfile.encrypted_mnemonic && userProfile.salt && userProfile.nonce) {
-            const decryptedMnemonic = await this.cryptoService.decryptMnemonic(
-              userProfile.encrypted_mnemonic,
-              passphrase,
-              userProfile.salt,
-              userProfile.nonce
-            );
-
-            const wallets = await this.cryptoService.deriveWalletsFromMnemonic(decryptedMnemonic);
-            
-            const walletData = {
-              mnemonic: decryptedMnemonic,
-              seiWallet: wallets.seiWallet,
-              evmWallet: wallets.evmWallet
-            };
-
-            await this.cryptoService.storeWalletSecurely(email, walletData, passphrase);
-
-            await loading.dismiss();
-            await this.showSuccessToast('Wallet recovered successfully!');
-            
-            this.router.navigate(['/dashboard']);
-          } else {
-            throw new Error('Incomplete wallet data on server');
-          }
-        } catch (clientError) {
-          await loading.dismiss();
-          await this.showAlert('Invalid Passphrase', 
-            'The passphrase you entered is incorrect. Please try again.');
-        }
-      }
-
-    } catch (error: any) {
-      await loading.dismiss();
-      console.error('Recovery error:', error);
-      
-      await this.showAlert('Recovery Failed', 
-        error.message || 'An unexpected error occurred during wallet recovery. Please try again.');
-    } finally {
-      this.isLoading = false;
-    }
-  }
-
-  private async setupSecureAccount(email: string, passphrase: string) {
-    const loading = await this.loadingCtrl.create({
-      message: 'Setting up your secure account...',
-      spinner: 'crescent'
-    });
-    await loading.present();
-
-    try {
-      // Step 1: Generate new mnemonic and derive wallets
+      // Step 4: Generate new mnemonic and derive wallets for first-time setup
       const mnemonic = await this.cryptoService.generateMnemonic();
       const wallets = await this.cryptoService.deriveWalletsFromMnemonic(mnemonic);
 
@@ -216,83 +159,80 @@ export class WaitlistRecoveryPage implements OnInit {
         evmWallet: wallets.evmWallet
       };
 
-      // Step 2: Encrypt the wallet data using the passphrase (client-side encryption)
+      // Step 5: Encrypt the mnemonic for server storage
       const encryptedData = await this.cryptoService.encryptMnemonic(mnemonic, passphrase);
 
-      // Step 3: Setup secure account on server using two-layer security
-      await this.walletService.setupSecureAccount(email, passphrase, {
-        encrypted_mnemonic: encryptedData.encryptedMnemonic,
-        salt: encryptedData.salt,
-        nonce: encryptedData.nonce
-      });
-
-      // Step 4: Store wallet data securely in local IndexedDB
-      await this.cryptoService.storeWalletSecurely(email, walletData, passphrase);
-
-      await loading.dismiss();
-      await this.showSuccessToast('Secure account setup completed! Welcome to YAP!');
-      
-      // Navigate to main app
-      this.router.navigate(['/dashboard']);
-
-    } catch (error: any) {
-      await loading.dismiss();
-      console.error('Secure account setup error:', error);
-      
-      if (error.error === 'already_secured') {
-        await this.showAlert('Account Already Secured', 
-          'Your account is already set up. Please use the recovery option.');
-      } else {
-        await this.showAlert('Setup Failed', 
-          error.message || 'Failed to set up your secure account. Please try again.');
-      }
-    }
-  }
-
-  private async createWalletForWaitlistUser(email: string, passphrase: string) {
-    const loading = await this.loadingCtrl.create({
-      message: 'Setting up your wallet...',
-      spinner: 'crescent'
-    });
-    await loading.present();
-
-    try {
-      // Step 1: Generate new mnemonic and derive wallets
-      const mnemonic = await this.cryptoService.generateMnemonic();
-      const wallets = await this.cryptoService.deriveWalletsFromMnemonic(mnemonic);
-
-      const walletData = {
-        mnemonic,
-        seiWallet: wallets.seiWallet,
-        evmWallet: wallets.evmWallet
-      };
-
-      // Step 2: Encrypt the mnemonic for server storage
-      const encryptedData = await this.cryptoService.encryptMnemonic(mnemonic, passphrase);
-
-      // Step 3: Register wallet on server using the correct method signature
-      await this.walletService.registerWallet(
+      // Step 6: Complete setup on server with encrypted wallet data
+      await this.walletService.storeWalletData({
         email,
         passphrase,
-        encryptedData.encryptedMnemonic,
-        encryptedData.salt,
-        encryptedData.nonce
-      );
+        encrypted_mnemonic: encryptedData.encryptedMnemonic,
+        salt: encryptedData.salt,
+        nonce: encryptedData.nonce,
+        sei_address: wallets.seiWallet.address,
+        sei_public_key: wallets.seiWallet.publicKey,
+        eth_address: wallets.evmWallet.address,
+        eth_public_key: wallets.evmWallet.publicKey
+      });
 
-      // Step 4: Store wallet data securely in local IndexedDB
+      // Step 7: Store wallet data securely in local IndexedDB
       await this.cryptoService.storeWalletSecurely(email, walletData, passphrase);
 
-      await loading.dismiss();
-      await this.showSuccessToast('Wallet created successfully! Welcome to YAP!');
-      
-      // Navigate to main app
-      this.router.navigate(['/dashboard']);
+      // Step 8: Create initial secure backup
+      try {
+        await this.cryptoService.createBackupWithRateLimit(email, passphrase);
+        console.log('Initial backup created successfully');
+      } catch (backupError) {
+        console.warn('Failed to create initial backup:', backupError);
+        // Don't fail the setup process if backup creation fails
+      }      // Step 9: Authenticate the user to enable dashboard access
+      try {
+        // Call the auth service to authenticate with the newly created wallet
+        const authenticatedUser = await this.authService.authenticateWithWallet({
+          email,
+          passphrase,
+          walletAddress: wallets.seiWallet.address,
+          ethWalletAddress: wallets.evmWallet.address
+        }).toPromise();
+        
+        console.log('User authenticated successfully after wallet setup:', authenticatedUser);
+
+        await loading.dismiss();
+        await this.showSuccessToast('Account setup completed! Welcome to YAP!');
+        
+        // Wait longer to ensure authentication state is fully set before navigation
+        // Increased timeout to 1000ms to ensure auth state has time to propagate
+        setTimeout(() => {
+          console.log('Auth service isLoggedIn state:', this.authService.isLoggedIn);
+          console.log('Auth service current user:', this.authService.currentUserValue);
+          console.log('Navigating to dashboard after successful authentication');
+          this.router.navigate(['/dashboard']);
+        }, 1000);
+        
+      } catch (authError) {
+        console.warn('Authentication failed after wallet setup, but wallet was created successfully:', authError);
+        
+        await loading.dismiss();
+        await this.showSuccessToast('Wallet created successfully! Please log in to access your account.');
+        
+        // Navigate back to welcome page if authentication fails
+        this.router.navigate(['/welcome']);
+      }
 
     } catch (error: any) {
       await loading.dismiss();
-      console.error('Wallet creation error:', error);
-      await this.showAlert('Setup Failed', 
-        error.message || 'Failed to set up your wallet. Please try again.');
+      console.error('Account setup error:', error);
+      
+      let errorMessage = 'Failed to set up your account. Please try again.';
+      if (error.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      await this.showAlert('Setup Failed', errorMessage);
+    } finally {
+      this.isLoading = false;
     }
   }
 
@@ -316,6 +256,32 @@ export class WaitlistRecoveryPage implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/welcome/intro']);
+    this.router.navigate(['/welcome']);
+  }
+
+  // Security utility methods
+  getSecurityScoreColor(): string {
+    if (!this.securityAudit) return 'medium';
+    const score = this.securityAudit.score;
+    if (score >= 80) return 'success';
+    if (score >= 60) return 'warning';
+    return 'danger';
+  }
+
+  getPassphraseStrengthColor(): string {
+    if (!this.passphraseValidation) return 'medium';
+    const score = this.passphraseValidation.score;
+    if (score >= 6) return 'success';
+    if (score >= 4) return 'warning';
+    return 'danger';
+  }
+
+  getPassphraseStrengthText(): string {
+    if (!this.passphraseValidation) return '';
+    const score = this.passphraseValidation.score;
+    if (score >= 6) return 'Strong';
+    if (score >= 4) return 'Moderate';
+    if (score >= 2) return 'Weak';
+    return 'Very Weak';
   }
 }

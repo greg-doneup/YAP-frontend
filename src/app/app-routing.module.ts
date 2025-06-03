@@ -24,6 +24,11 @@ const routes: Routes = [
     canActivate: [WelcomeGuard]
   },
   {
+    path: 'dashboard',
+    loadChildren: () => import('./modules/dashboard/dashboard.module').then( m => m.DashboardModule),
+    canActivate: [AuthGuard]
+  },
+  {
     path: 'practice',
     loadChildren: () => import('./modules/practice/practice.module').then( m => m.PracticePageModule),
     canActivate: [AuthGuard]

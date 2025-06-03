@@ -1,0 +1,412 @@
+<ion-content [fullscreen]="true" class="dashboard-content">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <h3>Welcome to YAP!</h3>
+    <p>Loading your dashboard...</p>
+    <div class="loading-info">
+      <ion-icon name="shield-checkmark-outline"></ion-icon>
+      <span>Setting up your personalized experience</span>
+    </div>
+  </div>
+
+  <!-- Main Dashboard Content -->
+  <div *ngIf="!isLoading" class="dashboard-container">
+    
+    <!-- Header Section -->
+    <div class="dashboard-header">
+      <div class="logo-container">
+        <img src="assets/logo/YAP.png" alt="YAP Logo" class="yap-logo" />
+      </div>
+      <div class="user-avatar" (click)="navigateToProfile()">
+        <img src="assets/images/avatars/default-avatar.png" alt="User Avatar" />
+      </div>
+    </div>
+    
+    <!-- Level Indicator Section -->
+    <div class="level-indicator-card">
+      <div class="level-content">
+        <div class="level-icon">
+          <ion-icon name="trending-up"></ion-icon>
+        </div>
+        <h2 class="level-title">{{ userLevel || 'A1 - Beginner' }}</h2>
+        <ion-icon name="chevron-down" class="dropdown-icon"></ion-icon>
+      </div>
+    </div>
+    
+    <!-- Day Selector -->
+    <div class="day-selector">
+      <div class="day-item" [class.active]="selectedDay === 'Sun'" (click)="selectDay('Sun')">
+        <div class="day-circle"></div>
+        <span>Sun</span>
+      </div>
+      <div class="day-item" [class.active]="selectedDay === 'Mon'" (click)="selectDay('Mon')">
+        <div class="day-circle"></div>
+        <span>Mon</span>
+      </div>
+      <div class="day-item" [class.active]="selectedDay === 'Tue'" (click)="selectDay('Tue')">
+        <div class="day-circle"></div>
+        <span>Tue</span>
+      </div>
+      <div class="day-item active" [class.active]="selectedDay === 'Wed'" (click)="selectDay('Wed')">
+        <div class="day-circle"></div>
+        <span>Wed</span>
+      </div>
+      <div class="day-item" [class.active]="selectedDay === 'Thu'" (click)="selectDay('Thu')">
+        <div class="day-circle"></div>
+        <span>Thu</span>
+      </div>
+      <div class="day-item" [class.active]="selectedDay === 'Fri'" (click)="selectDay('Fri')">
+        <div class="day-circle"></div>
+        <span>Fri</span>
+      </div>
+      <div class="day-item" [class.active]="selectedDay === 'Sat'" (click)="selectDay('Sat')">
+        <div class="day-circle"></div>
+        <span>Sat</span>
+      </div>
+    </div>
+    
+    <!-- Lessons Section -->
+    <div class="lessons-section">
+      <h2 class="section-title">Today's Lessons</h2>
+      
+      <!-- Lesson Card - Video -->
+      <div class="lesson-card" (click)="startLesson('video')">
+        <div class="lesson-media">
+          <img src="assets/images/lesson-thumbnail.jpg" alt="Lesson Thumbnail" class="lesson-thumbnail">
+          <div class="lesson-type-icon">
+            <ion-icon name="videocam"></ion-icon>
+          </div>
+        </div>
+        <div class="lesson-details">
+          <h3 class="lesson-title">Greetings</h3>
+          <div class="lesson-badge">
+            <ion-icon name="videocam"></ion-icon>
+            <span>Video</span>
+          </div>
+          <div class="lesson-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 75%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Lesson Card - Practice -->
+      <div class="lesson-card" (click)="startLesson('practice')">
+        <div class="lesson-media">
+          <img src="assets/images/lesson-practice.jpg" alt="Practice Thumbnail" class="lesson-thumbnail">
+          <div class="lesson-type-icon practice">
+            <ion-icon name="bulb"></ion-icon>
+          </div>
+        </div>
+        <div class="lesson-details">
+          <h3 class="lesson-title">Greetings</h3>
+          <div class="lesson-badge practice-badge">
+            <ion-icon name="bulb"></ion-icon>
+            <span>General</span>
+          </div>
+          <div class="lesson-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 25%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <button class="next-up-button" (click)="goToNextLesson()">
+        NEXT UP
+      </button>
+    </div>
+
+    <!-- New User Welcome Message -->
+    <div *ngIf="isNewUser" class="welcome-card">
+      <div class="welcome-content">
+        <h2>Welcome to YAP!</h2>
+        <p>Congratulations on creating your account! You're now ready to start your language learning journey and earn YAP tokens with every lesson you complete.</p>
+        <div class="welcome-info">
+          <div class="welcome-item">
+            <ion-icon name="flame" color="light"></ion-icon>
+            <span>Complete daily lessons to build your streak</span>
+          </div>
+          <div class="welcome-item">
+            <ion-icon name="diamond" color="light"></ion-icon>
+            <span>Earn YAP tokens for each achievement</span>
+          </div>
+        </div>
+        <ion-button 
+          expand="block" 
+          fill="solid" 
+          color="warning" 
+          class="start-btn"
+          (click)="continueLearning()">
+          <span class="button-text">Start learning now</span>
+        </ion-button>
+      </div>
+    </div>
+
+    <!-- Today's Goal Card -->
+    <div class="goal-card">
+      <div class="goal-content">
+        <h2 class="goal-title">{{ todaysGoal.title }}</h2>
+        <p class="goal-description">{{ todaysGoal.description }}</p>
+        
+        <!-- Progress Bar -->
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div class="progress-fill" 
+                 [style.width.%]="(todaysGoal.progress / todaysGoal.total) * 100"></div>
+          </div>
+          <div class="progress-info">
+            <span class="progress-text">{{ todaysGoal.progress }}/{{ todaysGoal.total }} words</span>
+            <span class="progress-reward">{{ todaysGoal.reward }}</span>
+          </div>
+        </div>
+        
+        <!-- Continue Learning Button -->
+        <ion-button 
+          expand="block" 
+          fill="solid" 
+          color="light" 
+          class="continue-btn"
+          (click)="continueLearning()">
+          <span class="button-text">{{ isNewUser || todaysGoal.progress === 0 ? 'Start learning' : 'Continue learning' }}</span>
+        </ion-button>
+      </div>
+    </div>
+
+    <!-- Starting Bonus Earnings Card - Always visible -->
+    <div class="earnings-section">
+      <h2 class="section-title">Your earnings</h2>
+      <div class="earnings-card">
+        <div class="earnings-content">
+          <div class="earnings-left">
+            <div class="earnings-icon">
+              <ion-icon name="diamond" color="warning"></ion-icon>
+            </div>
+            <div class="earnings-info">
+              <h3 class="earnings-amount">{{ earnings.total }} {{ earnings.currency }}</h3>
+              <div class="earnings-change">
+                <ion-icon name="trending-up" color="success"></ion-icon>
+                <span class="change-percent">{{ earnings.change }}%</span>
+                <span class="change-amount">({{ earnings.changeAmount }} {{ earnings.currency }})</span>
+              </div>
+              <p *ngIf="isNewUser" class="earnings-note">Starting bonus from waitlist signup</p>
+            </div>
+          </div>
+          <ion-button 
+            fill="solid" 
+            color="warning" 
+            class="withdraw-btn"
+            (click)="withdraw()">
+            <span class="button-text">Withdraw</span>
+          </ion-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Your Progress Card -->
+    <div class="progress-section">
+      <div class="progress-card">
+        <h2 class="section-title">Your progress</h2>
+        
+        <!-- New User Guide - Show only for new users -->
+        <div *ngIf="showNewUserGuide" class="new-user-guide">
+          <p class="guide-text">Complete your first lesson to start tracking your progress!</p>
+          
+          <div class="guide-items">
+            <div class="guide-item">
+              <div class="guide-icon">
+                <ion-icon name="flame" color="danger"></ion-icon>
+              </div>
+              <span>Build a daily streak</span>
+            </div>
+            
+            <div class="guide-item">
+              <div class="guide-icon">
+                <ion-icon name="library" color="warning"></ion-icon>
+              </div>
+              <span>Learn new words</span>
+            </div>
+            
+            <div class="guide-item">
+              <div class="guide-icon">
+                <ion-icon name="medal" color="success"></ion-icon>
+              </div>
+              <span>Earn badges and rewards</span>
+            </div>
+          </div>
+          
+          <ion-button 
+          expand="block" 
+          fill="solid" 
+          color="primary" 
+          class="start-progress-btn"
+          (click)="continueLearning()">
+            <span class="button-text">Start my first lesson</span>
+          </ion-button>
+        </div>
+        
+        <!-- Stats Row - Only show for users with data -->
+        <div *ngIf="!showNewUserGuide" class="stats-row">
+          <div class="stat-item">
+            <div class="stat-icon">
+              <ion-icon name="flame" color="danger"></ion-icon>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Days streak</span>
+              <span class="stat-value">{{ progress.daysStreak }}</span>
+            </div>
+          </div>
+          
+          <div class="stat-item">
+            <div class="stat-icon">
+              <ion-icon name="library" color="warning"></ion-icon>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Words learned</span>
+              <span class="stat-value">{{ progress.wordsLearned }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Next Badge Progress - Only show for users with data -->
+        <div *ngIf="!showNewUserGuide" class="badge-progress">
+          <div class="badge-header">
+            <div class="badge-icon">
+              <ion-icon name="medal" color="warning"></ion-icon>
+            </div>
+            <div class="badge-info">
+              <span class="badge-label">Next badge: earn {{ progress.nextBadge.reward }}</span>
+              <span class="badge-count">{{ progress.nextBadge.current }}/{{ progress.nextBadge.requirement }}</span>
+            </div>
+          </div>
+          <div class="badge-progress-bar">
+            <div class="badge-progress-fill" 
+                 [style.width.%]="(progress.nextBadge.current / progress.nextBadge.requirement) * 100"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard Section - Hide for brand new users -->
+    <div class="leaderboard-section" *ngIf="isNewUser">
+      <h2 class="section-title">Community</h2>
+      <div class="community-card">
+        <div class="community-content">
+          <h3>Join the YAP community!</h3>
+          <p>Complete your first lesson to see how you rank against other learners.</p>
+          
+          <div class="community-benefits">
+            <div class="benefit-item">
+              <ion-icon name="trophy-outline" color="warning"></ion-icon>
+              <span>Compete on the leaderboard</span>
+            </div>
+            <div class="benefit-item">
+              <ion-icon name="people-outline" color="primary"></ion-icon>
+              <span>Learn alongside others</span>
+            </div>
+            <div class="benefit-item fellowship-highlight">
+              <ion-icon name="star-outline" color="warning"></ion-icon>
+              <span>Learn about the YAP Fellowship for advanced Yappers!</span>
+            </div>
+            <div class="benefit-item">
+              <ion-icon name="ribbon-outline" color="success"></ion-icon>
+              <span>Earn special achievements</span>
+            </div>
+          </div>
+          
+          <ion-button 
+            expand="block" 
+            fill="outline" 
+            color="dark" 
+            class="community-btn"
+            (click)="continueLearning()">
+            <span class="button-text">Start learning to join</span>
+          </ion-button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Regular Leaderboard Section - Only show for users with data -->
+    <div class="leaderboard-section" *ngIf="!isNewUser">
+      <div class="leaderboard-header">
+        <h2 class="section-title">Leader board</h2>
+        <p class="user-rank">Your Rank: {{ leaderboard.userRank }}/{{ leaderboard.totalUsers }}</p>
+        <ion-button 
+          fill="solid" 
+          color="dark" 
+          size="small"
+          class="view-all-btn"
+          (click)="viewAllLeaderboard()">
+          View all
+        </ion-button>
+      </div>
+      
+      <!-- Top User -->
+      <div class="top-user">
+        <div class="user-avatar">
+          <img src="assets/images/avatars/default-avatar.png" alt="User Avatar" />
+        </div>
+        <div class="user-info">
+          <h4 class="user-name">{{ leaderboard.topUser.name }}</h4>
+          <p class="user-earnings">{{ leaderboard.topUser.earnings }} $YAP</p>
+        </div>
+        <div class="user-rank-badge">
+          <span class="rank-number">1</span>
+        </div>
+      </div>
+      
+      <!-- Fellowship Banner -->
+      <div class="fellowship-banner">
+        <div class="fellowship-icon">
+          <ion-icon name="star" color="warning"></ion-icon>
+        </div>
+        <p class="fellowship-text">Learn about the YAP Fellowship for advanced Yappers!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Listen Button Container with Stylized Icon -->
+  <div class="listen-button-container">
+    <button class="listen-button" (click)="startListening()">
+      <div class="listen-wave-animation"></div>
+      <span class="listen-icon">
+        <img src="assets/footer/listen/yap_listen_animated.svg" alt="Listen" class="stylized-listen-icon">
+      </span>
+      <span class="listen-text">Listen</span>
+    </button>
+  </div>
+
+  <!-- Bottom Navigation with Stylized & Animated SVG Icons -->
+  <div class="bottom-nav">
+    <div class="nav-item" [class.active]="activeTab === 'home'" (click)="navigateToHome()">
+      <div class="interaction-ripple"></div>
+      <div class="custom-icon">
+        <img [src]="activeTab === 'home' ? 'assets/footer/home/yap_home_animated.svg' : 'assets/footer/home/yap_home_stylized.svg'" alt="Home">
+      </div>
+      <span>Home</span>
+    </div>
+    <div class="nav-item" [class.active]="activeTab === 'learn'" (click)="navigateToLearn()">
+      <div class="interaction-ripple"></div>
+      <div class="custom-icon">
+        <img [src]="activeTab === 'learn' ? 'assets/footer/learn/yap_learn_animated.svg' : 'assets/footer/learn/yap_learn_stylized.svg'" alt="Learn">
+      </div>
+      <span>Learn</span>
+    </div>
+    <div class="nav-item" [class.active]="activeTab === 'progress'" (click)="navigateToProgress()">
+      <div class="interaction-ripple"></div>
+      <div class="custom-icon">
+        <img [src]="activeTab === 'progress' ? 'assets/footer/progress/yap_progress_animated.svg' : 'assets/footer/progress/yap_progress_stylized.svg'" alt="Progress">
+      </div>
+      <span>Progress</span>
+    </div>
+    <div class="nav-item" [class.active]="activeTab === 'profile'" (click)="navigateToProfile()">
+      <div class="interaction-ripple"></div>
+      <div class="custom-icon">
+        <img [src]="activeTab === 'profile' ? 'assets/footer/profile/yap_profile_animated.svg' : 'assets/footer/profile/yap_profile_stylized.svg'" alt="Profile">
+      </div>
+      <span>Profile</span>
+    </div>
+  </div>
+</ion-content>
