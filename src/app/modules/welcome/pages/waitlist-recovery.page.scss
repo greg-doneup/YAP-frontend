@@ -259,10 +259,16 @@ h1 {
 .recovery-toggle-btn {
   width: 100%;
   margin-bottom: 1rem;
-  --color: var(--ion-color-medium);
+  --color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.3px;
+  --background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
   
   &:hover {
     --color: var(--ion-color-primary);
+    --background: rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -284,8 +290,30 @@ h1 {
     }
     
     ion-card-subtitle {
-      color: var(--ion-color-medium);
+      color: rgba(255, 255, 255, 0.85);
       font-size: 0.875rem;
+      font-weight: 400;
+    }
+  }
+  
+  // Make the helper text more visible
+  .recovery-helper-text, 
+  ion-text[color="medium"] small {
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-weight: 400;
+  }
+  
+  // Enhance the recovery button
+  ion-button[color="warning"] {
+    --border-width: 2px;
+    font-weight: 600;
+    margin-top: 1rem;
+    box-shadow: 0 2px 8px rgba(255, 196, 9, 0.2);
+    
+    &:hover:not([disabled]) {
+      --background: rgba(255, 196, 9, 0.15);
+      --color: var(--ion-color-warning);
+      box-shadow: 0 4px 12px rgba(255, 196, 9, 0.3);
     }
   }
 }
@@ -317,6 +345,21 @@ h1 {
       ion-icon {
         font-size: 18px;
         margin-right: 12px;
+      }
+      
+      // Make text in security tips lighter and more readable
+      ion-label ion-text[color="medium"] small {
+        color: rgba(255, 255, 255, 0.8) !important;
+        font-weight: 400;
+      }
+      
+      .security-tip-text {
+        color: rgba(255, 255, 255, 0.85) !important;
+        
+        small {
+          color: rgba(255, 255, 255, 0.85) !important;
+          font-weight: 400;
+        }
       }
       
       ion-label {
