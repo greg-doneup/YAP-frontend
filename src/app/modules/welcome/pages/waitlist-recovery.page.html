@@ -5,7 +5,7 @@
         <ion-icon name="arrow-back"></ion-icon>
       </ion-button>
     </ion-buttons>
-    <ion-title>Waitlist Recovery</ion-title>
+    <ion-title>Complete Your Setup</ion-title>
   </ion-toolbar>
 </ion-header>
 
@@ -13,55 +13,236 @@
   <div class="recovery-container">
     <div class="logo-section">
       <img src="assets/logo/YAP-LOGO.png" alt="YAP Logo" class="logo">
-      <h1>Welcome Back!</h1>
-      <p class="subtitle">Enter your email and passphrase to recover your wallet</p>
+      <h1>Welcome to YAP!</h1>
+      <p class="subtitle">Complete your account setup with enhanced security</p>
     </div>
 
-    <form [formGroup]="recoveryForm" (ngSubmit)="onSubmit()" class="recovery-form">
-      <ion-item fill="outline" class="form-item">
-        <ion-label position="floating">Email Address</ion-label>
-        <ion-input 
-          type="email" 
-          formControlName="email"
-          [class.ion-invalid]="recoveryForm.get('email')?.invalid && recoveryForm.get('email')?.touched"
-          placeholder="Enter your waitlist email">
-        </ion-input>
-      </ion-item>
+    <form [formGroup]="setupForm" (ngSubmit)="onSubmit()" class="recovery-form">
+      <!-- Email Field -->
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <div class="input-container">
+          <ion-item fill="outline" class="custom-input" lines="none">
+            <ion-input 
+              type="email" 
+              formControlName="email"
+              placeholder="Enter the email you used to join the waitlist"
+              autocomplete="email"
+              class="custom-input-field">
+            </ion-input>
+            <ion-icon 
+              name="checkmark-circle" 
+              slot="end" 
+              color="success" 
+              class="validation-icon"
+              *ngIf="setupForm.get('email')?.valid && setupForm.get('email')?.value">
+            </ion-icon>
+            <ion-icon 
+              name="mail-outline" 
+              slot="start" 
+              color="medium" 
+              class="input-icon">
+            </ion-icon>
+          </ion-item>
+          <div class="helper-text" *ngIf="!setupForm.get('email')?.touched || !setupForm.get('email')?.invalid">
+            <ion-text color="medium">
+              <small><ion-icon name="information-circle-outline" style="font-size: 14px; vertical-align: middle;"></ion-icon> Use the same email address from your waitlist registration</small>
+            </ion-text>
+          </div>
+          <div class="error-message" *ngIf="setupForm.get('email')?.invalid && setupForm.get('email')?.touched">
+            <ion-text color="danger">
+              <small *ngIf="setupForm.get('email')?.hasError('required')">Email address is required</small>
+              <small *ngIf="setupForm.get('email')?.hasError('email')">Please enter a valid email address</small>
+            </ion-text>
+          </div>
+        </div>
+      </div>
       
-      <ion-item fill="outline" class="form-item">
-        <ion-label position="floating">Secure Passphrase</ion-label>
-        <ion-input 
-          type="password" 
-          formControlName="passphrase"
-          [class.ion-invalid]="recoveryForm.get('passphrase')?.invalid && recoveryForm.get('passphrase')?.touched"
-          placeholder="Enter your secure passphrase">
-        </ion-input>
-      </ion-item>
-
-      <div class="error-messages">
-        <ion-text color="danger" *ngIf="recoveryForm.get('email')?.invalid && recoveryForm.get('email')?.touched">
-          <small>Please enter a valid email address</small>
-        </ion-text>
-        
-        <ion-text color="danger" *ngIf="recoveryForm.get('passphrase')?.invalid && recoveryForm.get('passphrase')?.touched">
-          <small>Passphrase must be at least 8 characters long</small>
-        </ion-text>
+      <!-- Passphrase Field -->
+      <div class="form-group">
+        <label class="form-label">Create Secure Passphrase</label>
+        <div class="input-container">
+          <ion-item fill="outline" class="custom-input" lines="none">
+            <ion-input 
+              [type]="hidePassphrase ? 'password' : 'text'" 
+              formControlName="passphrase"
+              placeholder="Minimum 12 characters"
+              autocomplete="new-password"
+              class="custom-input-field"
+              (ionInput)="onPassphraseInput()">
+            </ion-input>
+            <ion-button 
+              fill="clear" 
+              slot="end" 
+              (click)="hidePassphrase = !hidePassphrase"
+              class="toggle-password-btn">
+              <ion-icon 
+                [name]="hidePassphrase ? 'eye-outline' : 'eye-off-outline'" 
+                color="medium">
+              </ion-icon>
+            </ion-button>
+            <ion-icon 
+              name="lock-closed-outline" 
+              slot="start" 
+              color="medium" 
+              class="input-icon">
+            </ion-icon>
+          </ion-item>
+          
+          <!-- Passphrase Strength Indicator -->
+          <div class="passphrase-strength" *ngIf="passphraseValidation">
+            <div class="strength-header">
+              <span [style.color]="getPassphraseStrengthColor()">
+                Strength: {{getPassphraseStrengthText()}} ({{passphraseValidation.score}}/7)
+              </span>
+            </div>
+            <ion-progress-bar 
+              [value]="passphraseValidation.score / 7" 
+              [color]="getPassphraseStrengthColor()">
+            </ion-progress-bar>
+            
+            <!-- Validation Feedback -->
+            <div class="validation-feedback" *ngIf="passphraseValidation.feedback.length > 0">
+              <ion-list lines="none">
+                <ion-item *ngFor="let feedback of passphraseValidation.feedback" class="feedback-item">
+                  <ion-icon name="information-circle-outline" slot="start" color="medium"></ion-icon>
+                  <ion-label>
+                    <ion-text color="medium">
+                      <small>{{feedback}}</small>
+                    </ion-text>
+                  </ion-label>
+                </ion-item>
+              </ion-list>
+            </div>
+          </div>
+          
+          <div class="error-message" *ngIf="setupForm.get('passphrase')?.invalid && setupForm.get('passphrase')?.touched">
+            <ion-text color="danger">
+              <small *ngIf="setupForm.get('passphrase')?.hasError('required')">Passphrase is required</small>
+              <small *ngIf="setupForm.get('passphrase')?.hasError('minlength')">Passphrase must be at least 12 characters long</small>
+            </ion-text>
+          </div>
+        </div>
       </div>
 
       <ion-button 
         expand="block" 
         type="submit" 
-        [disabled]="!recoveryForm.valid || isLoading"
+        [disabled]="!setupForm.valid || isLoading || (passphraseValidation && passphraseValidation.score < 4)"
         class="recovery-button">
         <ion-spinner *ngIf="isLoading" name="crescent"></ion-spinner>
-        <span *ngIf="!isLoading">Recover Wallet</span>
+        <span *ngIf="!isLoading">Complete Setup</span>
       </ion-button>
     </form>
 
+    <!-- Emergency Recovery Section -->
+    <div class="emergency-recovery-section">
+      <ion-button 
+        fill="clear" 
+        size="small" 
+        (click)="toggleRecoveryOptions()"
+        class="recovery-toggle-btn">
+        <ion-icon [name]="showRecoveryOptions ? 'chevron-up-outline' : 'chevron-down-outline'" slot="start"></ion-icon>
+        Emergency Recovery Options
+      </ion-button>
+
+      <div class="recovery-options" *ngIf="showRecoveryOptions">
+        <ion-card class="recovery-card">
+          <ion-card-header>
+            <ion-card-title>
+              <ion-icon name="medical-outline" color="warning"></ion-icon>
+              Emergency Recovery
+            </ion-card-title>
+            <ion-card-subtitle>
+              Use your recovery phrase to restore access
+            </ion-card-subtitle>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="form-group">
+              <label class="form-label">Recovery Phrase</label>
+              <ion-item fill="outline" lines="none">
+                <ion-textarea
+                  formControlName="recoveryPhrase"
+                  placeholder="Enter your 12 or 24-word recovery phrase"
+                  rows="3"
+                  autocomplete="off">
+                </ion-textarea>
+                <ion-icon name="key-outline" slot="start" color="medium"></ion-icon>
+              </ion-item>
+              <div class="helper-text">
+                <ion-text color="medium">
+                  <small>
+                    <ion-icon name="information-circle-outline"></ion-icon>
+                    Separate each word with a space
+                  </small>
+                </ion-text>
+              </div>
+            </div>
+
+            <ion-button 
+              expand="block" 
+              fill="outline" 
+              color="warning"
+              [disabled]="!setupForm.get('email')?.valid || !setupForm.get('recoveryPhrase')?.value || !setupForm.get('passphrase')?.valid"
+              (click)="performEmergencyRecovery()">
+              <ion-icon name="refresh-outline" slot="start"></ion-icon>
+              Recover Account
+            </ion-button>
+          </ion-card-content>
+        </ion-card>
+      </div>
+    </div>
+
     <div class="help-section">
       <ion-text color="medium">
-        <p>Don't remember your passphrase? Contact support for assistance.</p>
+        <p>Can't find your waitlist email? Contact support for assistance.</p>
       </ion-text>
+      
+      <!-- Security Tips -->
+      <ion-card class="security-tips">
+        <ion-card-header>
+          <ion-card-title>
+            <ion-icon name="bulb-outline" color="primary"></ion-icon>
+            Security Tips
+          </ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-list lines="none">
+            <ion-item>
+              <ion-icon name="checkmark-circle-outline" slot="start" color="success"></ion-icon>
+              <ion-label>
+                <ion-text color="medium">
+                  <small>Use a unique passphrase you haven't used elsewhere</small>
+                </ion-text>
+              </ion-label>
+            </ion-item>
+            <ion-item>
+              <ion-icon name="checkmark-circle-outline" slot="start" color="success"></ion-icon>
+              <ion-label>
+                <ion-text color="medium">
+                  <small>Include numbers, symbols, and mixed case letters</small>
+                </ion-text>
+              </ion-label>
+            </ion-item>
+            <ion-item>
+              <ion-icon name="checkmark-circle-outline" slot="start" color="success"></ion-icon>
+              <ion-label>
+                <ion-text color="medium">
+                  <small>Avoid predictable patterns and personal information</small>
+                </ion-text>
+              </ion-label>
+            </ion-item>
+            <ion-item>
+              <ion-icon name="save-outline" slot="start" color="warning"></ion-icon>
+              <ion-label>
+                <ion-text color="medium">
+                  <small>Save your recovery phrase in a secure location</small>
+                </ion-text>
+              </ion-label>
+            </ion-item>
+          </ion-list>
+        </ion-card-content>
+      </ion-card>
       
       <ion-button fill="clear" size="small" (click)="goBack()">
         Back to Welcome

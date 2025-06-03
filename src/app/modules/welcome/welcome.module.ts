@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 
 import { IonicModule } from '@ionic/angular';
+import { MaterialModule } from '../../shared/material/material.module';
 
 import { WelcomePageRoutingModule } from './welcome-routing.module';
 
@@ -21,6 +22,7 @@ import { MicPermissionComponent } from './components/mic-permissio/mic-permissio
     ReactiveFormsModule,
     HttpClientModule,
     IonicModule,
+    MaterialModule,
     WelcomePageRoutingModule
   ],
   declarations: [

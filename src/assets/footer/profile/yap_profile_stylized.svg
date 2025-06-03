@@ -1,0 +1,19 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="profileGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4372c4"/>
+      <stop offset="100%" stop-color="#5a8ad6"/>
+    </linearGradient>
+    <filter id="dropShadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- More stylized head shape -->
+  <circle cx="12" cy="7" r="5" fill="url(#profileGradient)" filter="url(#dropShadow)"/>
+  <!-- Body with very rounded corners -->
+  <path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21H20Z" 
+        fill="url(#profileGradient)" filter="url(#dropShadow)" rx="3" ry="3"/>
+  <!-- Optional small decorative element that echoes the mascot style -->
+  <circle cx="9" cy="6.5" r="1" fill="#ffffff"/>
+  <circle cx="15" cy="6.5" r="1" fill="#ffffff"/>
+</svg>

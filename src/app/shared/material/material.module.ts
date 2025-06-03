@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -26,6 +27,7 @@ import { MatMenuModule } from '@angular/material/menu'
     MatButtonModule,
     MatIconModule,
     MatInputModule,
+    MatFormFieldModule,
     MatCardModule,
     MatProgressBarModule,
     MatDividerModule,
@@ -41,6 +43,7 @@ import { MatMenuModule } from '@angular/material/menu'
     MatButtonModule,
     MatIconModule,
     MatInputModule,
+    MatFormFieldModule,
     MatCardModule,
     MatProgressBarModule,
     MatDividerModule,

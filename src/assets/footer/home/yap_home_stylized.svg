@@ -1,0 +1,17 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- Drop shadow filter -->
+  <defs>
+    <linearGradient id="homeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4372c4"/>
+      <stop offset="100%" stop-color="#5a8ad6"/>
+    </linearGradient>
+    <filter id="dropShadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Stylized home with rounded corners -->
+  <path d="M4 12 L12 4 L20 12 L20 20 C20 21.1046 19.1046 22 18 22 L6 22 C4.89543 22 4 21.1046 4 20 L4 12 Z"
+        fill="url(#homeGradient)" stroke-width="0.5" stroke="#3060a8" stroke-linecap="round" stroke-linejoin="round" filter="url(#dropShadow)"/>
+  <!-- Add a small decorative element like a doorknob -->
+  <circle cx="12" cy="17" r="1.5" fill="#8cd81b"/>
+</svg>
