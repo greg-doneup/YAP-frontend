@@ -60,10 +60,21 @@ export class AuthService {
     this.loadUserFromStorage();
   }
 
-  private loadUserFromStorage(): void {
+  public loadUserFromStorage(): void {
     const token = this.tokenService.getToken();
     if (token) {
       this.validateToken(token).subscribe();
+    } else {
+      // Check if we have a user in localStorage but no token
+      const userStr = localStorage.getItem('currentUser');
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          this.currentUserSubject.next(user);
+        } catch (e) {
+          console.error('Failed to parse user from localStorage', e);
+        }
+      }
     }
   }
 

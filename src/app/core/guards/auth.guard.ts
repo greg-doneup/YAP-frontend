@@ -22,10 +22,21 @@ export class AuthGuard implements CanActivate {
     console.log('AuthGuard - isLoggedIn:', this.authService.isLoggedIn);
     console.log('AuthGuard - authToken:', !!this.authService.authToken);
     console.log('AuthGuard - currentUser:', this.authService.currentUserValue);
+    console.log('AuthGuard - localStorage user_authenticated:', localStorage.getItem('user_authenticated'));
     
-    // Check if user is authenticated (has valid JWT token)
+    // Check if user is authenticated through AuthService
     if (this.authService.isLoggedIn && this.authService.authToken) {
-      console.log('AuthGuard: User is authenticated, allowing access');
+      console.log('AuthGuard: User is authenticated via authService, allowing access');
+      return true;
+    }
+    
+    // Backup check for our registration flow
+    const isUserAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+    const userWallet = localStorage.getItem('user_wallet');
+    if (isUserAuthenticated && userWallet) {
+      console.log('AuthGuard: User is authenticated via localStorage flags, allowing access');
+      // Refresh auth state if needed
+      this.authService.loadUserFromStorage();
       return true;
     }
 

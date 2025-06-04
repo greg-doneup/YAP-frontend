@@ -1,0 +1,307 @@
+// Waitlist Registration Styles
+.waitlist-registration-content {
+  --background: var(--yap-main-background);
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+}
+
+.container {
+  padding: 1rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.header-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.logo-container {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logo {
+  width: 100%;
+  height: auto;
+}
+
+h1 {
+  margin-bottom: 0.5rem;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--yap-primary-text);
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--yap-body-text);
+  line-height: 1.4;
+  margin-bottom: 1rem;
+}
+
+// Security Audit Banner
+.security-banner {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  background: rgba(255, 255, 255, 0.9);
+  
+  &.success {
+    background: rgba(255, 255, 255, 0.9);
+    border-left: 4px solid var(--ion-color-success);
+  }
+  
+  &.warning {
+    background: rgba(255, 255, 255, 0.9);
+    border-left: 4px solid var(--ion-color-warning);
+  }
+  
+  &.danger {
+    background: rgba(255, 255, 255, 0.9);
+    border-left: 4px solid var(--ion-color-danger);
+  }
+  
+  .security-icon {
+    margin-right: 12px;
+    
+    ion-icon {
+      font-size: 1.5rem;
+      
+      &.success {
+        color: var(--ion-color-success);
+      }
+      
+      &.warning {
+        color: var(--ion-color-warning);
+      }
+      
+      &.danger {
+        color: var(--ion-color-danger);
+      }
+    }
+  }
+  
+  .security-info {
+    flex: 1;
+    
+    h4 {
+      margin: 0 0 4px 0;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    
+    p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--ion-color-medium-shade);
+    }
+  }
+}
+
+.waitlist-form {
+  margin-bottom: 2rem;
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  ion-item.custom-input {
+    --background: rgba(255, 255, 255, 0.9);
+    --border-radius: 8px;
+    --border-color: var(--yap-primary-color);
+    --border-width: 1px;
+    --padding-start: 12px;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    
+    &.item-has-focus {
+      --border-color: var(--ion-color-primary);
+      --border-width: 2px;
+    }
+  }
+  
+  ion-label {
+    font-weight: 500;
+    color: var(--yap-body-text-on-dark);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  ion-input, ion-textarea {
+    --placeholder-color: var(--ion-color-medium);
+    --color: var(--yap-body-text-on-dark);
+    --placeholder-opacity: 0.7;
+    font-size: 0.95rem;
+  }
+  
+  .error-message {
+    color: #ff4c4c;
+    font-size: 0.8rem;
+    padding: 4px 12px;
+    font-weight: 500;
+    text-shadow: 0px 0px 2px rgba(0, 0, 0, 0.2);
+  }
+  
+  // Passphrase Strength
+  .passphrase-feedback {
+    margin-top: 8px;
+    padding: 0 12px;
+    
+    .strength-meter {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+      
+      .strength-bar {
+        height: 100%;
+        width: 100%;
+        
+        &.danger {
+          background: var(--ion-color-danger);
+          width: 33%;
+        }
+        
+        &.warning {
+          background: var(--ion-color-warning);
+          width: 66%;
+        }
+        
+        &.success {
+          background: var(--ion-color-success);
+          width: 100%;
+        }
+      }
+    }
+    
+    .strength-text {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+      
+      &.danger {
+        color: #ff4c4c;
+        text-shadow: 0px 0px 1px rgba(0, 0, 0, 0.2);
+      }
+      
+      &.warning {
+        color: #ffce00;
+        text-shadow: 0px 0px 1px rgba(0, 0, 0, 0.2);
+      }
+      
+      &.success {
+        color: #2dd36f;
+        text-shadow: 0px 0px 1px rgba(0, 0, 0, 0.2);
+      }
+      
+      ion-icon {
+        font-size: 1rem;
+      }
+    }
+    
+    .strength-message {
+      font-size: 0.75rem;
+      color: var(--yap-body-text);
+      margin: 0;
+    }
+  }
+}
+
+// Recovery Section
+.recovery-section {
+  margin: 1rem 0;
+  
+  .recovery-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    cursor: pointer;
+    
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--yap-primary-color);
+      margin: 0;
+    }
+    
+    ion-icon {
+      color: var(--yap-primary-color);
+      font-size: 1.1rem;
+    }
+  }
+  
+  .recovery-options {
+    padding-top: 0.5rem;
+    
+    .recovery-info {
+      font-size: 0.85rem;
+      color: var(--yap-body-text);
+      margin-bottom: 1rem;
+    }
+  }
+}
+
+.submit-button {
+  --background: var(--yap-primary-color);
+  --background-activated: var(--ion-color-primary-shade);
+  --color: var(--ion-color-primary-contrast);
+  font-weight: 600;
+  margin-top: 1rem;
+  --box-shadow: 0 4px 12px rgba(255, 219, 69, 0.3);
+  height: 48px;
+  
+  ion-icon {
+    margin-left: 8px;
+  }
+}
+
+.alternative-option {
+  margin-top: 2rem;
+  text-align: center;
+  
+  p {
+    margin-bottom: 0.5rem;
+    color: var(--yap-body-text);
+    font-size: 0.9rem;
+  }
+  
+  a {
+    color: var(--yap-primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+}
+
+.footer {
+  margin-top: 2rem;
+  text-align: center;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  
+  p {
+    font-size: 0.75rem;
+    color: var(--yap-body-text);
+    margin: 0;
+  }
+  
+  a {
+    color: var(--ion-color-primary);
+    text-decoration: none;
+  }
+}

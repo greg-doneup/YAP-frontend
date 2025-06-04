@@ -1,0 +1,103 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()" fill="clear">
+        <ion-icon name="chevron-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Create Account</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="registration-content">
+  <div class="container">
+    <!-- Header Section -->
+    <div class="header-section">
+      <div class="logo-container">
+        <img src="assets/logo/YAP-LOGO.png" alt="YAP Logo" class="logo">
+      </div>
+      <h1>Create Your Account</h1>
+      <p class="subtitle">Join YAP today and start your language learning journey!</p>
+    </div>
+
+    <!-- Form Section -->
+    <form class="registration-form" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Name</ion-label>
+          <ion-input
+            type="text"
+            [(ngModel)]="name"
+            name="name"
+            placeholder="Enter your full name"
+            required
+            [disabled]="isLoading">
+          </ion-input>
+        </ion-item>
+      </div>
+
+      <div class="form-group">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Email Address</ion-label>
+          <ion-input
+            type="email"
+            [(ngModel)]="email"
+            name="email"
+            placeholder="Enter your email address"
+            required
+            [disabled]="isLoading">
+          </ion-input>
+        </ion-item>
+      </div>
+
+      <div class="form-group">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Account Passphrase</ion-label>
+          <ion-input
+            type="password"
+            [(ngModel)]="securePhrase"
+            name="securePhrase"
+            placeholder="Create a secure passphrase"
+            required
+            [disabled]="isLoading"
+            (input)="onSecurePhraseInput($event)">
+          </ion-input>
+        </ion-item>
+        <p class="help-text">
+          Create a secure passphrase with at least 12 characters. This will be used to secure your YAP wallet.
+        </p>
+      </div>
+
+      <!-- Security Tips -->
+      <div class="security-section">
+        <h3><ion-icon name="shield-checkmark-outline"></ion-icon> Security Tips</h3>
+        <ul class="security-tips">
+          <li>Use a mix of letters, numbers, and symbols</li>
+          <li>Avoid using easily guessable information</li>
+          <li>Store your passphrase in a secure password manager</li>
+        </ul>
+      </div>
+
+      <!-- Submit Button -->
+      <ion-button 
+        expand="block" 
+        type="submit" 
+        [disabled]="!isFormValid() || isLoading"
+        class="submit-button">
+        <span>Create My Account</span>
+        <ion-icon name="rocket-outline" slot="end"></ion-icon>
+      </ion-button>
+
+      <!-- Waitlist Option -->
+      <div class="alternative-option">
+        <p>Were you on our waitlist?</p>
+        <a (click)="navigateToWaitlistRegistration()">Access your waitlist account</a>
+      </div>
+    </form>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>By creating an account, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+    </div>
+  </div>
+</ion-content>

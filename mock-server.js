@@ -35,6 +35,15 @@ const apiRouter = express.Router();
 // Mock JWT secret - for development only
 const JWT_SECRET = 'mock-jwt-secret-dev-only';
 
+// Base64 helpers for JWT token handling
+function atob(str) {
+  return Buffer.from(str, "base64").toString("binary");
+}
+
+function btoa(str) {
+  return Buffer.from(str, "binary").toString("base64");
+}
+
 // Mock database - in memory storage for this mock server
 const mockDatabase = {
   users: new Map(),
@@ -175,21 +184,59 @@ initializeMockData();
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
+  
+  console.log('[AUTH] Authenticating token:', token ? token.substring(0, 20) + '...' : 'none');
 
   if (!token) {
+    console.log('[AUTH] No token provided');
     return res.status(401).json({ 
       error: 'missing_token', 
       message: 'No authentication token provided' 
     });
   }
 
+  // Check if it's a mock token from frontend registration
+  if (token.startsWith('mocktoken') || token.includes('mocksignature')) {
+    console.log('[AUTH] Detected mock token from registration flow, allowing request');
+    
+    // For mock tokens, extract user from payload
+    try {
+      // If it's our encoded mock token from registration
+      if (token.split('.').length === 3) {
+        const payloadBase64 = token.split('.')[1];
+        const payload = JSON.parse(atob(payloadBase64));
+        req.user = {
+          email: payload.email,
+          sei_address: payload.sei_address,
+          eth_address: payload.eth_address
+        };
+      } else {
+        // For simple mock tokens
+        req.user = {
+          email: 'mock@user.com',
+          sei_address: 'sei1mock',
+          eth_address: '0xmock'
+        };
+      }
+      return next();
+    } catch (e) {
+      console.error('[AUTH] Error parsing mock token:', e);
+      // Even if parsing fails, allow the request in development
+      req.user = { email: 'mock@user.com' };
+      return next();
+    }
+  }
+
+  // Regular JWT validation for non-mock tokens
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
+      console.log('[AUTH] JWT verification failed:', err.message);
       return res.status(401).json({ 
         error: 'invalid_token', 
         message: 'Invalid or expired token' 
       });
     }
+    console.log('[AUTH] JWT verification successful');
     req.user = user;
     next();
   });
@@ -232,9 +279,21 @@ function createMockOffchainProfile(userId, ethWalletAddress) {
 // AUTH SERVICE ENDPOINTS
 // =============================================================================
 
-// POST /auth/wallet/signup - Handle initial signup with user info
+// POST /auth/wallet/signup - Handle standard registration with encrypted wallet data (non-waitlist)
 apiRouter.post('/auth/wallet/signup', (req, res) => {
-  const { name, email, language_to_learn } = req.body;
+  const { 
+    name, 
+    email, 
+    language_to_learn, 
+    passphrase,
+    encrypted_mnemonic,
+    salt,
+    nonce,
+    sei_address,
+    sei_public_key,
+    eth_address,
+    eth_public_key
+  } = req.body;
 
   // Validate required fields
   if (!email) {
@@ -245,6 +304,12 @@ apiRouter.post('/auth/wallet/signup', (req, res) => {
   }
   if (!language_to_learn) {
     return res.status(400).json({ message: "language_to_learn required" });
+  }
+  if (!passphrase) {
+    return res.status(400).json({ message: "passphrase required" });
+  }
+  if (!encrypted_mnemonic || !salt || !nonce || !sei_address || !eth_address) {
+    return res.status(400).json({ message: "encrypted wallet data required" });
   }
 
   // Check email uniqueness
@@ -258,48 +323,73 @@ apiRouter.post('/auth/wallet/signup', (req, res) => {
   // Generate a unique user ID (matching real auth service - 64 char hex)
   const userId = crypto.randomBytes(32).toString('hex');
   
-  // Mock wallet addresses for development
-  const walletAddress = 'sei1mock' + crypto.randomBytes(8).toString('hex');
-  const ethWalletAddress = '0x' + crypto.randomBytes(20).toString('hex');
+  // Derive passphrase hash (same as wallet service secure-account endpoint)
+  const passphraseSalt = 'x0xmbtbles0x' + passphrase;
+  const iterations = 390000;
+  const derivedKey = crypto.pbkdf2Sync(passphrase, passphraseSalt, iterations, 32, 'sha256');
+  const keyBase64 = derivedKey.toString('base64');
+  const passphraseHash = crypto.createHash('sha256').update(keyBase64).digest('hex');
 
-  // Create user if doesn't exist
-  if (!mockDatabase.users.has(userId)) {
-    mockDatabase.users.set(userId, {
-      userId,
-      email,
-      name,
-      language_to_learn,
-      walletAddress,
-      ethWalletAddress
-    });
+  // Create user entry
+  mockDatabase.users.set(userId, {
+    userId,
+    email,
+    name,
+    language_to_learn,
+    walletAddress: sei_address,
+    ethWalletAddress: eth_address
+  });
 
-    // Create basic profile (like profile service)
-    const basicProfile = {
-      userId,
-      email,
-      name,
-      initial_language_to_learn: language_to_learn,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    mockDatabase.profiles.set(userId, basicProfile);
+  // Create basic profile with wallet and security data
+  const basicProfile = {
+    userId,
+    email,
+    name,
+    initial_language_to_learn: language_to_learn,
+    wlw: true, // Has wallet
+    waitlist_bonus: 0, // Standard registration gets no bonus points
+    passphrase_hash: passphraseHash,
+    encrypted_wallet_data: {
+      encrypted_mnemonic,
+      salt,
+      nonce,
+      sei_address,
+      eth_address
+    },
+    sei_wallet: {
+      address: sei_address,
+      public_key: sei_public_key || 'sei_pub_' + crypto.randomBytes(16).toString('hex')
+    },
+    eth_wallet: {
+      address: eth_address,
+      public_key: eth_public_key || 'eth_pub_' + crypto.randomBytes(16).toString('hex')
+    },
+    encrypted_mnemonic,
+    salt,
+    nonce,
+    secured_at: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  mockDatabase.profiles.set(userId, basicProfile);
 
-    // Create offchain profile (like offchain-profile service)
-    const offchainProfile = {
-      userId,
-      ethWalletAddress,
-      xp: 0,
-      streak: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    mockDatabase.offchainProfiles = mockDatabase.offchainProfiles || new Map();
-    mockDatabase.offchainProfiles.set(userId, offchainProfile);
-  }
+  // Create offchain profile with 0 starting points
+  const offchainProfile = {
+    userId,
+    ethWalletAddress: eth_address,
+    xp: 0, // Standard accounts start with 0 XP
+    streak: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  mockDatabase.offchainProfiles = mockDatabase.offchainProfiles || new Map();
+  mockDatabase.offchainProfiles.set(userId, offchainProfile);
 
   const accessToken = generateToken({
     sub: userId,
     type: 'access',
+    walletAddress: sei_address,
+    ethWalletAddress: eth_address,
     currentLessonId: 'lesson-1',
     currentWordId: 'word-1',
     nextWordAvailableAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
@@ -307,10 +397,16 @@ apiRouter.post('/auth/wallet/signup', (req, res) => {
 
   const refreshToken = generateRefreshToken(userId);
 
+  console.log(`✅ Standard registration completed for ${email} - no bonus points`);
+
   res.json({
     token: accessToken,
     refreshToken,
-    userId
+    userId,
+    walletAddress: sei_address,
+    ethWalletAddress: eth_address,
+    starting_points: 0, // Explicitly show no bonus points for standard registration
+    message: 'Standard account created successfully'
   });
 });
 
@@ -977,6 +1073,45 @@ apiRouter.post('/wallet/register', (req, res) => {
 // GET /health - Health check for wallet service
 apiRouter.get('/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Debug endpoint to verify token format
+apiRouter.get('/auth/debug-token', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(400).json({ message: 'No token provided in Authorization header' });
+  }
+  
+  // Basic token structure check
+  const tokenParts = token.split('.');
+  
+  let response = {
+    token_format: tokenParts.length === 3 ? 'JWT format' : 'Non-standard format',
+    token_prefix: token.substring(0, 20) + '...'
+  };
+  
+  // Attempt to parse if it's in JWT format
+  if (tokenParts.length === 3) {
+    try {
+      const header = JSON.parse(atob(tokenParts[0]));
+      response.header = header;
+      
+      const payload = JSON.parse(atob(tokenParts[1]));
+      // Don't show full payload in response for security
+      response.payload = {
+        has_email: !!payload.email,
+        has_address: !!payload.sei_address || !!payload.eth_address,
+        exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'none',
+        iat: payload.iat ? new Date(payload.iat * 1000).toISOString() : 'none'
+      };
+    } catch (e) {
+      response.parse_error = e.message;
+    }
+  }
+  
+  res.json(response);
 });
 
 // =============================================================================
