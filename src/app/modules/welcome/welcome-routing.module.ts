@@ -27,6 +27,10 @@ const routes: Routes = [
     path: 'waitlist-recovery',
     component: WaitlistRecoveryPage,
   },
+  {
+    path: 'registration',
+    loadChildren: () => import('./modules/registration/registration.module').then(m => m.RegistrationModule)
+  },
 ];
 
 

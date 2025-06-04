@@ -325,15 +325,15 @@ export class IntroPage implements OnInit, AfterViewInit {
 
   /** Called from final slide "Get Started" button */
   getStarted() {
-    // Navigate to new user registration flow
-    console.log('Navigating to registration flow for new users');
-    this.router.navigate(['/welcome/waitlist-signup']);
+    // Navigate to standard registration flow for new users
+    console.log('Navigating to standard registration flow for new users');
+    this.router.navigate(['/welcome/registration/standard']);
   }
 
   /** Called when user already has an account */
   loginExisting() {
-    // Navigate to waitlist recovery for existing users
-    console.log('Navigating to waitlist recovery for existing users');
-    this.router.navigate(['/welcome/waitlist-recovery']);
+    // Navigate to waitlist registration for existing users
+    console.log('Navigating to waitlist registration for existing users');
+    this.router.navigate(['/welcome/registration/waitlist']);
   }
 }

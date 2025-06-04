@@ -6,6 +6,8 @@ import { ToastController } from '@ionic/angular';
 import * as moment from 'moment-timezone';
 import { LessonService, Lesson } from '../../../shared/services/lesson.service';
 import { UserProgressService, UserProgress, LevelHistoryEntry } from '../../../shared/services/user-progress.service';
+import { LeaderboardService } from '../../../core/leaderboard/leaderboard.service';
+import { ApiService } from '../../../core/api-service.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -76,7 +78,7 @@ export class DashboardPage implements OnInit, OnDestroy {
   };
 
   earnings = {
-    total: 25, // Starting bonus for waitlist users
+    total: 0, // Will be loaded from backend
     currency: 'points',
     change: 0,
     changeAmount: 0
@@ -107,7 +109,9 @@ export class DashboardPage implements OnInit, OnDestroy {
     private authService: AuthService,
     private toastCtrl: ToastController,
     private lessonService: LessonService,
-    private userProgressService: UserProgressService
+    private userProgressService: UserProgressService,
+    private leaderboardService: LeaderboardService,
+    private apiService: ApiService
   ) { 
     if (this.isDevMode) {
       this.setupDevTools();
@@ -258,6 +262,9 @@ export class DashboardPage implements OnInit, OnDestroy {
             
             // Load user progress
             this.userProgressService.loadUserProgress();
+            
+            // Load user earnings data including waitlist bonus
+            this.loadUserEarnings();
           } else {
             // Default settings for non-authenticated users
             this.isNewUser = true;
@@ -293,6 +300,58 @@ export class DashboardPage implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error in loadUserData method:', error);
       this.isLoading = false;
+    }
+  }
+
+  /**
+   * Load user earnings data including waitlist bonus from backend
+   */
+  async loadUserEarnings() {
+    try {
+      const user = this.authService.currentUserValue;
+      if (!user || !user.id) {
+        console.log('No authenticated user found for earnings data');
+        return;
+      }
+
+      console.log('Loading user earnings data for user:', user.id);
+
+      // Get user profile data which includes waitlist_bonus
+      this.apiService.get<any>(`profile/${user.id}`).subscribe({
+        next: (profile: any) => {
+          console.log('User profile loaded:', profile);
+          
+          // Update earnings with waitlist bonus
+          this.earnings = {
+            total: profile.waitlist_bonus || 0,
+            currency: 'points',
+            change: 0,
+            changeAmount: 0
+          };
+          
+          console.log('Updated earnings:', this.earnings);
+        },
+        error: (error) => {
+          console.error('Error loading user profile:', error);
+          // Keep default earnings of 0 on error
+          this.earnings = {
+            total: 0,
+            currency: 'points',
+            change: 0,
+            changeAmount: 0
+          };
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in loadUserEarnings:', error);
+      // Keep default earnings of 0 on error
+      this.earnings = {
+        total: 0,
+        currency: 'points',
+        change: 0,
+        changeAmount: 0
+      };
     }
   }
 
