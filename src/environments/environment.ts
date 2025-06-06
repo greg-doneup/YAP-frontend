@@ -4,8 +4,8 @@
 
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3000/api', // Back to mock server
-  rpcUrl: 'https://sei-testnet-rpc.com', // Added rpcUrl for blockchain connection
+  apiUrl: 'http://localhost:3000', // Development points to mock server
+  rpcUrl: 'http://localhost:3000/mock-rpc', // Mock RPC endpoint for development
   enableErrorLogging: true // Added for error service logging control
 };
 

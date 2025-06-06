@@ -5,6 +5,7 @@ import { WalletCreationResult } from '../../../../../services/wallet.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../../../core/auth/auth.service';
 import { TokenService } from '../../../../../core/token/token.service';
+import { environment } from '../../../../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -106,7 +107,7 @@ export class RegistrationAuthService {
       signupMethod: 'wallet'
     };
 
-    const response = await fetch('https://goyap.ai/api/auth/wallet', {
+    const response = await fetch(`${environment.apiUrl}/auth/wallet`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

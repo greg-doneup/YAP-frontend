@@ -34,6 +34,8 @@ export interface AuthResponse {
   role?: string;
   walletAddress?: string;
   ethWalletAddress?: string;
+  starting_points?: number; // Points for waitlist users
+  waitlist_bonus?: number; // Alternative field for waitlist bonus
 }
 
 export interface WalletAuthRequest {
@@ -49,6 +51,7 @@ export interface WalletAuthRequest {
 export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
+  private lastAuthResponse: AuthResponse | null = null; // Store the last auth response
   private refreshingToken = false;
   private refreshTokenSubject = new BehaviorSubject<string | null>(null);
 
@@ -250,6 +253,9 @@ export class AuthService {
   }
 
   private handleAuthResponse(response: AuthResponse): User {
+    // Store the full auth response for later use
+    this.lastAuthResponse = response;
+    
     const user: User = {
       id: response.userId,
       email: response.email,
@@ -266,10 +272,18 @@ export class AuthService {
     return user;
   }
   
+  /**
+   * Get the last authentication response which may contain waitlist bonus information
+   */
+  getAuthResponse(): AuthResponse | null {
+    return this.lastAuthResponse;
+  }
+  
   private clearAuthData(): void {
     this.tokenService.removeToken();
     this.tokenService.removeRefreshToken();
     this.currentUserSubject.next(null);
     this.refreshTokenSubject.next(null);
+    this.lastAuthResponse = null; // Clear the stored auth response
   }
 }

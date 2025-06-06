@@ -195,8 +195,8 @@ function authenticateToken(req, res, next) {
     });
   }
 
-  // Check if it's a mock token from frontend registration
-  if (token.startsWith('mocktoken') || token.includes('mocksignature')) {
+  // Check if it's a mock token from frontend registration (base64 encoded with mocksignature)
+  if (token.includes('mocksignature')) {
     console.log('[AUTH] Detected mock token from registration flow, allowing request');
     
     // For mock tokens, extract user from payload
@@ -206,37 +206,58 @@ function authenticateToken(req, res, next) {
         const payloadBase64 = token.split('.')[1];
         const payload = JSON.parse(atob(payloadBase64));
         req.user = {
+          sub: payload.email || 'mock-user',
           email: payload.email,
           sei_address: payload.sei_address,
-          eth_address: payload.eth_address
+          eth_address: payload.eth_address,
+          type: 'access'
         };
       } else {
         // For simple mock tokens
         req.user = {
+          sub: 'mock-user',
           email: 'mock@user.com',
           sei_address: 'sei1mock',
-          eth_address: '0xmock'
+          eth_address: '0xmock',
+          type: 'access'
         };
       }
       return next();
     } catch (e) {
       console.error('[AUTH] Error parsing mock token:', e);
       // Even if parsing fails, allow the request in development
-      req.user = { email: 'mock@user.com' };
+      req.user = { 
+        sub: 'mock-user',
+        email: 'mock@user.com',
+        type: 'access'
+      };
       return next();
     }
   }
 
-  // Regular JWT validation for non-mock tokens
+  // Regular JWT validation for all other tokens (including registration-generated tokens)
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
       console.log('[AUTH] JWT verification failed:', err.message);
+      console.log('[AUTH] Token details:', token.substring(0, 50) + '...');
+      
+      // Try to decode token payload to see what's inside (without verification)
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          console.log('[AUTH] Token payload:', payload);
+        }
+      } catch (decodeErr) {
+        console.log('[AUTH] Could not decode token payload:', decodeErr.message);
+      }
+      
       return res.status(401).json({ 
         error: 'invalid_token', 
         message: 'Invalid or expired token' 
       });
     }
-    console.log('[AUTH] JWT verification successful');
+    console.log('[AUTH] JWT verification successful for user:', user.sub);
     req.user = user;
     next();
   });
@@ -1658,6 +1679,167 @@ apiRouter.get('/healthz', (req, res) => {
 });
 
 // =============================================================================
+// MOCK BLOCKCHAIN RPC ENDPOINT
+// =============================================================================
+
+// Handle JSON-RPC requests for blockchain interaction
+apiRouter.post('/mock-rpc', (req, res) => {
+  const { method, params, id, jsonrpc } = req.body;
+  console.log('[MOCK-RPC] JSON-RPC Request:', { method, params, id });
+  
+  // Mock responses for common ethers.js RPC calls
+  switch (method) {
+    case 'eth_chainId':
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: '0x9596' // 38284 in hex (SEI testnet chain ID)
+      });
+      break;
+      
+    case 'eth_getBlockNumber':
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: '0x' + Math.floor(Date.now() / 1000).toString(16) // Mock block number
+      });
+      break;
+      
+    case 'eth_gasPrice':
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: '0x4a817c800' // 20 Gwei in hex
+      });
+      break;
+      
+    case 'eth_getTransactionCount':
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: '0x1' // Mock nonce
+      });
+      break;
+      
+    case 'eth_getBalance':
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: '0x16345785d8a0000' // 1 ETH in wei (hex)
+      });
+      break;
+      
+    case 'eth_call':
+      // Mock contract calls
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: '0x0000000000000000000000000000000000000000000000000de0b6b3a7640000' // Mock result
+      });
+      break;
+      
+    case 'eth_sendTransaction':
+    case 'eth_sendRawTransaction':
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: '0x' + crypto.randomBytes(32).toString('hex') // Mock transaction hash
+      });
+      break;
+      
+    case 'eth_getTransactionReceipt':
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: {
+          transactionHash: params[0],
+          blockNumber: '0x' + Math.floor(Date.now() / 1000).toString(16),
+          gasUsed: '0x5208',
+          status: '0x1' // Success
+        }
+      });
+      break;
+      
+    case 'net_version':
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: '38284' // SEI testnet network ID
+      });
+      break;
+      
+    default:
+      console.log('[MOCK-RPC] Unhandled method:', method);
+      res.json({
+        jsonrpc: '2.0',
+        id: id,
+        result: null
+      });
+  }
+});
+
+// Handle GET requests to RPC endpoint (for health checks)
+apiRouter.get('/mock-rpc', (req, res) => {
+  console.log('[MOCK-RPC] Health check request');
+  res.json({
+    status: 'ok',
+    message: 'Mock SEI/EVM RPC endpoint for development',
+    timestamp: new Date().toISOString(),
+    chainId: 38284,
+    networkName: 'sei-testnet'
+  });
+});
+
+// =============================================================================
+// MISSING HEALTHZ ENDPOINTS FOR MICROSERVICES
+// =============================================================================
+
+// Learning service healthz
+apiRouter.get('/learning/healthz', (req, res) => {
+  res.send('ok');
+});
+
+// TTS service healthz  
+apiRouter.get('/daily/healthz', (req, res) => {
+  res.send('ok');
+});
+
+// Profile service healthz
+apiRouter.get('/profile/healthz', (req, res) => {
+  res.send('ok');
+});
+
+// Offchain service healthz
+apiRouter.get('/offchain/healthz', (req, res) => {
+  res.send('ok');
+});
+
+// Auth service healthz
+apiRouter.get('/auth/healthz', (req, res) => {
+  res.send('ok');
+});
+
+// Wallet service healthz
+apiRouter.get('/wallet/healthz', (req, res) => {
+  res.send('ok');
+});
+
+// Points service healthz
+apiRouter.get('/points/healthz', (req, res) => {
+  res.send('ok');
+});
+
+// Vocabulary service healthz
+apiRouter.get('/vocabulary/healthz', (req, res) => {
+  res.send('ok');
+});
+
+// Metrics service healthz
+apiRouter.get('/metrics/healthz', (req, res) => {
+  res.send('ok');
+});
+
+// =============================================================================
 // MOUNT ROUTES
 // =============================================================================
 
@@ -1772,6 +1954,13 @@ app.listen(PORT, () => {
   console.log('   • Gateway Service: /dashboard');
   console.log('   • Health Check: /health, /healthz');
   console.log('');
+  console.log('🔧 Additional Services Available:');
+  console.log('   • Grammar evaluation: POST /grammar/evaluate');
+  console.log('   • TTS generation: POST /daily/tts/sentence');
+  console.log('   • Vocabulary search: GET /vocabulary/search');
+  console.log('   • Pronunciation history: GET /daily/pronunciation/history/:wordId');
+  console.log('   • Security metrics: GET /metrics/security (admin only)');
+  console.log('');
   console.log('🔑 Authentication:');
   console.log('   • Use POST /auth/wallet to get tokens');
   console.log('   • Include "Authorization: Bearer <token>" header for protected endpoints');
@@ -1783,4 +1972,698 @@ app.listen(PORT, () => {
   console.log('📚 API Documentation: See API_SPECIFICATION.md');
 });
 
-module.exports = app;
+// =============================================================================
+// GRAMMAR SERVICE ENDPOINTS
+// =============================================================================
+
+// Grammar evaluation endpoint
+app.post('/grammar/evaluate', authenticateToken, (req, res) => {
+  const { text, language = 'en' } = req.body;
+  
+  if (!text) {
+    return res.status(400).json({
+      error: 'Text is required for grammar evaluation'
+    });
+  }
+
+  // Mock grammar evaluation response
+  const mockEvaluation = {
+    text: text,
+    language: language,
+    score: Math.floor(Math.random() * 30) + 70, // Score between 70-100
+    errors: [],
+    suggestions: [],
+    correctedText: text,
+    analysisTimestamp: new Date().toISOString()
+  };
+
+  // Randomly add some grammar errors for demonstration
+  if (Math.random() < 0.3) {
+    mockEvaluation.errors.push({
+      type: 'grammar',
+      message: 'Subject-verb agreement issue',
+      start: 0,
+      end: 10,
+      suggestion: 'Consider checking verb tense'
+    });
+    mockEvaluation.score -= 10;
+  }
+
+  if (Math.random() < 0.2) {
+    mockEvaluation.errors.push({
+      type: 'spelling',
+      message: 'Potential spelling error',
+      start: text.length - 5,
+      end: text.length,
+      suggestion: 'Check spelling'
+    });
+    mockEvaluation.score -= 5;
+  }
+
+  res.json(mockEvaluation);
+});
+
+// Grammar service health check
+app.get('/grammar/healthz', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'grammar-service',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});
+
+// =============================================================================
+// ADDITIONAL WALLET SERVICE ENDPOINTS (REST API for Frontend)
+// =============================================================================
+
+// GET /wallet/:address/balance - Get token balance for an address
+apiRouter.get('/wallet/:address/balance', (req, res) => {
+  const { address } = req.params;
+  
+  if (!address) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing wallet address'
+    });
+  }
+  
+  // Mock token balance data
+  const mockBalance = {
+    available: (Math.random() * 1000).toFixed(2),
+    staked: (Math.random() * 500).toFixed(2),
+    total: '0',
+    token: 'YAP',
+    decimals: 18
+  };
+  
+  // Calculate total
+  mockBalance.total = (parseFloat(mockBalance.available) + parseFloat(mockBalance.staked)).toFixed(2);
+  
+  console.log(`[WALLET] Balance requested for address: ${address}`);
+  res.json(mockBalance);
+});
+
+// GET /wallet/:address/transactions - Get transaction history for an address
+apiRouter.get('/wallet/:address/transactions', (req, res) => {
+  const { address } = req.params;
+  const { limit = '10', offset = '0' } = req.query;
+  
+  if (!address) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing wallet address'
+    });
+  }
+  
+  const maxLimit = parseInt(limit);
+  const offsetNum = parseInt(offset);
+  
+  // Generate mock transaction history
+  const mockTransactions = [];
+  for (let i = 0; i < maxLimit; i++) {
+    const txId = offsetNum + i;
+    const types = ['send', 'receive', 'reward', 'mint'];
+    const statuses = ['confirmed', 'confirmed', 'confirmed', 'pending']; // Mostly confirmed
+    
+    mockTransactions.push({
+      hash: '0x' + crypto.randomBytes(32).toString('hex'),
+      from: txId % 2 === 0 ? address : '0x' + crypto.randomBytes(20).toString('hex'),
+      to: txId % 2 === 0 ? '0x' + crypto.randomBytes(20).toString('hex') : address,
+      amount: (Math.random() * 100).toFixed(2),
+      timestamp: new Date(Date.now() - txId * 60000).toISOString(), // 1 minute apart
+      status: statuses[Math.floor(Math.random() * statuses.length)],
+      type: types[Math.floor(Math.random() * types.length)]
+    });
+  }
+  
+  console.log(`[WALLET] Transaction history requested for address: ${address} (limit: ${limit}, offset: ${offset})`);
+  res.json({ transactions: mockTransactions });
+});
+
+// POST /wallet/transfer - Transfer tokens between addresses
+apiRouter.post('/wallet/transfer', (req, res) => {
+  const { fromAddress, toAddress, amount, signature } = req.body;
+  
+  if (!fromAddress || !toAddress || !amount) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing required fields: fromAddress, toAddress, amount'
+    });
+  }
+  
+  if (!signature) {
+    return res.status(400).json({
+      error: 'invalid_signature',
+      message: 'Transaction signature required'
+    });
+  }
+  
+  // Validate amount
+  const transferAmount = parseFloat(amount);
+  if (isNaN(transferAmount) || transferAmount <= 0) {
+    return res.status(400).json({
+      error: 'invalid_amount',
+      message: 'Invalid transfer amount'
+    });
+  }
+  
+  // Mock transfer processing
+  const txHash = '0x' + crypto.randomBytes(32).toString('hex');
+  
+  console.log(`[WALLET] Transfer initiated: ${amount} YAP from ${fromAddress} to ${toAddress}`);
+  
+  // Simulate processing time
+  setTimeout(() => {
+    console.log(`[WALLET] Transfer confirmed: ${txHash}`);
+  }, 2000);
+  
+  res.json({
+    success: true,
+    txHash,
+    fromAddress,
+    toAddress,
+    amount,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// GET /wallet/gas-price - Get current gas price estimates
+apiRouter.get('/wallet/gas-price', (req, res) => {
+  // Mock gas price data (in gwei)
+  const basePrice = 20 + Math.random() * 10; // 20-30 gwei base
+  
+  const gasEstimate = {
+    slow: (basePrice * 0.8).toFixed(2),
+    average: basePrice.toFixed(2),
+    fast: (basePrice * 1.5).toFixed(2),
+    recommended: (basePrice * 1.2).toFixed(2)
+  };
+  
+  console.log('[WALLET] Gas price estimates requested');
+  res.json(gasEstimate);
+});
+
+// GET /wallet/token-price - Get YAP token price in USD
+apiRouter.get('/wallet/token-price', (req, res) => {
+  // Mock token price (simulates market fluctuation)
+  const basePrice = 0.50; // $0.50 base price
+  const fluctuation = (Math.random() - 0.5) * 0.1; // ±5% fluctuation
+  const currentPrice = Math.max(0.01, basePrice + fluctuation);
+  
+  console.log('[WALLET] Token price requested');
+  res.json({
+    price: parseFloat(currentPrice.toFixed(4)),
+    currency: 'USD',
+    timestamp: new Date().toISOString(),
+    change24h: ((Math.random() - 0.5) * 20).toFixed(2) // ±10% daily change
+  });
+});
+
+// POST /wallet/estimate-gas - Estimate gas for a transaction
+apiRouter.post('/wallet/estimate-gas', (req, res) => {
+  const { to, data, value } = req.body;
+  
+  if (!to) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing required field: to'
+    });
+  }
+  
+  // Mock gas estimation based on transaction type
+  let gasEstimate = 21000; // Base transaction cost
+  
+  if (data && data !== '0x') {
+    // Contract interaction
+    gasEstimate += 50000 + (data.length - 2) * 10; // Additional gas for contract calls
+  }
+  
+  if (value && parseFloat(value) > 0) {
+    // Value transfer
+    gasEstimate += 5000;
+  }
+  
+  console.log(`[WALLET] Gas estimation requested for transaction to ${to}`);
+  res.json({
+    gasLimit: gasEstimate.toString(),
+    gasPrice: '0x4a817c800', // 20 gwei in hex
+    estimatedCost: (gasEstimate * 20e-9).toFixed(6) // In SEI
+  });
+});
+
+// GET /wallet/:address/tokens - Get all token balances for an address
+apiRouter.get('/wallet/:address/tokens', (req, res) => {
+  const { address } = req.params;
+  
+  if (!address) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing wallet address'
+    });
+  }
+  
+  // Mock multiple token balances
+  const mockTokens = [
+    {
+      symbol: 'YAP',
+      name: 'YAP Token',
+      balance: (Math.random() * 1000).toFixed(2),
+      decimals: 18,
+      contractAddress: '0x' + crypto.randomBytes(20).toString('hex'),
+      price: 0.50
+    },
+    {
+      symbol: 'SEI',
+      name: 'SEI',
+      balance: (Math.random() * 10).toFixed(4),
+      decimals: 18,
+      contractAddress: null, // Native token
+      price: 0.12
+    }
+  ];
+  
+  console.log(`[WALLET] Token balances requested for address: ${address}`);
+  res.json({ tokens: mockTokens });
+});
+
+// POST /wallet/sign-message - Sign a message with wallet (for authentication)
+apiRouter.post('/wallet/sign-message', authenticateToken, (req, res) => {
+  const { message, address } = req.body;
+  
+  if (!message || !address) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing required fields: message, address'
+    });
+  }
+  
+  // Mock message signing
+  const signature = '0x' + crypto.randomBytes(65).toString('hex');
+  
+  console.log(`[WALLET] Message signing requested for address: ${address}`);
+  res.json({
+    signature,
+    message,
+    address,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// =============================================================================
+// ADDITIONAL LEARNING SERVICE ENDPOINTS
+// =============================================================================
+
+// Get specific lesson by ID
+app.get('/lessons/:lessonId', authenticateToken, (req, res) => {
+  const { lessonId } = req.params;
+  
+  const mockLesson = {
+    id: lessonId,
+    title: `Lesson ${lessonId}: Advanced Grammar`,
+    description: 'Master advanced grammar concepts with interactive exercises',
+    level: 'intermediate',
+    duration: '15 minutes',
+    category: 'grammar',
+    content: {
+      introduction: 'Welcome to this advanced grammar lesson.',
+      sections: [
+        {
+          id: 'section1',
+          title: 'Grammar Rules',
+          content: 'Understanding complex sentence structures...',
+          exercises: [
+            {
+              id: 'ex1',
+              type: 'multiple-choice',
+              question: 'Which sentence is grammatically correct?',
+              options: [
+                'The cat sits on the mat.',
+                'The cat sit on the mat.',
+                'The cats sits on the mat.',
+                'The cat sitting on the mat.'
+              ],
+              correctAnswer: 0
+            }
+          ]
+        }
+      ]
+    },
+    prerequisites: [],
+    estimatedTime: 900, // 15 minutes in seconds
+    tags: ['grammar', 'intermediate', 'sentence-structure'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  res.json(mockLesson);
+});
+
+// Get all lessons with filtering
+app.get('/lessons', authenticateToken, (req, res) => {
+  const { category, level, limit = 10, offset = 0 } = req.query;
+  
+  let mockLessons = [
+    {
+      id: 'lesson-1',
+      title: 'Basic Grammar Fundamentals',
+      description: 'Learn the basics of English grammar',
+      level: 'beginner',
+      duration: '10 minutes',
+      category: 'grammar',
+      thumbnailUrl: '/assets/lessons/lesson1.jpg',
+      progress: 85,
+      isCompleted: false
+    },
+    {
+      id: 'lesson-2',
+      title: 'Vocabulary Building',
+      description: 'Expand your vocabulary with common words',
+      level: 'beginner',
+      duration: '12 minutes',
+      category: 'vocabulary',
+      thumbnailUrl: '/assets/lessons/lesson2.jpg',
+      progress: 60,
+      isCompleted: false
+    },
+    {
+      id: 'lesson-3',
+      title: 'Advanced Pronunciation',
+      description: 'Master difficult pronunciation patterns',
+      level: 'advanced',
+      duration: '20 minutes',
+      category: 'pronunciation',
+      thumbnailUrl: '/assets/lessons/lesson3.jpg',
+      progress: 100,
+      isCompleted: true
+    },
+    {
+      id: 'lesson-4',
+      title: 'Conversation Skills',
+      description: 'Practice real-world conversations',
+      level: 'intermediate',
+      duration: '15 minutes',
+      category: 'conversation',
+      thumbnailUrl: '/assets/lessons/lesson4.jpg',
+      progress: 30,
+      isCompleted: false
+    }
+  ];
+
+  // Apply filters
+  if (category) {
+    mockLessons = mockLessons.filter(lesson => lesson.category === category);
+  }
+  if (level) {
+    mockLessons = mockLessons.filter(lesson => lesson.level === level);
+  }
+
+  // Apply pagination
+  const startIndex = parseInt(offset);
+  const endIndex = startIndex + parseInt(limit);
+  const paginatedLessons = mockLessons.slice(startIndex, endIndex);
+
+  res.json({
+    lessons: paginatedLessons,
+    total: mockLessons.length,
+    offset: parseInt(offset),
+    limit: parseInt(limit),
+    hasMore: endIndex < mockLessons.length
+  });
+});
+
+// Get progress history
+app.get('/progress/history', authenticateToken, (req, res) => {
+  const { period = '7d', category } = req.query;
+  
+  // Generate mock progress data for the last week
+  const mockHistory = [];
+  const now = new Date();
+  
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    
+    mockHistory.push({
+      date: date.toISOString().split('T')[0],
+      lessonsCompleted: Math.floor(Math.random() * 5) + 1,
+      timeSpent: Math.floor(Math.random() * 120) + 30, // 30-150 minutes
+      pointsEarned: Math.floor(Math.random() * 500) + 100,
+      streakDays: i === 0 ? 7 : 7 - i,
+      categories: {
+        grammar: Math.floor(Math.random() * 3),
+        vocabulary: Math.floor(Math.random() * 3),
+        pronunciation: Math.floor(Math.random() * 2),
+        conversation: Math.floor(Math.random() * 2)
+      }
+    });
+  }
+
+  res.json({
+    period: period,
+    history: mockHistory,
+    summary: {
+      totalLessons: mockHistory.reduce((sum, day) => sum + day.lessonsCompleted, 0),
+      totalTime: mockHistory.reduce((sum, day) => sum + day.timeSpent, 0),
+      totalPoints: mockHistory.reduce((sum, day) => sum + day.pointsEarned, 0),
+      currentStreak: 7,
+      averageDaily: {
+        lessons: Math.round(mockHistory.reduce((sum, day) => sum + day.lessonsCompleted, 0) / 7),
+        timeMinutes: Math.round(mockHistory.reduce((sum, day) => sum + day.timeSpent, 0) / 7),
+        points: Math.round(mockHistory.reduce((sum, day) => sum + day.pointsEarned, 0) / 7)
+      }
+    }
+  });
+});
+
+// Submit quiz answers
+app.post('/quiz/submit', authenticateToken, (req, res) => {
+  const { quizId, answers, timeSpent } = req.body;
+  
+  if (!quizId || !answers) {
+    return res.status(400).json({
+      error: 'Quiz ID and answers are required'
+    });
+  }
+
+  // Mock quiz evaluation
+  const totalQuestions = Object.keys(answers).length;
+  const correctAnswers = Math.floor(Math.random() * totalQuestions * 0.4) + Math.floor(totalQuestions * 0.6);
+  const score = Math.round((correctAnswers / totalQuestions) * 100);
+  
+  const result = {
+    quizId: quizId,
+    score: score,
+    correctAnswers: correctAnswers,
+    totalQuestions: totalQuestions,
+    timeSpent: timeSpent || 0,
+    pointsEarned: Math.floor(score * 10),
+    passed: score >= 70,
+    submittedAt: new Date().toISOString(),
+    feedback: {
+      overall: score >= 90 ? 'Excellent work!' : score >= 70 ? 'Good job!' : 'Keep practicing!',
+      areas: score < 70 ? ['grammar', 'vocabulary'] : []
+    },
+    detailedResults: Object.keys(answers).map((questionId, index) => ({
+      questionId: questionId,
+      userAnswer: answers[questionId],
+      correctAnswer: index % 2 === 0 ? answers[questionId] : 'correct_option',
+      isCorrect: index < correctAnswers,
+      explanation: 'This is a mock explanation for the answer.'
+    }))
+  };
+
+  res.json(result);
+});
+
+// =============================================================================
+// TTS (TEXT-TO-SPEECH) SERVICE ENDPOINTS
+// =============================================================================
+
+// Generate TTS for daily sentence
+app.post('/daily/tts/sentence', authenticateToken, (req, res) => {
+  const { text, language = 'en', voice = 'female' } = req.body;
+  
+  if (!text) {
+    return res.status(400).json({
+      error: 'Text is required for TTS generation'
+    });
+  }
+
+  // Mock TTS response
+  res.json({
+    audioUrl: `https://mock-tts.example.com/audio/${Buffer.from(text).toString('base64')}.mp3`,
+    text: text,
+    language: language,
+    voice: voice,
+    duration: Math.floor(text.length * 0.1) + 2, // Rough estimate in seconds
+    generatedAt: new Date().toISOString(),
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+  });
+});
+
+// Get TTS for specific word
+app.get('/daily/tts/:wordId', authenticateToken, (req, res) => {
+  const { wordId } = req.params;
+  const { language = 'en' } = req.query;
+  
+  // Mock word TTS data
+  const mockWordData = {
+    wordId: wordId,
+    word: `word_${wordId}`,
+    language: language,
+    audioUrl: `https://mock-tts.example.com/words/${wordId}.mp3`,
+    phonetic: '/wərd/',
+    syllables: ['word'],
+    duration: 1.2,
+    generatedAt: new Date().toISOString()
+  };
+
+  res.json(mockWordData);
+});
+
+// =============================================================================
+// PRONUNCIATION HISTORY ENDPOINTS
+// =============================================================================
+
+// Get pronunciation history for specific word
+app.get('/daily/pronunciation/history/:wordId', authenticateToken, (req, res) => {
+  const { wordId } = req.params;
+  const { userId, view } = req.query;
+
+  if (!wordId || !userId) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing word ID or user ID'
+    });
+  }
+
+  const historyKey = `${userId}-${wordId}`;
+  let history = mockDatabase.pronunciationHistory.get(historyKey);
+
+  if (!history) {
+    // Create mock history
+    history = {
+      wordId,
+      userId,
+      attempts: [
+        {
+          date: new Date().toISOString().split('T')[0],
+          timestamp: new Date().toISOString(),
+          pronunciationScore: 0.85,
+          pass: true,
+          feedback: ['Work on the stress pattern in the word']
+        }
+      ],
+      count: 1
+    };
+    mockDatabase.pronunciationHistory.set(historyKey, history);
+  }
+
+  if (view === 'detailed') {
+    // Add detailed information to attempts
+    history.attempts = history.attempts.map(attempt => ({
+      ...attempt,
+      userId,
+      lessonId: 'lesson-1',
+      wordId,
+      grammarScore: 0.9,
+      wordDetails: [
+        {
+          word: 'hello',
+          score: attempt.pronunciationScore,
+          startTime: 0.5,
+          endTime: 0.9,
+          confidence: 0.95,
+          issues: ['stress']
+        }
+      ],
+      phonemeDetails: [
+        {
+          phoneme: 'HH',
+          score: 0.75,
+          startTime: 0.5,
+          endTime: 0.6,
+          issues: []
+        }
+      ],
+      pronunciationFeedback: attempt.feedback,
+      alignmentId: 'align-123',
+      scoringId: 'score-123',
+      evaluationId: 'eval-123'
+    }));
+  }
+
+  res.json(history);
+});
+
+// =============================================================================
+// SECURITY METRICS ENDPOINTS (for monitoring)
+// =============================================================================
+
+// Security metrics endpoint
+app.get('/metrics/security', authenticateToken, (req, res) => {
+  // Only allow admin users to access security metrics
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({
+      error: 'Access denied. Admin privileges required.'
+    });
+  }
+
+  const mockMetrics = {
+    timestamp: new Date().toISOString(),
+    authentication: {
+      totalLogins: 1250,
+      failedAttempts: 45,
+      successRate: 96.4,
+      uniqueUsers: 890,
+      averageSessionDuration: 1800 // 30 minutes
+    },
+    authorization: {
+      accessDenied: 12,
+      privilegeEscalations: 0,
+      roleViolations: 2
+    },
+    api: {
+      totalRequests: 125000,
+      unauthorizedAttempts: 234,
+      rateLimitHits: 45,
+      suspiciousPatterns: 3
+    },
+    wallet: {
+      transactionAttempts: 567,
+      fraudulentTransactions: 0,
+      walletConnections: 234,
+      failedConnections: 12
+    },
+    system: {
+      uptime: 99.9,
+      errorRate: 0.1,
+      responseTime: 145, // milliseconds
+      dataBreaches: 0
+    }
+  };
+
+  res.json(mockMetrics);
+});
+
+// Health check with security status
+app.get('/health/security', (req, res) => {
+  res.json({
+    status: 'healthy',
+    security: {
+      authSystem: 'operational',
+      rateLimit: 'active',
+      firewall: 'active',
+      encryption: 'enabled',
+      monitoring: 'active'
+    },
+    timestamp: new Date().toISOString(),
+    checks: {
+      database: 'connected',
+      redis: 'connected',
+      external_apis: 'operational',
+      ssl_certificate: 'valid'
+    }
+  });
+});
