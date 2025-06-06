@@ -2,6 +2,7 @@
 
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../../../environments/environment';
 import { WalletCreationResult } from '../../../../../services/wallet.service';
 
 /**
@@ -20,7 +21,7 @@ export interface StandardWalletCreationResult extends WalletCreationResult {
   providedIn: 'root'
 })
 export class RegistrationService {
-  private apiUrl = 'http://localhost:3000/api'; // Using mock server
+  private apiUrl = environment.apiUrl; // Use environment configuration
 
   constructor(private http: HttpClient) {}
   

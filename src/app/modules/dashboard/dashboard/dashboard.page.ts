@@ -316,24 +316,27 @@ export class DashboardPage implements OnInit, OnDestroy {
 
       console.log('Loading user earnings data for user:', user.id);
 
-      // Get user profile data which includes waitlist_bonus
-      this.apiService.get<any>(`profile/${user.id}`).subscribe({
-        next: (profile: any) => {
-          console.log('User profile loaded:', profile);
+      // First attempt: Try to get data from the dashboard endpoint
+      this.leaderboardService.getUserDashboard(user.walletAddress || '').subscribe({
+        next: (dashboardData) => {
+          console.log('Dashboard data loaded:', dashboardData);
           
-          // Update earnings with waitlist bonus
+          // The dashboard doesn't return waitlist_bonus directly, so check from auth service
+          const authResponse = this.authService.getAuthResponse();
+          const waitlistBonus = authResponse?.starting_points || 0;
+          
           this.earnings = {
-            total: profile.waitlist_bonus || 0,
+            total: waitlistBonus,
             currency: 'points',
             change: 0,
             changeAmount: 0
           };
           
-          console.log('Updated earnings:', this.earnings);
+          console.log('Updated earnings from auth response:', this.earnings);
         },
         error: (error) => {
-          console.error('Error loading user profile:', error);
-          // Keep default earnings of 0 on error
+          console.error('Error loading dashboard data:', error);
+          // Standard registration should have 0 points as fallback
           this.earnings = {
             total: 0,
             currency: 'points',
@@ -345,9 +348,12 @@ export class DashboardPage implements OnInit, OnDestroy {
 
     } catch (error) {
       console.error('Error in loadUserEarnings:', error);
-      // Keep default earnings of 0 on error
+      // As a last resort, try to get data directly from the auth response
+      const authResponse = this.authService.getAuthResponse();
+      const waitlistBonus = authResponse?.starting_points || authResponse?.waitlist_bonus || 0;
+      
       this.earnings = {
-        total: 0,
+        total: waitlistBonus,
         currency: 'points',
         change: 0,
         changeAmount: 0
