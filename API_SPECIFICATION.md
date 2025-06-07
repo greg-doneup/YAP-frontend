@@ -1,6 +1,10 @@
 # YAP Backend API Specification
 
-This document provides a comprehensive overview of all backend API endpoints in the YAP microservices architecture, detailing authentication requirements, request formats, and response structures.
+**Version:** 3.0.0  
+**Last Updated:** June 6, 2025  
+**Status:** COMPREHENSIVE - All 14+ microservices documented
+
+This document provides a complete overview of all backend API endpoints in the YAP microservices architecture, including authentication requirements, request formats, response structures, and security features.
 
 ## Table of Contents
 
@@ -11,8 +15,16 @@ This document provides a comprehensive overview of all backend API endpoints in 
 5. [Learning Service](#learning-service)
 6. [Reward Service](#reward-service)
 7. [Gateway Service](#gateway-service)
-8. [Error Handling](#error-handling)
-9. [Pronunciation Assessment and TTS Services](#pronunciation-assessment-and-tts-services)
+8. [**Wallet Service**](#wallet-service) 🆕
+9. [**Grammar Service**](#grammar-service) 🆕
+10. [**TTS Service**](#tts-service) 🆕
+11. [**Alignment Service**](#alignment-service) 🆕
+12. [**Pronunciation Scorer Service**](#pronunciation-scorer-service) 🆕
+13. [**Voice Score Service**](#voice-score-service) 🆕
+14. [**Observability Service**](#observability-service) 🆕
+15. [Error Handling](#error-handling)
+16. [**Security Architecture**](#security-architecture) 🆕
+17. [Pronunciation Assessment and TTS Services](#pronunciation-assessment-and-tts-services)
 
 ## Authentication
 
@@ -945,6 +957,1081 @@ Retrieve aggregated dashboard data for the user.
 - `401 Unauthorized`: Invalid or missing token
 - `500 Internal Server Error`: Server error
 
+## Wallet Service 🆕
+
+Base URL: `/wallet`, `/api/v2/wallet`  
+**Technology:** FastAPI/Python  
+**Port:** 8000
+
+The Wallet Service handles secure wallet operations, account setup, and mnemonic recovery with enterprise-grade security features including two-layer encryption, rate limiting, and comprehensive audit logging.
+
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/secure-account` | POST | No | Setup secure wallet account |
+| `/recover` | POST | No | Recover wallet with authentication |
+| `/register` | POST | No | Register new wallet |
+| `/waitlist-signup` | POST | No | Waitlist user signup |
+| `/api/v2/wallet/store-recovery-hash` | POST | No | Store encrypted recovery hash |
+| `/api/v2/wallet/verify-recovery` | POST | No | Verify mnemonic recovery |
+| `/api/v2/admin/security-metrics` | GET | Admin | Get security metrics |
+| `/api/v2/admin/reset-rate-limits` | POST | Admin | Reset user rate limits |
+| `/health` | GET | No | Health check with security status |
+
+### POST /wallet/secure-account
+
+Setup a secure wallet account with two-layer encryption (PBKDF2 + AES-GCM).
+
+**Request Body**:
+```json
+{
+  "user_id": "string",
+  "email": "user@example.com",
+  "encrypted_data": "base64_encrypted_wallet_data",
+  "pbkdf2_salt": "base64_salt",
+  "iterations": 100000
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "user_id": "string",
+  "wallet_address": "sei1...",
+  "eth_wallet_address": "0x...",
+  "message": "Secure account created successfully"
+}
+```
+
+**Security Features**:
+- PBKDF2 key derivation with configurable iterations (100,000+)
+- AES-GCM encryption for wallet data
+- Rate limiting: 5 attempts/hour per IP
+- Comprehensive audit logging
+- Input validation and sanitization
+
+### POST /wallet/recover
+
+Recover wallet with enhanced authentication and security validation.
+
+**Request Body**:
+```json
+{
+  "user_id": "string",
+  "email": "user@example.com",
+  "auth_signature": "signature"
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "user_id": "string",
+  "wallet_address": "sei1...",
+  "eth_wallet_address": "0x...",
+  "encrypted_data": "base64_encrypted_data"
+}
+```
+
+**Security Features**:
+- Progressive rate limiting (exponential backoff)
+- Email verification requirement
+- Digital signature validation
+- Account lockout after failed attempts
+
+### POST /wallet/register
+
+Register a new wallet with security validation.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com",
+  "wallet_address": "sei1...",
+  "eth_wallet_address": "0x...",
+  "encrypted_mnemonic": "base64_encrypted_mnemonic"
+}
+```
+
+**Response (201 Created)**:
+```json
+{
+  "user_id": "string",
+  "wallet_address": "sei1...",
+  "eth_wallet_address": "0x...",
+  "message": "Wallet registered successfully"
+}
+```
+
+### POST /wallet/waitlist-signup
+
+Waitlist user signup with enhanced security features.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com",
+  "referral_code": "optional_code",
+  "metadata": {
+    "source": "landing_page",
+    "campaign": "beta_launch"
+  }
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "user_id": "string",
+  "email": "user@example.com",
+  "waitlist_position": 123,
+  "estimated_access": "2025-07-01",
+  "message": "Successfully added to waitlist"
+}
+```
+
+### POST /api/v2/wallet/store-recovery-hash
+
+Store encrypted mnemonic recovery hash for account recovery using server-side secret integration.
+
+**Request Body**:
+```json
+{
+  "user_id": "string",
+  "recovery_hash": "pbkdf2_hash_with_server_secret",
+  "metadata": {
+    "pbkdf2_iterations": 100000,
+    "created_at": "2025-06-06T00:00:00Z",
+    "recovery_version": "2.0"
+  }
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "success": true,
+  "message": "Recovery hash stored securely",
+  "recovery_id": "uuid",
+  "verification_required": true
+}
+```
+
+**Security Features**:
+- Server secret integration prevents direct hash attacks
+- PBKDF2 with 100,000+ iterations
+- Cryptographic salt generation
+- Time-based verification windows
+- Rate limiting: 3 attempts/hour per user
+
+### POST /api/v2/wallet/verify-recovery
+
+Verify mnemonic recovery using stored hash with progressive security measures.
+
+**Request Body**:
+```json
+{
+  "user_id": "string",
+  "recovery_phrase": "twelve word mnemonic phrase here...",
+  "verification_code": "optional_2fa_code"
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "success": true,
+  "verified": true,
+  "wallet_data": {
+    "sei_address": "sei1...",
+    "eth_address": "0x...",
+    "encrypted_mnemonic": "base64_encrypted_data"
+  },
+  "message": "Recovery verified successfully"
+}
+```
+
+**Security Features**:
+- Progressive rate limiting with exponential backoff
+- Account lockout after multiple failures
+- Optional 2FA integration
+- Audit trail for all recovery attempts
+- IP-based geo-location validation
+
+### GET /api/v2/admin/security-metrics
+
+Get comprehensive security metrics for monitoring (Admin only).
+
+**Headers**: 
+- `X-Admin-Key: <admin_api_key>`
+- `Authorization: Bearer <admin_token>`
+
+**Response (200 OK)**:
+```json
+{
+  "timestamp": "2025-06-06T00:00:00Z",
+  "rate_limiting": {
+    "total_requests": 1000,
+    "blocked_requests": 15,
+    "active_limits": 5,
+    "top_blocked_ips": ["192.168.1.100"]
+  },
+  "middleware": {
+    "security_events": 25,
+    "threat_score_average": 2.3,
+    "blocked_requests": 10,
+    "high_risk_events": 2
+  },
+  "database": {
+    "total_recovery_hashes": 150,
+    "total_wallets": 200,
+    "recent_recoveries_24h": 5,
+    "failed_recovery_attempts": 12
+  },
+  "server_status": {
+    "server_secret_configured": true,
+    "admin_key_configured": true,
+    "audit_logging_enabled": true,
+    "encryption_status": "AES-256-GCM",
+    "uptime_seconds": 86400
+  }
+}
+```
+
+### POST /api/v2/admin/reset-rate-limits
+
+Reset rate limits for a specific user (Admin only).
+
+**Headers**: `X-Admin-Key: <admin_api_key>`
+
+**Request Body**:
+```json
+{
+  "user_id": "string",
+  "limit_type": "recovery_attempt", // optional: "wallet_creation", "authentication", "all"
+  "reason": "Admin override for legitimate user"
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "status": "success",
+  "message": "Rate limits reset for user user123",
+  "reset_type": "recovery_attempt",
+  "timestamp": "2025-06-06T00:00:00Z"
+}
+```
+
+### GET /health
+
+Health check endpoint with security status information.
+
+**Response (200 OK)**:
+```json
+{
+  "status": "healthy",
+  "service": "wallet-service",
+  "version": "2.0.0",
+  "timestamp": "2025-06-06T00:00:00Z",
+  "security": {
+    "encryption_enabled": true,
+    "rate_limiting_active": true,
+    "audit_logging_enabled": true,
+    "threat_detection_active": true
+  },
+  "database": {
+    "mongodb_connected": true,
+    "connection_pool_size": 10,
+    "response_time_ms": 15
+  },
+  "metrics": {
+    "total_requests_24h": 1250,
+    "error_rate_percent": 0.8,
+    "average_response_time_ms": 120
+  }
+}
+```
+
+### Wallet Service Security Architecture
+
+The Wallet Service implements a **three-layer security model**:
+
+#### Layer 1: Network Security
+- Rate limiting with progressive backoff
+- IP-based geo-location validation
+- DDoS protection and request throttling
+- CORS policy enforcement
+
+#### Layer 2: Application Security
+- PBKDF2 key derivation (100,000+ iterations)
+- AES-256-GCM encryption for sensitive data
+- Server-side secret integration
+- Digital signature validation
+
+#### Layer 3: Data Security
+- Encrypted storage of all sensitive data
+- Audit logging for all operations
+- Secure key rotation policies
+- Zero-knowledge architecture
+
+**Error Responses**:
+- `400 Bad Request`: Invalid request data or missing required fields
+- `401 Unauthorized`: Authentication failure or invalid credentials
+- `403 Forbidden`: Insufficient permissions or account locked
+- `409 Conflict`: Resource already exists (duplicate wallet/email)
+- `429 Too Many Requests`: Rate limit exceeded
+- `500 Internal Server Error`: Server error or database failure
+
+## Grammar Service 🆕
+
+Base URL: `/grammar`  
+**Technology:** FastAPI/Python  
+**Port:** 8001
+
+This service provides grammar evaluation and correction capabilities with comprehensive security validation and multi-language support.
+
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/evaluate` | POST | Yes | Evaluate and correct grammar |
+| `/healthz` | GET | No | Health check |
+| `/security/metrics` | GET | Admin | Security monitoring |
+
+### POST /grammar/evaluate
+
+Evaluate grammar and provide corrections with security validation.
+
+**Headers**: `Authorization: Bearer <access_token>`
+
+**Request Body**:
+```json
+{
+  "text": "This are a test sentence with grammar errors.",
+  "lang": "en", // "en", "es", "fr", etc.
+  "options": {
+    "include_explanations": true,
+    "correction_level": "standard" // "basic", "standard", "advanced"
+  }
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "corrected": "This is a test sentence with grammar errors.",
+  "score": 0.85,
+  "confidence": 0.92,
+  "issues": [
+    {
+      "type": "grammar",
+      "position": 5,
+      "length": 3,
+      "original": "are",
+      "suggestion": "is",
+      "explanation": "Subject-verb agreement error",
+      "confidence": 0.95,
+      "rule": "SVA_001"
+    }
+  ],
+  "metrics": {
+    "processing_time_ms": 250,
+    "text_length": 45,
+    "complexity_score": 0.3
+  }
+}
+```
+
+**Security Features**:
+- Input text sanitization and validation
+- Content filtering for inappropriate material
+- Rate limiting: 60 requests/minute per user
+- Audit logging for all evaluations
+
+### GET /healthz
+
+Health check endpoint for grammar service.
+
+**Response (200 OK)**:
+```json
+{
+  "status": "ok",
+  "service": "grammar-service",
+  "version": "2.0.0",
+  "security_features": [
+    "rate_limiting",
+    "content_filtering", 
+    "threat_detection",
+    "input_sanitization",
+    "audit_logging"
+  ]
+}
+```
+
+## TTS Service 🆕
+
+Base URL: `/tts`  
+**Technology:** gRPC/Python  
+**Port:** 50053
+
+This service provides advanced Text-to-Speech capabilities with multi-provider support, neural voice synthesis, and comprehensive security features.
+
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/generate-speech` | gRPC | Yes | Generate speech from text |
+| `/generate-phoneme` | gRPC | Yes | Generate phoneme pronunciation |
+| `/list-voices` | gRPC | No | List available voices |
+| `/health` | gRPC | No | Health check |
+| `/submit-feedback` | gRPC | Yes | Submit TTS feedback |
+
+### GenerateSpeech (gRPC)
+
+Generate high-quality speech from text with multi-provider fallback support.
+
+**Request Message**:
+```protobuf
+message TTSRequest {
+  string text = 1;
+  string language_code = 2;
+  optional string voice_id = 3;
+  string audio_format = 4; // "mp3", "wav", "ogg"
+  float speaking_rate = 5; // 0.5 to 2.0
+  float pitch = 6; // -10.0 to 10.0
+  optional string ssml = 7;
+  bool use_neural_voice = 8;
+  optional string user_id = 9;
+  map<string, string> user_params = 10;
+}
+```
+
+**Response Message**:
+```protobuf
+message TTSResponse {
+  bool success = 1;
+  string message = 2;
+  bytes audio_data = 3;
+  string audio_format = 4;
+  float duration = 5;
+  string cache_key = 6;
+}
+```
+
+**Security Features**:
+- Input text sanitization and validation
+- Content filtering for inappropriate material
+- Rate limiting: 100 requests/minute per user
+- Deepfake detection and prevention
+- Audit logging for all synthesis requests
+- Multi-provider failover (Azure → AWS → Google → Mozilla)
+
+### GeneratePhonemeAudio (gRPC)
+
+Generate pronunciation samples for specific phonemes to aid language learning.
+
+**Request Message**:
+```protobuf
+message PhonemeRequest {
+  string phoneme = 1; // IPA phoneme (e.g., "AE", "TH")
+  string word = 2; // Word context
+  string language_code = 3;
+  optional string voice_id = 4;
+  string audio_format = 5;
+}
+```
+
+**Response**: Same as `TTSResponse`
+
+**Features**:
+- SSML-based phoneme emphasis
+- Context-aware pronunciation
+- Multiple provider support
+- Caching for performance
+
+### ListVoices (gRPC)
+
+List available voices with filtering capabilities.
+
+**Request Message**:
+```protobuf
+message ListVoicesRequest {
+  optional string language_code = 1;
+  optional string gender = 2; // "MALE", "FEMALE"
+  bool neural_only = 3;
+}
+```
+
+**Response Message**:
+```protobuf
+message ListVoicesResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Voice voices = 3;
+}
+
+message Voice {
+  string voice_id = 1;
+  string name = 2;
+  string language_code = 3;
+  string gender = 4;
+  bool neural = 5;
+  string provider = 6;
+  string accent = 7;
+}
+```
+
+## Alignment Service 🆕
+
+Base URL: `/alignment`  
+**Technology:** gRPC/Python  
+**Port:** 50052
+
+This service provides precise word and phoneme-level alignment between audio and text for pronunciation assessment.
+
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/align` | gRPC | Yes | Align audio with text |
+| `/health` | gRPC | No | Health check |
+| `/security/metrics` | gRPC | Admin | Security monitoring |
+
+### AlignAudio (gRPC)
+
+Perform forced alignment between audio and text at word and phoneme levels.
+
+**Request Message**:
+```protobuf
+message AlignmentRequest {
+  bytes audio_data = 1;
+  string text = 2;
+  string language_code = 3;
+  string audio_format = 4;
+  string detail_level = 5; // "word", "phoneme", "detailed"
+  optional string user_id = 6;
+}
+```
+
+**Response Message**:
+```protobuf
+message AlignmentResponse {
+  bool success = 1;
+  string message = 2;
+  repeated WordAlignment word_alignments = 3;
+  repeated PhonemeAlignment phoneme_alignments = 4;
+  float confidence = 5;
+  string transcript = 6;
+}
+
+message WordAlignment {
+  string word = 1;
+  float start_time = 2;
+  float end_time = 3;
+  float confidence = 4;
+}
+
+message PhonemeAlignment {
+  string phoneme = 1;
+  float start_time = 2;
+  float end_time = 3;
+  float confidence = 4;
+  string word_context = 5;
+}
+```
+
+**Security Features**:
+- Audio data validation and sanitization
+- Content filtering for inappropriate audio
+- Rate limiting: 50 alignments/minute per user
+- Privacy protection with automatic audio deletion
+- Audit logging for all alignment requests
+
+## Pronunciation Scorer Service 🆕
+
+Base URL: `/pronunciation-scorer`  
+**Technology:** gRPC/Python  
+**Port:** 50055
+
+This service provides advanced pronunciation scoring using AI models to evaluate speech quality.
+
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/score` | gRPC | Yes | Score pronunciation quality |
+| `/health` | gRPC | No | Health check |
+| `/model/info` | gRPC | Admin | Model information |
+
+### ScorePronunciation (gRPC)
+
+Score pronunciation quality based on aligned audio and reference text.
+
+**Request Message**:
+```protobuf
+message ScoringRequest {
+  bytes audio_data = 1;
+  string reference_text = 2;
+  string language_code = 3;
+  repeated WordAlignment word_alignments = 4;
+  repeated PhonemeAlignment phoneme_alignments = 5;
+  string scoring_mode = 6; // "word", "phoneme", "overall"
+  optional string user_id = 7;
+}
+```
+
+**Response Message**:
+```protobuf
+message ScoringResponse {
+  bool success = 1;
+  string message = 2;
+  float overall_score = 3; // 0.0 to 1.0
+  repeated WordScore word_scores = 4;
+  repeated PhonemeScore phoneme_scores = 5;
+  repeated string feedback = 6;
+  float confidence = 7;
+}
+
+message WordScore {
+  string word = 1;
+  float score = 2;
+  float confidence = 3;
+  repeated string issues = 4;
+}
+
+message PhonemeScore {
+  string phoneme = 1;
+  float score = 2;
+  float confidence = 3;
+  repeated string issues = 4;
+  string word_context = 5;
+}
+```
+
+**Security Features**:
+- ML model validation and integrity checks
+- Audio data encryption in transit
+- Rate limiting: 30 scores/minute per user
+- Model bias detection and mitigation
+- Comprehensive audit logging
+
+## Voice Score Service 🆕
+
+Base URL: `/voice-score`  
+**Technology:** gRPC/Python  
+**Port:** 50054
+
+This service orchestrates the complete pronunciation assessment pipeline by coordinating Alignment, Pronunciation Scorer, and TTS services.
+
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/evaluate` | gRPC | Yes | Legacy pronunciation evaluation |
+| `/evaluate-detailed` | gRPC | Yes | Detailed pronunciation evaluation |
+| `/health` | gRPC | No | Health check |
+
+### EvaluateDetailed (gRPC)
+
+Comprehensive pronunciation evaluation using the three-stage pipeline.
+
+**Request Message**:
+```protobuf
+message DetailedEvalRequest {
+  bytes audio_data = 1;
+  string reference_text = 2;
+  string language_code = 3;
+  string audio_format = 4;
+  string detail_level = 5; // "summary", "phoneme", "detailed"
+  optional string user_id = 6;
+}
+```
+
+**Response Message**:
+```protobuf
+message DetailedEvalResponse {
+  bool success = 1;
+  string message = 2;
+  bool pass = 3;
+  float pronunciation_score = 4;
+  float grammar_score = 5;
+  string expected = 6;
+  string corrected = 7;
+  repeated WordDetail word_details = 8;
+  repeated PhonemeDetail phoneme_details = 9;
+  repeated string feedback = 10;
+  string transcript = 11;
+  float confidence = 12;
+}
+
+message WordDetail {
+  string word = 1;
+  float score = 2;
+  float start_time = 3;
+  float end_time = 4;
+  float confidence = 5;
+  repeated string issues = 6;
+}
+
+message PhonemeDetail {
+  string phoneme = 1;
+  float score = 2;
+  float start_time = 3;
+  float end_time = 4;
+  repeated string issues = 5;
+}
+```
+
+**Security Features**:
+- End-to-end encryption for audio processing
+- Inter-service authentication with mTLS
+- Rate limiting: 25 evaluations/minute per user
+- Privacy-first audio handling (automatic deletion)
+- Comprehensive security event logging
+
+## Observability Service 🆕
+
+Base URL: `/observability`  
+**Technology:** Express.js/Node.js  
+**Port:** 3001
+
+This service provides centralized monitoring, metrics collection, and health checking across all YAP microservices.
+
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/health` | GET | No | Overall system health |
+| `/metrics` | GET | Admin | Prometheus metrics |
+| `/services/status` | GET | Admin | Individual service status |
+| `/alerts` | GET | Admin | Active alerts |
+| `/logs/search` | POST | Admin | Log search and analysis |
+
+### GET /health
+
+Overall system health check aggregating all microservices.
+
+**Response (200 OK)**:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-06-06T10:30:00.000Z",
+  "version": "1.0.0",
+  "services": {
+    "auth-service": {
+      "status": "healthy",
+      "response_time_ms": 15,
+      "last_check": "2025-06-06T10:29:55.000Z"
+    },
+    "learning-service": {
+      "status": "healthy", 
+      "response_time_ms": 23,
+      "last_check": "2025-06-06T10:29:55.000Z"
+    },
+    "tts-service": {
+      "status": "healthy",
+      "response_time_ms": 45,
+      "last_check": "2025-06-06T10:29:55.000Z"
+    },
+    "voice-score-service": {
+      "status": "degraded",
+      "response_time_ms": 250,
+      "last_check": "2025-06-06T10:29:55.000Z",
+      "issues": ["High latency detected"]
+    }
+  },
+  "infrastructure": {
+    "database": "healthy",
+    "cache": "healthy",
+    "message_queue": "healthy"
+  }
+}
+```
+
+### GET /metrics
+
+Prometheus-compatible metrics endpoint for monitoring.
+
+**Response (200 OK)**:
+```
+# HELP http_requests_total Total number of HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",service="auth",status="200"} 1543
+http_requests_total{method="POST",service="learning",status="200"} 892
+
+# HELP service_response_time_seconds Service response time in seconds
+# TYPE service_response_time_seconds histogram
+service_response_time_seconds_bucket{service="tts",le="0.1"} 145
+service_response_time_seconds_bucket{service="tts",le="0.5"} 298
+
+# HELP pronunciation_assessments_total Total pronunciation assessments
+# TYPE pronunciation_assessments_total counter
+pronunciation_assessments_total{language="en-US",result="pass"} 456
+pronunciation_assessments_total{language="es-ES",result="fail"} 123
+```
+
+### POST /logs/search
+
+Search and analyze logs across all services.
+
+**Request Body**:
+```json
+{
+  "query": "ERROR",
+  "services": ["auth-service", "learning-service"],
+  "start_time": "2025-06-06T09:00:00.000Z",
+  "end_time": "2025-06-06T10:00:00.000Z",
+  "level": "error",
+  "limit": 100
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "total_matches": 23,
+  "logs": [
+    {
+      "timestamp": "2025-06-06T09:45:23.000Z",
+      "service": "auth-service",
+      "level": "error",
+      "message": "JWT token validation failed",
+      "request_id": "req_abc123",
+      "user_id": "user_456",
+      "metadata": {
+        "ip": "192.168.1.100",
+        "user_agent": "YAP-Mobile/1.0"
+      }
+    }
+  ],
+  "aggregations": {
+    "by_service": {
+      "auth-service": 15,
+      "learning-service": 8
+    },
+    "by_level": {
+      "error": 20,
+      "warn": 3
+    }
+  }
+}
+```
+
+**Security Features**:
+- Admin-only access to sensitive metrics
+- Log data sanitization (PII removal)
+- Rate limiting: 10 requests/minute per admin
+- Audit logging for all observability access
+- Secure log aggregation with encryption
+
+## Security Architecture 🆕
+
+The YAP platform implements a comprehensive, enterprise-grade security architecture designed to protect user data, prevent unauthorized access, and ensure compliance with privacy regulations.
+
+### Multi-Layer Security Model
+
+#### 1. Authentication & Authorization
+
+**JWT-Based Authentication**:
+- **Access Tokens**: Short-lived (15 minutes) with user context
+- **Refresh Tokens**: Long-lived (30 days) with rotation
+- **Wallet Authentication**: Direct blockchain wallet integration
+- **Token Validation**: Distributed validation across all services
+
+**Authorization Levels**:
+- **Public**: Health checks, registration endpoints
+- **User**: Authenticated user operations
+- **Admin**: Administrative functions and metrics
+- **System**: Inter-service communication
+
+#### 2. Data Protection
+
+**Encryption Standards**:
+- **At Rest**: AES-256-GCM encryption for sensitive data
+- **In Transit**: TLS 1.3 for all API communications
+- **mTLS**: Mutual TLS for inter-service communication
+- **Key Management**: Hardware Security Module (HSM) integration
+
+**Sensitive Data Handling**:
+- **Mnemonic Recovery**: PBKDF2 (390,000 iterations) + SHA-256 hashing
+- **Audio Data**: Temporary storage with automatic deletion
+- **PII Protection**: Field-level encryption for personal data
+- **Database Encryption**: Transparent data encryption (TDE)
+
+#### 3. Rate Limiting & DDoS Protection
+
+**Service-Level Rate Limits**:
+```
+Authentication: 10 requests/minute per IP
+Learning Service: 60 requests/minute per user
+TTS Service: 100 requests/minute per user
+Voice Score: 25 evaluations/minute per user
+Pronunciation Scorer: 30 scores/minute per user
+Grammar Service: 60 evaluations/minute per user
+Wallet Service: 20 requests/minute per IP
+```
+
+**Advanced Protection**:
+- **Sliding Window**: Time-based rate limiting
+- **Circuit Breaker**: Automatic service protection
+- **IP-based Blocking**: Suspicious activity detection
+- **Geographic Filtering**: Region-based access control
+
+#### 4. Input Validation & Sanitization
+
+**Content Security**:
+- **Text Sanitization**: XSS prevention and content filtering
+- **Audio Validation**: Format verification and malware scanning
+- **File Upload Security**: Type validation and size limits
+- **SQL Injection Prevention**: Parameterized queries only
+
+**Business Logic Validation**:
+- **Schema Validation**: Strict input/output schema enforcement
+- **Boundary Checking**: Numeric and string length validation
+- **Format Validation**: Email, phone, wallet address verification
+- **Deepfake Detection**: AI-based audio authenticity verification
+
+#### 5. Audit Logging & Monitoring
+
+**Comprehensive Audit Trail**:
+```json
+{
+  "timestamp": "2025-06-06T10:30:00.000Z",
+  "event_type": "authentication",
+  "severity": "INFO",
+  "service": "auth-service",
+  "user_id": "user_123",
+  "action": "wallet_login",
+  "ip_address": "192.168.1.100",
+  "user_agent": "YAP-Mobile/1.0",
+  "request_id": "req_abc123",
+  "metadata": {
+    "wallet_address": "sei1...",
+    "success": true,
+    "duration_ms": 245
+  }
+}
+```
+
+**Security Event Categories**:
+- **Authentication Events**: Login, logout, token refresh
+- **Authorization Events**: Permission checks, access denials
+- **Data Access Events**: Profile views, learning progress
+- **Security Events**: Failed logins, rate limit violations
+- **System Events**: Service starts, health checks, errors
+
+#### 6. Privacy & Compliance
+
+**Data Minimization**:
+- **Purpose Limitation**: Data collection limited to specific use cases
+- **Retention Policies**: Automatic data deletion after retention periods
+- **Anonymization**: PII removal from analytics and logs
+- **User Consent**: Granular privacy controls
+
+**Compliance Features**:
+- **GDPR Compliance**: Right to deletion, data portability
+- **CCPA Compliance**: California privacy rights
+- **SOC 2 Type II**: Security and availability controls
+- **ISO 27001**: Information security management
+
+### Service-Specific Security Features
+
+#### Auth Service Security
+- **Brute Force Protection**: Progressive delays and account lockout
+- **Session Management**: Secure session invalidation
+- **Multi-Factor Authentication**: Optional 2FA support
+- **Anomaly Detection**: Unusual login pattern detection
+
+#### Learning Service Security
+- **Progress Integrity**: Tamper-proof learning progress
+- **Content Filtering**: Inappropriate content detection
+- **Performance Analytics**: Anonymized learning metrics
+- **Data Segregation**: User data isolation
+
+#### TTS Service Security
+- **Content Moderation**: Text content filtering
+- **Audio Watermarking**: Generated audio identification
+- **Provider Fallback**: Security-aware provider selection
+- **Cache Security**: Encrypted audio caching
+
+#### Voice Score Service Security
+- **Audio Privacy**: Immediate audio deletion post-processing
+- **Model Security**: ML model integrity verification
+- **Bias Detection**: Algorithmic fairness monitoring
+- **Result Integrity**: Score tampering prevention
+
+#### Wallet Service Security
+- **Mnemonic Protection**: Never stored in plaintext
+- **Recovery Security**: Secure hash-based recovery
+- **Transaction Verification**: Blockchain transaction validation
+- **Key Derivation**: Hardware-backed key generation
+
+### Security Monitoring & Incident Response
+
+**Real-Time Monitoring**:
+- **Security Information and Event Management (SIEM)**
+- **Automated Threat Detection**
+- **Anomaly-Based Intrusion Detection**
+- **Behavioral Analysis**
+
+**Incident Response**:
+- **24/7 Security Operations Center (SOC)**
+- **Automated Incident Classification**
+- **Escalation Procedures**
+- **Forensic Capabilities**
+
+**Security Metrics**:
+```
+Failed Authentication Rate: < 1% of total attempts
+Average Response Time: < 100ms for security checks
+Security Event Processing: < 5 seconds for critical events
+Compliance Score: 98%+ across all frameworks
+```
+
+### API Security Best Practices
+
+#### Request/Response Security
+- **Content-Type Validation**: Strict MIME type checking
+- **Size Limits**: Request payload size restrictions
+- **Timeout Configuration**: Prevent resource exhaustion
+- **Error Handling**: Secure error messages (no information leakage)
+
+#### Headers Security
+```
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Content-Security-Policy: default-src 'self'
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+```
+
+#### API Versioning Security
+- **Backward Compatibility**: Secure deprecation process
+- **Version Control**: Security patch deployment
+- **Legacy Support**: Limited-time security support
+
+### Development Security
+
+#### Secure Development Lifecycle (SDL)
+- **Threat Modeling**: Architecture-level security analysis
+- **Security Code Review**: Automated and manual code analysis
+- **Dependency Scanning**: Third-party library vulnerability assessment
+- **Penetration Testing**: Regular security assessments
+
+#### Infrastructure Security
+- **Container Security**: Image scanning and runtime protection
+- **Kubernetes Security**: Pod security policies and network policies
+- **Cloud Security**: AWS/GCP security best practices
+- **Secrets Management**: Vault-based secret storage
+
+### Security Configuration
+
+#### Environment-Specific Settings
+```bash
+# Production Security Settings
+ENABLE_RATE_LIMITING=true
+ENABLE_AUDIT_LOGGING=true
+ENABLE_ENCRYPTION=true
+SECURITY_LEVEL=strict
+JWT_SECRET_ROTATION=enabled
+TLS_VERSION=1.3
+HSTS_ENABLED=true
+```
+
+#### Service Security Policies
+- **Zero Trust Architecture**: No implicit trust between services
+- **Principle of Least Privilege**: Minimal required permissions
+- **Defense in Depth**: Multiple security layers
+- **Fail Secure**: Secure defaults for error conditions
+
 ## Error Handling
 
 All API endpoints follow a consistent error response format:
@@ -1346,3 +2433,5 @@ Here are example responses that can be used for frontend development without the
   "count": 3
 }
 ```
+
+````

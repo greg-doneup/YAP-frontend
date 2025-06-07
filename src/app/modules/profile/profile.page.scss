@@ -1,0 +1,432 @@
+// Profile Page Styles
+
+// Transparent Header
+.transparent-header {
+  ion-toolbar {
+    --background: transparent;
+    --color: #ffffff;
+    
+    ion-title {
+      color: #ffffff;
+      font-weight: 600;
+    }
+    
+    ion-button {
+      --color: #ffffff;
+      
+      ion-icon {
+        color: #ffffff;
+      }
+    }
+  }
+}
+
+.profile-content {
+  --background: #4372c4;
+  background: linear-gradient(to bottom, #4372c4, #3861b0);
+  color: #ffffff;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  gap: 1rem;
+  
+  p {
+    color: #ffffff;
+    font-size: 1rem;
+    opacity: 0.8;
+  }
+}
+
+.profile-container {
+  padding: 1rem;
+  padding-top: 4rem; // Additional top padding for transparent header
+  padding-bottom: 100px; // Space for navigation
+}
+
+// Profile Header
+.profile-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+  
+  .profile-info {
+    .profile-name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+      color: #ffffff;
+    }
+    
+    .profile-username {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin: 0 0 0.75rem 0;
+    }
+    
+    .profile-rank {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 215, 0, 0.2);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      
+      span {
+        font-weight: 600;
+        color: #ffd700;
+      }
+    }
+  }
+}
+
+// Edit Form
+.profile-edit-form {
+  .edit-item {
+    --background: rgba(255, 255, 255, 0.1);
+    --border-radius: 12px;
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    
+    ion-label {
+      color: #ffffff;
+      font-weight: 600;
+    }
+    
+    .edit-input {
+      --color: #ffffff;
+      --placeholder-color: rgba(255, 255, 255, 0.6);
+    }
+  }
+  
+  .edit-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    
+    .cancel-btn {
+      flex: 1;
+      --border-color: rgba(255, 255, 255, 0.5);
+      --color: #ffffff;
+    }
+    
+    .save-btn {
+      flex: 1;
+      --background: #ffdb45;
+      --color: #000000;
+      font-weight: 600;
+    }
+  }
+}
+
+// Section Titles
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 1rem;
+  
+  ion-icon {
+    font-size: 1.5rem;
+  }
+}
+
+// Wallet Section
+.wallet-section {
+  margin-bottom: 2rem;
+  
+  .wallet-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    .wallet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+      
+      .wallet-info {
+        flex: 1;
+        
+        .wallet-badge {
+          display: inline-block;
+          background: #ffdb45;
+          color: #000000;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+          
+          &.evm {
+            background: #627eea;
+            color: #ffffff;
+          }
+        }
+        
+        h3 {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #ffffff;
+          margin: 0;
+        }
+      }
+    }
+    
+    .wallet-address {
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.8);
+      word-break: break-all;
+      margin: 0 0 1rem 0;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 0.75rem;
+      border-radius: 8px;
+    }
+    
+    .wallet-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      
+      &.connected {
+        color: #4caf50;
+      }
+      
+      &.disconnected {
+        color: #ff9800;
+      }
+    }
+  }
+}
+
+// Statistics Section
+.stats-section {
+  margin-bottom: 2rem;
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    
+    @media (min-width: 768px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  .stat-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s ease;
+    
+    &:hover {
+      transform: translateY(-2px);
+    }
+    
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      margin: 0 auto 1rem;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      ion-icon {
+        font-size: 1.5rem;
+      }
+    }
+    
+    .stat-content {
+      .stat-value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0 0 0.25rem 0;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      }
+      
+      .stat-label {
+        font-size: 0.875rem;
+        color: rgba(255, 255, 255, 0.8);
+        margin: 0;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// Others Section
+.others-section {
+  margin-bottom: 2rem;
+  
+  .others-list {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+  }
+  
+  .others-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    &.logout-item {
+      &:hover {
+        background: rgba(244, 67, 54, 0.1);
+      }
+    }
+    
+    .item-content {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1;
+      
+      .item-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        ion-icon {
+          font-size: 1.25rem;
+        }
+      }
+      
+      .item-text {
+        flex: 1;
+        
+        h3 {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #ffffff;
+          margin: 0 0 0.25rem 0;
+        }
+        
+        p {
+          font-size: 0.875rem;
+          color: rgba(255, 255, 255, 0.7);
+          margin: 0;
+        }
+      }
+    }
+  }
+}
+
+.footer-spacing {
+  height: 2rem;
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .profile-container {
+    padding: 0.75rem;
+  }
+  
+  .profile-header {
+    padding: 1rem;
+    
+    .profile-avatar {
+      width: 70px;
+      height: 70px;
+    }
+    
+    .profile-info .profile-name {
+      font-size: 1.25rem;
+    }
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .stat-card {
+    padding: 1rem;
+    
+    .stat-content .stat-value {
+      font-size: 1.5rem;
+    }
+  }
+  
+  .wallet-card {
+    padding: 1rem;
+    
+    .wallet-address {
+      font-size: 0.75rem;
+    }
+  }
+  
+  .others-item {
+    padding: 1rem;
+    
+    .item-content {
+      gap: 0.75rem;
+      
+      .item-icon {
+        width: 35px;
+        height: 35px;
+        
+        ion-icon {
+          font-size: 1.1rem;
+        }
+      }
+    }
+  }
+}
