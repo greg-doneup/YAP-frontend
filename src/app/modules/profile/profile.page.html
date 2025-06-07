@@ -1,13 +1,318 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>profile</ion-title>
+<ion-header [translucent]="true" class="transparent-header">
+  <ion-toolbar color="transparent">
+    <ion-buttons slot="start">
+      <ion-button fill="clear" (click)="goBack()">
+        <ion-icon name="chevron-back" slot="icon-only" color="light"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title color="light">Profile</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" (click)="toggleEdit()" *ngIf="!isLoading">
+        <ion-icon [name]="isEditing ? 'close' : 'create'" slot="icon-only" color="light"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">profile</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content [fullscreen]="true" class="profile-content">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <ion-spinner color="primary"></ion-spinner>
+    <p>Loading your profile...</p>
+  </div>
+
+  <!-- Profile Content -->
+  <div *ngIf="!isLoading" class="profile-container">
+    
+    <!-- Profile Header -->
+    <div class="profile-header">
+      <div class="profile-avatar">
+        <img src="assets/images/avi/yap_default_avatar.svg" alt="Profile Avatar" />
+      </div>
+      
+      <div class="profile-info" *ngIf="!isEditing">
+        <h1 class="profile-name">{{ profileData.profile?.displayName || profileData.user?.username || 'YAP User' }}</h1>
+        <p class="profile-username" *ngIf="profileData.profile?.username">{{ '@' + (profileData.profile?.username || '') }}</p>
+        <div class="profile-rank" *ngIf="profileData.stats.userRank">
+          <ion-icon name="trophy" color="warning"></ion-icon>
+          <span>Rank #{{ profileData.stats.userRank }}</span>
+        </div>
+      </div>
+
+      <!-- Edit Form -->
+      <div class="profile-edit-form" *ngIf="isEditing">
+        <ion-item class="edit-item">
+          <ion-label position="stacked">Display Name</ion-label>
+          <ion-input 
+            [(ngModel)]="editForm.displayName" 
+            placeholder="Enter display name"
+            class="edit-input">
+          </ion-input>
+        </ion-item>
+        
+        <ion-item class="edit-item">
+          <ion-label position="stacked">Username</ion-label>
+          <ion-input 
+            [(ngModel)]="editForm.username" 
+            placeholder="Enter username"
+            class="edit-input">
+          </ion-input>
+        </ion-item>
+
+        <div class="edit-actions">
+          <ion-button 
+            fill="outline" 
+            color="medium" 
+            (click)="cancelEdit()"
+            class="cancel-btn">
+            Cancel
+          </ion-button>
+          <ion-button 
+            fill="solid" 
+            color="primary" 
+            (click)="saveProfile()"
+            class="save-btn">
+            Save
+          </ion-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wallet Section -->
+    <div class="wallet-section">
+      <h2 class="section-title">
+        <ion-icon name="wallet" color="primary"></ion-icon>
+        Wallets
+      </h2>
+      
+      <!-- SEI Wallet -->
+      <div class="wallet-card sei-wallet">
+        <div class="wallet-header">
+          <div class="wallet-info">
+            <div class="wallet-badge">
+              <span>SEI</span>
+            </div>
+            <h3>SEI Wallet</h3>
+          </div>
+          <ion-button 
+            fill="clear" 
+            size="small" 
+            (click)="copyWalletAddress('sei')"
+            [disabled]="profileData.seiWallet === 'Not connected'">
+            <ion-icon name="copy" slot="icon-only"></ion-icon>
+          </ion-button>
+        </div>
+        <p class="wallet-address">{{ profileData.seiWallet }}</p>
+        <div class="wallet-status connected" *ngIf="profileData.seiWallet !== 'Not connected'">
+          <ion-icon name="checkmark-circle" color="success"></ion-icon>
+          <span>Connected</span>
+        </div>
+        <div class="wallet-status disconnected" *ngIf="profileData.seiWallet === 'Not connected'">
+          <ion-icon name="alert-circle" color="warning"></ion-icon>
+          <span>Not Connected</span>
+        </div>
+      </div>
+
+      <!-- EVM Wallet -->
+      <div class="wallet-card evm-wallet">
+        <div class="wallet-header">
+          <div class="wallet-info">
+            <div class="wallet-badge evm">
+              <span>EVM</span>
+            </div>
+            <h3>EVM Wallet</h3>
+          </div>
+          <ion-button 
+            fill="clear" 
+            size="small" 
+            (click)="copyWalletAddress('evm')"
+            [disabled]="profileData.evmWallet === 'Not connected'">
+            <ion-icon name="copy" slot="icon-only"></ion-icon>
+          </ion-button>
+        </div>
+        <p class="wallet-address">{{ profileData.evmWallet }}</p>
+        <div class="wallet-status connected" *ngIf="profileData.evmWallet !== 'Not connected'">
+          <ion-icon name="checkmark-circle" color="success"></ion-icon>
+          <span>Connected</span>
+        </div>
+        <div class="wallet-status disconnected" *ngIf="profileData.evmWallet === 'Not connected'">
+          <ion-icon name="alert-circle" color="warning"></ion-icon>
+          <span>Not Connected</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statistics Section -->
+    <div class="stats-section">
+      <h2 class="section-title">
+        <ion-icon name="analytics" color="primary"></ion-icon>
+        Your Statistics
+      </h2>
+      
+      <div class="stats-grid">
+        <!-- Days Practiced -->
+        <div class="stat-card">
+          <div class="stat-icon">
+            <ion-icon name="calendar" color="primary"></ion-icon>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value">{{ profileData.stats.daysPracticed }}</h3>
+            <p class="stat-label">Days Practiced</p>
+          </div>
+        </div>
+
+        <!-- Highest Streak -->
+        <div class="stat-card">
+          <div class="stat-icon">
+            <ion-icon name="flame" color="danger"></ion-icon>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value">{{ profileData.stats.highestStreak }}</h3>
+            <p class="stat-label">Highest Streak</p>
+          </div>
+        </div>
+
+        <!-- Total YAP -->
+        <div class="stat-card">
+          <div class="stat-icon">
+            <ion-icon name="diamond" color="warning"></ion-icon>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value">{{ profileData.stats.totalYAP }}</h3>
+            <p class="stat-label">Total $YAP</p>
+          </div>
+        </div>
+
+        <!-- Current XP -->
+        <div class="stat-card">
+          <div class="stat-icon">
+            <ion-icon name="trending-up" color="success"></ion-icon>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value">{{ profileData.stats.currentXP }}</h3>
+            <p class="stat-label">Total XP</p>
+          </div>
+        </div>
+
+        <!-- Current Streak -->
+        <div class="stat-card">
+          <div class="stat-icon">
+            <ion-icon name="flash" color="warning"></ion-icon>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value">{{ profileData.stats.currentStreak }}</h3>
+            <p class="stat-label">Current Streak</p>
+          </div>
+        </div>
+
+        <!-- Rank -->
+        <div class="stat-card" *ngIf="profileData.stats.userRank">
+          <div class="stat-icon">
+            <ion-icon name="trophy" color="warning"></ion-icon>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-value">{{ '#' + (profileData.stats.userRank || 'N/A') }}</h3>
+            <p class="stat-label">Global Rank</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Others Section -->
+    <div class="others-section">
+      <h2 class="section-title">
+        <ion-icon name="settings" color="primary"></ion-icon>
+        Others
+      </h2>
+      
+      <div class="others-list">
+        <!-- About App -->
+        <div class="others-item" (click)="showAboutApp()">
+          <div class="item-content">
+            <div class="item-icon">
+              <ion-icon name="information-circle" color="primary"></ion-icon>
+            </div>
+            <div class="item-text">
+              <h3>About App</h3>
+              <p>Learn more about YAP</p>
+            </div>
+          </div>
+          <ion-icon name="chevron-forward" color="medium"></ion-icon>
+        </div>
+
+        <!-- Help & Support -->
+        <div class="others-item" (click)="showHelp()">
+          <div class="item-content">
+            <div class="item-icon">
+              <ion-icon name="help-circle" color="primary"></ion-icon>
+            </div>
+            <div class="item-text">
+              <h3>Help & Support</h3>
+              <p>Get help and contact support</p>
+            </div>
+          </div>
+          <ion-icon name="chevron-forward" color="medium"></ion-icon>
+        </div>
+
+        <!-- Terms & Conditions -->
+        <div class="others-item" (click)="showTerms()">
+          <div class="item-content">
+            <div class="item-icon">
+              <ion-icon name="document-text" color="primary"></ion-icon>
+            </div>
+            <div class="item-text">
+              <h3>Terms & Conditions</h3>
+              <p>Read our terms of service</p>
+            </div>
+          </div>
+          <ion-icon name="chevron-forward" color="medium"></ion-icon>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="others-item" (click)="navigateToLeaderboard()">
+          <div class="item-content">
+            <div class="item-icon">
+              <ion-icon name="trophy" color="warning"></ion-icon>
+            </div>
+            <div class="item-text">
+              <h3>Leaderboard</h3>
+              <p>See global rankings</p>
+            </div>
+          </div>
+          <ion-icon name="chevron-forward" color="medium"></ion-icon>
+        </div>
+
+        <!-- Settings -->
+        <div class="others-item" (click)="navigateToSettings()">
+          <div class="item-content">
+            <div class="item-icon">
+              <ion-icon name="cog" color="medium"></ion-icon>
+            </div>
+            <div class="item-text">
+              <h3>Settings</h3>
+              <p>App preferences and settings</p>
+            </div>
+          </div>
+          <ion-icon name="chevron-forward" color="medium"></ion-icon>
+        </div>
+
+        <!-- Logout -->
+        <div class="others-item logout-item" (click)="logout()">
+          <div class="item-content">
+            <div class="item-icon">
+              <ion-icon name="log-out" color="danger"></ion-icon>
+            </div>
+            <div class="item-text">
+              <h3>Logout</h3>
+              <p>Sign out of your account</p>
+            </div>
+          </div>
+          <ion-icon name="chevron-forward" color="medium"></ion-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer spacing -->
+    <div class="footer-spacing"></div>
+  </div>
 </ion-content>

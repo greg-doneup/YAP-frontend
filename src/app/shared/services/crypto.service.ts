@@ -53,6 +53,12 @@ export class CryptoService {
         if (!db.objectStoreNames.contains('userPreferences')) {
           db.createObjectStore('userPreferences', { keyPath: 'id' });
         }
+        
+        // Create object store for wallet metadata (non-sensitive addresses only)
+        if (!db.objectStoreNames.contains('walletMetadata')) {
+          const walletStore = db.createObjectStore('walletMetadata', { keyPath: 'id' });
+          walletStore.createIndex('email', 'email', { unique: true });
+        }
       };
     }).then(db => ({
       put: async (storeName: string, data: any, key: string) => {
@@ -297,15 +303,44 @@ export class CryptoService {
   } | null> {
     try {
       const db = await this.dbPromise;
-      const data = await db.get('encryptedWallets', email);
+      
+      // First try to get from walletMetadata store
+      let data = null;
+      try {
+        data = await db.get('walletMetadata', email);
+      } catch (error) {
+        // If walletMetadata store doesn't exist, try userPreferences
+        try {
+          data = await db.get('userPreferences', `wallet_${email}`);
+        } catch (error2) {
+          console.log('No wallet metadata found in either store');
+        }
+      }
+      
+      // Also try to get from encryptedWallets store (which has addresses too)
+      if (!data) {
+        try {
+          const encryptedData = await db.get('encryptedWallets', email);
+          if (encryptedData) {
+            data = {
+              sei_address: encryptedData.sei_address,
+              eth_address: encryptedData.eth_address,
+              created_at: encryptedData.created_at,
+              last_accessed: encryptedData.last_accessed
+            };
+          }
+        } catch (error) {
+          console.log('No encrypted wallet data found');
+        }
+      }
       
       if (!data) return null;
       
       return {
-        sei_address: data.sei_address,
-        eth_address: data.eth_address,
-        created_at: data.created_at,
-        last_accessed: data.last_accessed
+        sei_address: data.sei_address || '',
+        eth_address: data.eth_address || '',
+        created_at: data.created_at || '',
+        last_accessed: data.last_accessed || ''
       };
     } catch (error) {
       console.error('Error getting wallet metadata:', error);

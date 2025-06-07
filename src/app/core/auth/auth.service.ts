@@ -4,6 +4,7 @@ import { catchError, tap, map, switchMap } from 'rxjs/operators';
 import { ApiService } from '../api-service.service';
 import { ErrorService } from '../error/error.service';
 import { TokenService } from '../token/token.service';
+import { CryptoService } from '../../shared/services/crypto.service';
 
 export interface User {
   id: string;
@@ -58,7 +59,8 @@ export class AuthService {
   constructor(
     private apiService: ApiService,
     private errorService: ErrorService,
-    private tokenService: TokenService
+    private tokenService: TokenService,
+    private cryptoService: CryptoService
   ) {
     this.loadUserFromStorage();
   }
@@ -68,16 +70,73 @@ export class AuthService {
     if (token) {
       this.validateToken(token).subscribe();
     } else {
-      // Check if we have a user in localStorage but no token
+      // Check if we have a basic user profile in localStorage
       const userStr = localStorage.getItem('currentUser');
       if (userStr) {
         try {
           const user = JSON.parse(userStr);
           this.currentUserSubject.next(user);
+          
+          // Try to load wallet addresses from secure storage if available
+          this.loadWalletAddressesFromSecureStorage(user.email);
         } catch (e) {
           console.error('Failed to parse user from localStorage', e);
         }
       }
+    }
+  }
+
+  private async loadWalletAddressesFromSecureStorage(email: string): Promise<void> {
+    try {
+      // Check if we have wallet metadata in secure storage
+      const walletMetadata = await this.cryptoService.getWalletMetadata(email);
+      if (walletMetadata && this.currentUserValue) {
+        // Update the current user with wallet addresses from secure storage
+        const updatedUser = {
+          ...this.currentUserValue,
+          walletAddress: walletMetadata.sei_address,
+          ethWalletAddress: walletMetadata.eth_address
+        };
+        
+        console.log('Loaded wallet addresses from secure storage:', {
+          sei: walletMetadata.sei_address,
+          eth: walletMetadata.eth_address
+        });
+        
+        // Update localStorage with the complete user data
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        this.currentUserSubject.next(updatedUser);
+        return;
+      }
+      
+      // Fallback: check localStorage for wallet addresses
+      const walletAddressesStr = localStorage.getItem('wallet_addresses');
+      if (walletAddressesStr && this.currentUserValue) {
+        try {
+          const walletAddresses = JSON.parse(walletAddressesStr);
+          const updatedUser = {
+            ...this.currentUserValue,
+            walletAddress: walletAddresses.sei_address,
+            ethWalletAddress: walletAddresses.eth_address
+          };
+          
+          console.log('Loaded wallet addresses from localStorage fallback:', {
+            sei: walletAddresses.sei_address,
+            eth: walletAddresses.eth_address
+          });
+          
+          // Update localStorage with the complete user data
+          localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+          this.currentUserSubject.next(updatedUser);
+          
+          // Try to migrate to secure storage
+          this.saveWalletMetadataToSecureStorage(updatedUser);
+        } catch (error) {
+          console.error('Failed to parse wallet addresses from localStorage:', error);
+        }
+      }
+    } catch (error) {
+      console.log('No wallet data found in secure storage or error loading:', error);
     }
   }
 
@@ -185,7 +244,13 @@ export class AuthService {
             const updatedUser = { ...this.currentUserValue };
             if (response.walletAddress) updatedUser.walletAddress = response.walletAddress;
             if (response.ethWalletAddress) updatedUser.ethWalletAddress = response.ethWalletAddress;
+            
+            // Save updated user data to localStorage
+            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
             this.currentUserSubject.next(updatedUser);
+            
+            // Also save wallet metadata to secure storage
+            this.saveWalletMetadataToSecureStorage(updatedUser);
           }
           
           this.refreshingToken = false;
@@ -253,6 +318,12 @@ export class AuthService {
   }
 
   private handleAuthResponse(response: AuthResponse): User {
+    console.log('=== AUTH RESPONSE DEBUG ===');
+    console.log('Full response object:', response);
+    console.log('Response wallet addresses:');
+    console.log('- walletAddress:', response.walletAddress);
+    console.log('- ethWalletAddress:', response.ethWalletAddress);
+    
     // Store the full auth response for later use
     this.lastAuthResponse = response;
     
@@ -263,13 +334,67 @@ export class AuthService {
       ethWalletAddress: response.ethWalletAddress
     };
     
+    console.log('Created user object:', user);
+    
     this.tokenService.setToken(response.token);
     if (response.refreshToken) {
       this.tokenService.setRefreshToken(response.refreshToken);
     }
     
+    // Save user data to localStorage for persistence
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    console.log('Saved user to localStorage:', JSON.stringify(user));
+    
+    // Also save wallet metadata to secure storage if wallet addresses are present
+    this.saveWalletMetadataToSecureStorage(user);
+    
     this.currentUserSubject.next(user);
     return user;
+  }
+
+  private async saveWalletMetadataToSecureStorage(user: User): Promise<void> {
+    if (user.walletAddress || user.ethWalletAddress) {
+      try {
+        // Create wallet metadata entry (non-sensitive data)
+        const walletMetadata = {
+          email: user.email,
+          sei_address: user.walletAddress || '',
+          eth_address: user.ethWalletAddress || '',
+          created_at: new Date().toISOString(),
+          last_accessed: new Date().toISOString()
+        };
+
+        // Use CryptoService's internal DB access
+        const db = await (this.cryptoService as any).dbPromise;
+        
+        // Try to store in walletMetadata first, fallback to userPreferences
+        try {
+          await db.put('walletMetadata', { id: user.email, ...walletMetadata });
+          console.log('Saved wallet metadata to walletMetadata store');
+        } catch (error) {
+          // Fallback to userPreferences
+          await db.put('userPreferences', { 
+            id: `wallet_${user.email}`,
+            ...walletMetadata 
+          });
+          console.log('Saved wallet metadata to userPreferences store');
+        }
+        
+        console.log('Wallet metadata saved:', {
+          sei: user.walletAddress,
+          eth: user.ethWalletAddress
+        });
+      } catch (error) {
+        console.error('Failed to save wallet metadata to secure storage:', error);
+        // As a fallback, save to localStorage temporarily
+        const walletAddresses = {
+          sei_address: user.walletAddress || '',
+          eth_address: user.ethWalletAddress || ''
+        };
+        localStorage.setItem('wallet_addresses', JSON.stringify(walletAddresses));
+        console.log('Saved wallet addresses to localStorage as fallback');
+      }
+    }
   }
   
   /**
@@ -282,6 +407,7 @@ export class AuthService {
   private clearAuthData(): void {
     this.tokenService.removeToken();
     this.tokenService.removeRefreshToken();
+    localStorage.removeItem('currentUser'); // Clear user data from localStorage
     this.currentUserSubject.next(null);
     this.refreshTokenSubject.next(null);
     this.lastAuthResponse = null; // Clear the stored auth response
