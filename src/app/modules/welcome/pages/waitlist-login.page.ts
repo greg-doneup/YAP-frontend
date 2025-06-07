@@ -47,35 +47,53 @@ export class WaitlistLoginPage {
 
     this.isLoading = true;
     const loading = await this.loadingController.create({
-      message: 'Verifying waitlist access...',
+      message: 'Authenticating with wallet...',
     });
     await loading.present();
 
     try {
-      // TODO: Implement actual waitlist verification API call
-      await this.verifyWaitlistAccess();
+      // Use the new non-custodial wallet authentication
+      console.log('Starting wallet authentication for waitlist user:', this.email);
       
-      await loading.dismiss();
-      this.isLoading = false;
+      const authObservable = await this.authService.authenticateWithWallet(this.email, this.securePhrase);
       
-      console.log('Waitlist login successful, preparing navigation to dashboard');
-      
-      // Wait longer to ensure authentication state is fully set before navigation
-      // Increased timeout to 1000ms to ensure auth state has time to propagate
-      setTimeout(() => {
-        console.log('Auth service isLoggedIn state:', this.authService.isLoggedIn);
-        console.log('Auth service current user:', this.authService.currentUserValue);
-        console.log('Navigating to dashboard after waitlist login verification');
-        this.router.navigate(['/dashboard']);
-      }, 1000);
+      authObservable.subscribe({
+        next: async (user) => {
+          await loading.dismiss();
+          this.isLoading = false;
+          
+          console.log('Waitlist authentication successful:', user);
+          console.log('User wallet addresses:', {
+            sei: user.walletAddress,
+            evm: user.ethWalletAddress
+          });
+          
+          // Navigate to dashboard after successful authentication
+          setTimeout(() => {
+            console.log('Navigating to dashboard after successful wallet authentication');
+            this.router.navigate(['/dashboard']);
+          }, 500);
+        },
+        error: async (error) => {
+          await loading.dismiss();
+          this.isLoading = false;
+          
+          console.error('Waitlist authentication failed:', error);
+          await this.showAlert(
+            'Authentication Failed', 
+            'Could not authenticate your wallet. Please check your email and secure phrase and try again.'
+          );
+        }
+      });
       
     } catch (error) {
       await loading.dismiss();
       this.isLoading = false;
       
+      console.error('Wallet authentication error:', error);
       await this.showAlert(
-        'Verification Failed', 
-        'We couldn\'t verify your waitlist access. Please check your email and secure phrase and try again.'
+        'Authentication Error', 
+        'An error occurred during wallet authentication. Please try again.'
       );
     }
   }

@@ -4,14 +4,19 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../../environments/environment';
 import { WalletCreationResult } from '../../../../../services/wallet.service';
+import { CryptoBrowserService } from '../../../../../shared/services/crypto-browser.service';
+import { AuthService } from '../../../../../core/auth/auth.service';
 
 /**
- * Extended wallet creation result with points field
+ * Extended wallet creation result with points field and auth tokens
  * Note: Standard accounts have zero starting points
  * Only waitlisted accounts receive bonus points
  */
 export interface StandardWalletCreationResult extends WalletCreationResult {
   starting_points: number;
+  token?: string;
+  refreshToken?: string;
+  userId?: string;
 }
 
 /**
@@ -69,7 +74,10 @@ export class RegistrationService {
         eth_address: response.ethWalletAddress || mockEncryptedData.eth_address,
         waitlist_bonus: 0,
         message: 'Account created successfully',
-        starting_points: response.starting_points || 0 // Standard accounts don't get any bonus points
+        starting_points: response.starting_points || 0, // Standard accounts don't get any bonus points
+        token: response.token, // Include the auth token from registration
+        refreshToken: response.refreshToken, // Include refresh token
+        userId: response.userId // Include user ID
       };
     } catch (error) {
       console.error('Error creating standard wallet:', error);

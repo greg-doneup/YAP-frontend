@@ -1,8 +1,11 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { LoadingController, AlertController } from '@ionic/angular';
-import { WalletService, WalletCreationResult } from '../../../services/wallet.service';
+import { WalletCreationResult } from '../../../services/wallet.service';
 import { HttpClient } from '@angular/common/http';
+import { CryptoBrowserService } from '../../../shared/services/crypto-browser.service';
+import { AuthService } from '../../../core/auth/auth.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-waitlist-signup',
@@ -18,7 +21,8 @@ export class WaitlistSignupPage {
     private router: Router,
     private loadingController: LoadingController,
     private alertController: AlertController,
-    private walletService: WalletService,
+    private cryptoService: CryptoBrowserService,
+    private authService: AuthService,
     private http: HttpClient
   ) {}
 
@@ -54,19 +58,47 @@ export class WaitlistSignupPage {
     await loading.present();
 
     try {
-      // Create wallet through backend
-      const result = await this.walletService.createWaitlistWallet(
-        this.email, 
-        this.securePhrase
-      );
+      // Generate real mnemonic and derive wallets using CryptoService
+      const mnemonic = await this.cryptoService.generateMnemonic();
+      const wallets = await this.cryptoService.deriveWalletsFromMnemonic(mnemonic);
       
+      // Encrypt mnemonic with user passphrase
+      const encryptedMnemonic = await this.cryptoService.storeEncryptedMnemonic(mnemonic, this.securePhrase);
+      
+      // Store wallet addresses locally
+      await this.cryptoService.storeWalletAddresses(wallets.seiWallet.address, wallets.evmWallet.address);
+
+      // Call the backend waitlist signup endpoint with encrypted data
+      const response = await this.http.post<any>(`${environment.apiUrl}/wallet/waitlist-signup`, {
+        email: this.email,
+        passphrase: this.securePhrase,
+        encrypted_mnemonic: encryptedMnemonic,
+        salt: '', // Not used in simplified encryption
+        nonce: '', // Not used in simplified encryption
+        sei_address: wallets.seiWallet.address,
+        sei_public_key: wallets.seiWallet.publicKey,
+        eth_address: wallets.evmWallet.address,
+        eth_public_key: wallets.evmWallet.publicKey
+      }).toPromise();
+
       await loading.dismiss();
       this.isLoading = false;
+      
+      // Create wallet result for alert display
+      const result: WalletCreationResult = {
+        status: 'success',
+        sei_address: wallets.seiWallet.address,
+        eth_address: wallets.evmWallet.address,
+        waitlist_bonus: response.waitlist_bonus || 100,
+        message: 'Waitlist wallet created successfully'
+      };
       
       // Show success message with wallet details
       await this.showWalletCreatedAlert(result);
       
-      // Wait longer to ensure authentication state is fully set before navigation
+      // Use AuthService to authenticate with the wallet
+      await this.authService.authenticateWithWallet(this.email, this.securePhrase);
+      
       console.log('Waitlist signup successful, preparing for dashboard navigation');
       setTimeout(() => {
         console.log('Navigating to dashboard after successful wallet creation');
