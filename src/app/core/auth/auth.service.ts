@@ -4,7 +4,7 @@ import { catchError, tap, map, switchMap } from 'rxjs/operators';
 import { ApiService } from '../api-service.service';
 import { ErrorService } from '../error/error.service';
 import { TokenService } from '../token/token.service';
-import { CryptoService } from '../../shared/services/crypto.service';
+import { CryptoBrowserService } from '../../shared/services/crypto-browser.service';
 
 export interface User {
   id: string;
@@ -42,8 +42,10 @@ export interface AuthResponse {
 export interface WalletAuthRequest {
   email: string;
   passphrase: string;
-  walletAddress: string;
-  ethWalletAddress: string;
+  encryptedMnemonic: string;
+  seiWalletAddress: string;
+  evmWalletAddress: string;
+  signupMethod: string;
 }
 
 @Injectable({
@@ -60,7 +62,7 @@ export class AuthService {
     private apiService: ApiService,
     private errorService: ErrorService,
     private tokenService: TokenService,
-    private cryptoService: CryptoService
+    private cryptoService: CryptoBrowserService
   ) {
     this.loadUserFromStorage();
   }
@@ -109,30 +111,34 @@ export class AuthService {
         return;
       }
       
-      // Fallback: check localStorage for wallet addresses
-      const walletAddressesStr = localStorage.getItem('wallet_addresses');
-      if (walletAddressesStr && this.currentUserValue) {
-        try {
-          const walletAddresses = JSON.parse(walletAddressesStr);
-          const updatedUser = {
-            ...this.currentUserValue,
-            walletAddress: walletAddresses.sei_address,
-            ethWalletAddress: walletAddresses.eth_address
-          };
-          
-          console.log('Loaded wallet addresses from localStorage fallback:', {
-            sei: walletAddresses.sei_address,
-            eth: walletAddresses.eth_address
-          });
-          
-          // Update localStorage with the complete user data
-          localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-          this.currentUserSubject.next(updatedUser);
-          
-          // Try to migrate to secure storage
-          this.saveWalletMetadataToSecureStorage(updatedUser);
-        } catch (error) {
-          console.error('Failed to parse wallet addresses from localStorage:', error);
+      // Fallback: check localStorage for wallet addresses (multiple possible keys)
+      const walletKeys = ['wallet_addresses', 'user_wallet'];
+      for (const key of walletKeys) {
+        const walletAddressesStr = localStorage.getItem(key);
+        if (walletAddressesStr && this.currentUserValue) {
+          try {
+            const walletAddresses = JSON.parse(walletAddressesStr);
+            const updatedUser = {
+              ...this.currentUserValue,
+              walletAddress: walletAddresses.sei_address,
+              ethWalletAddress: walletAddresses.eth_address
+            };
+            
+            console.log(`Loaded wallet addresses from localStorage key '${key}':`, {
+              sei: walletAddresses.sei_address,
+              eth: walletAddresses.eth_address
+            });
+            
+            // Update localStorage with the complete user data
+            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            this.currentUserSubject.next(updatedUser);
+            
+            // Try to migrate to secure storage
+            this.saveWalletMetadataToSecureStorage(updatedUser);
+            return;
+          } catch (error) {
+            console.error(`Failed to parse wallet addresses from localStorage key '${key}':`, error);
+          }
         }
       }
     } catch (error) {
@@ -301,20 +307,144 @@ export class AuthService {
       );
   }
 
-  authenticateWithWallet(walletData: WalletAuthRequest): Observable<User> {
-    return this.apiService.post<AuthResponse>('auth/wallet', {
-      userId: walletData.email, // Using email as userId for wallet auth
-      walletAddress: walletData.walletAddress,
-      ethWalletAddress: walletData.ethWalletAddress,
-      signupMethod: 'wallet'
-    })
-      .pipe(
-        map(response => this.handleAuthResponse(response)),
-        catchError(error => {
-          this.errorService.handleError(error, 'wallet-auth-failed');
-          return throwError(() => error);
-        })
-      );
+  /**
+   * Authenticate with wallet (correct non-custodial flow)
+   */
+  async authenticateWithWallet(email: string, passphrase: string): Promise<Observable<User>> {
+    console.log('=== STARTING WALLET AUTHENTICATION (NON-CUSTODIAL) ===');
+    console.log('Email:', email);
+
+    try {
+      // Step 1: Generate mnemonic on frontend
+      console.log('Step 1: Generating recovery mnemonic...');
+      const mnemonic = await this.cryptoService.generateMnemonic();
+      console.log('Mnemonic generated successfully');
+
+      // Step 2: Derive wallets from mnemonic
+      console.log('Step 2: Deriving wallets from mnemonic...');
+      const wallets = await this.cryptoService.deriveWalletsFromMnemonic(mnemonic);
+      
+      console.log('Wallets derived:');
+      console.log('- SEI:', wallets.seiWallet.address);
+      console.log('- EVM:', wallets.evmWallet.address);
+
+      // Step 3: Encrypt and store mnemonic locally
+      console.log('Step 3: Encrypting and storing mnemonic...');
+      const encryptedMnemonic = await this.cryptoService.storeEncryptedMnemonic(mnemonic, passphrase);
+
+      // Step 4: Store wallet addresses locally
+      console.log('Step 4: Storing wallet addresses...');
+      await this.cryptoService.storeWalletAddresses(wallets.seiWallet.address, wallets.evmWallet.address);
+
+      // Step 5: Send to backend for profile creation/update
+      console.log('Step 5: Sending wallet data to backend...');
+      const walletAuthRequest = {
+        email: email,
+        passphrase: passphrase, // For backend hashing/verification
+        encryptedMnemonic: encryptedMnemonic,
+        seiWalletAddress: wallets.seiWallet.address,
+        evmWalletAddress: wallets.evmWallet.address,
+        signupMethod: 'wallet'
+      };
+
+      return this.apiService.post<AuthResponse>('auth/wallet', walletAuthRequest)
+        .pipe(
+          map(response => {
+            console.log('Backend response:', response);
+            // Handle authentication response with frontend-generated addresses
+            return this.handleWalletAuthResponse(response, wallets.seiWallet.address, wallets.evmWallet.address);
+          }),
+          catchError(error => {
+            this.errorService.handleError(error, 'wallet-auth-failed');
+            return throwError(() => error);
+          })
+        );
+
+    } catch (error) {
+      console.error('Wallet authentication error:', error);
+      return throwError(() => error);
+    }
+  }
+
+  /**
+   * Handle wallet authentication response
+   */
+  private handleWalletAuthResponse(response: AuthResponse, seiAddress: string, evmAddress: string): User {
+    console.log('=== HANDLING WALLET AUTH RESPONSE ===');
+    
+    // Store tokens
+    this.tokenService.setToken(response.token);
+    if (response.refreshToken) {
+      this.tokenService.setRefreshToken(response.refreshToken);
+    }
+
+    // Create user data with wallet addresses from frontend generation
+    const user: User = {
+      id: response.userId,
+      email: response.email,
+      username: response.name,
+      walletAddress: seiAddress,      // From frontend generation
+      ethWalletAddress: evmAddress,   // From frontend generation
+    };
+
+    console.log('User data with frontend-generated wallets:', user);
+
+    // Store user data
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    this.currentUserSubject.next(user);
+
+    // Save wallet metadata to secure storage
+    this.saveWalletMetadataToSecureStorage(user);
+
+    console.log('Wallet authentication handled successfully');
+    return user;
+  }
+
+  /**
+   * Recover wallet with passphrase
+   */
+  async recoverWallet(email: string, passphrase: string): Promise<Observable<User>> {
+    console.log('=== STARTING WALLET RECOVERY ===');
+    
+    try {
+      // Step 1: Get encrypted mnemonic from secure storage
+      const decryptedMnemonic = await this.cryptoService.getDecryptedMnemonic(passphrase);
+      
+      if (!decryptedMnemonic) {
+        throw new Error('Could not decrypt mnemonic with provided passphrase');
+      }
+
+      // Step 2: Re-derive wallets from recovered mnemonic
+      const wallets = await this.cryptoService.deriveWalletsFromMnemonic(decryptedMnemonic);
+
+      console.log('Wallets recovered:');
+      console.log('- SEI:', wallets.seiWallet.address);
+      console.log('- EVM:', wallets.evmWallet.address);
+
+      // Step 3: Verify with backend
+      const recoveryRequest = {
+        email: email,
+        passphrase: passphrase,
+        seiWalletAddress: wallets.seiWallet.address,
+        evmWalletAddress: wallets.evmWallet.address
+      };
+
+      return this.apiService.post<AuthResponse>('auth/wallet/recover', recoveryRequest)
+        .pipe(
+          map(response => {
+            // Handle response
+            return this.handleWalletAuthResponse(response, wallets.seiWallet.address, wallets.evmWallet.address);
+          }),
+          catchError(error => {
+            this.errorService.handleError(error, 'wallet-recovery-failed');
+            return throwError(() => error);
+          })
+        );
+
+    } catch (error) {
+      console.error('Wallet recovery error:', error);
+      return throwError(() => error);
+    }
   }
 
   private handleAuthResponse(response: AuthResponse): User {

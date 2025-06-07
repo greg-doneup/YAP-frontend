@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { LoadingController, AlertController, ToastController } from '@ionic/angular';
 import { WalletService } from '../../../shared/services/wallet.service';
-import { CryptoService } from '../../../shared/services/crypto.service';
+import { CryptoBrowserService } from '../../../shared/services/crypto-browser.service';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
@@ -27,7 +27,7 @@ export class WaitlistRecoveryPage implements OnInit {
     private alertCtrl: AlertController,
     private toastCtrl: ToastController,
     private walletService: WalletService,
-    private cryptoService: CryptoService,
+    private cryptoService: CryptoBrowserService,
     private authService: AuthService
   ) {
     this.setupForm = this.formBuilder.group({
@@ -153,47 +153,46 @@ export class WaitlistRecoveryPage implements OnInit {
       const mnemonic = await this.cryptoService.generateMnemonic();
       const wallets = await this.cryptoService.deriveWalletsFromMnemonic(mnemonic);
 
-      const walletData = {
-        mnemonic,
-        seiWallet: wallets.seiWallet,
-        evmWallet: wallets.evmWallet
-      };
+      // Step 5: Store encrypted mnemonic locally
+      const encryptedMnemonic = await this.cryptoService.storeEncryptedMnemonic(mnemonic, passphrase);
 
-      // Step 5: Encrypt the mnemonic for server storage
-      const encryptedData = await this.cryptoService.encryptMnemonic(mnemonic, passphrase);
+      // Step 6: Store wallet addresses locally
+      await this.cryptoService.storeWalletAddresses(wallets.seiWallet.address, wallets.evmWallet.address);
 
-      // Step 6: Complete setup on server with encrypted wallet data
+      // Step 7: Complete setup on server with encrypted wallet data
       await this.walletService.storeWalletData({
         email,
         passphrase,
-        encrypted_mnemonic: encryptedData.encryptedMnemonic,
-        salt: encryptedData.salt,
-        nonce: encryptedData.nonce,
+        encrypted_mnemonic: encryptedMnemonic,
+        salt: '', // Not used in simplified encryption
+        nonce: '', // Not used in simplified encryption
         sei_address: wallets.seiWallet.address,
         sei_public_key: wallets.seiWallet.publicKey,
         eth_address: wallets.evmWallet.address,
         eth_public_key: wallets.evmWallet.publicKey
       });
 
-      // Step 7: Store wallet data securely in local IndexedDB
+      // Step 8: Store wallet data securely
+      const walletData = {
+        mnemonic,
+        seiWallet: wallets.seiWallet,
+        evmWallet: wallets.evmWallet
+      };
       await this.cryptoService.storeWalletSecurely(email, walletData, passphrase);
 
-      // Step 8: Create initial secure backup
+      // Step 9: Create initial secure backup
       try {
         await this.cryptoService.createBackupWithRateLimit(email, passphrase);
         console.log('Initial backup created successfully');
       } catch (backupError) {
         console.warn('Failed to create initial backup:', backupError);
         // Don't fail the setup process if backup creation fails
-      }      // Step 9: Authenticate the user to enable dashboard access
+      }
+
+      // Step 10: Authenticate the user to enable dashboard access
       try {
         // Call the auth service to authenticate with the newly created wallet
-        const authenticatedUser = await this.authService.authenticateWithWallet({
-          email,
-          passphrase,
-          walletAddress: wallets.seiWallet.address,
-          ethWalletAddress: wallets.evmWallet.address
-        }).toPromise();
+        const authenticatedUser = await this.authService.authenticateWithWallet(email, passphrase);
         
         console.log('User authenticated successfully after wallet setup:', authenticatedUser);
 

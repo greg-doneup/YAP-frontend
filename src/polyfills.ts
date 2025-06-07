@@ -15,6 +15,12 @@
  */
 
 /***************************************************************************************************
+ * NODE.JS POLYFILLS FOR CRYPTO LIBRARIES
+ */
+
+// These polyfills are now handled in main.ts to ensure proper loading order
+
+/***************************************************************************************************
  * BROWSER POLYFILLS
  */
 

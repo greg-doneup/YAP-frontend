@@ -5,7 +5,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ProfileService } from '../../core/profile/profile.service';
 import { WalletService } from '../../services/wallet.service';
 import { LeaderboardService } from '../../core/leaderboard/leaderboard.service';
-import { CryptoService } from '../../shared/services/crypto.service';
+import { CryptoBrowserService } from '../../shared/services/crypto-browser.service';
 
 interface ProfileData {
   user: any;
@@ -64,7 +64,7 @@ export class ProfilePage implements OnInit {
     private profileService: ProfileService,
     private walletService: WalletService,
     private leaderboardService: LeaderboardService,
-    private cryptoService: CryptoService
+    private cryptoService: CryptoBrowserService
   ) { }
 
   ngOnInit() {

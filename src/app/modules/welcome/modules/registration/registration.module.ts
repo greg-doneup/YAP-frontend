@@ -11,7 +11,7 @@ import { StandardRegistrationPage } from './pages/standard-registration.page';
 import { WaitlistRegistrationPage } from './pages/waitlist-registration.page';
 import { RegistrationService } from './services/registration.service';
 import { RegistrationAuthService } from './services/registration-auth.service';
-import { CryptoService } from './services/crypto-mock.service';
+import { CryptoBrowserService } from '../../../../shared/services/crypto-browser.service';
 
 @NgModule({
   imports: [
@@ -29,8 +29,8 @@ import { CryptoService } from './services/crypto-mock.service';
   ],
   providers: [
     RegistrationService,
-    RegistrationAuthService,
-    CryptoService
+    RegistrationAuthService,  
+    CryptoBrowserService
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })

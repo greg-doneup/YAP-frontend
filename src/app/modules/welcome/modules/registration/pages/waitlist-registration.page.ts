@@ -152,7 +152,12 @@ export class WaitlistRegistrationPage implements OnInit {
       await alert.onDidDismiss();
       
       // Navigate to dashboard after successful retrieval
-      await this.authService.completeAuthentication(result, email);
+      const standardResult = {
+        ...result,
+        starting_points: result.waitlist_bonus || 100 // Waitlist users get bonus points
+      };
+      
+      await this.authService.completeAuthentication(standardResult, email);
       
       // Add backup authentication flag in localStorage
       localStorage.setItem('user_authenticated', 'true');

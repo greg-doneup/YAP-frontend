@@ -1,7 +1,12 @@
 import { Injectable } from '@angular/core';
+import * as CryptoJS from 'crypto-js';
+import { BehaviorSubject } from 'rxjs';
 
-// Simplified crypto service for development
-// In production, this will use proper crypto libraries
+// Import crypto libraries for proper wallet generation
+declare var require: any;
+const bip39 = require('bip39');
+const hdkey = require('hdkey');
+const secp256k1 = require('secp256k1');
 
 interface WalletData {
   mnemonic: string;
@@ -17,6 +22,13 @@ interface WalletData {
   };
 }
 
+interface SingleWalletData {
+  address: string;
+  privateKey: string;
+  publicKey: string;
+  derivationPath: string;
+}
+
 interface EncryptedData {
   encryptedMnemonic: string;
   salt: string;
@@ -28,6 +40,13 @@ interface EncryptedData {
 })
 export class CryptoService {
   private dbPromise: Promise<any>;
+  private isInitialized = new BehaviorSubject<boolean>(false);
+
+  // Wallet derivation paths
+  private readonly DERIVATION_PATHS = {
+    sei: "m/44'/118'/0'/0/0",
+    ethereum: "m/44'/60'/0'/0/0"
+  };
 
   constructor() {
     this.dbPromise = this.openDB();
@@ -105,34 +124,217 @@ export class CryptoService {
   }
 
   /**
-   * Generate a new 12-word mnemonic phrase
+   * Generate a new 12-word recovery mnemonic
    */
-  async generateMnemonic(): Promise<string> {
-    // For development, generate a simple mnemonic
-    // In production, this should use the bip39 library
-    const words = ['abandon', 'ability', 'able', 'about', 'above', 'absent', 'absorb', 'abstract', 'absurd', 'abuse', 'access', 'accident'];
-    return words.join(' ');
+  generateMnemonic(): string {
+    console.log('Generating new recovery mnemonic...');
+    const mnemonic = bip39.generateMnemonic(128); // 12 words
+    console.log('Mnemonic generated successfully');
+    return mnemonic;
   }
 
   /**
-   * Derive Sei and EVM wallets from a mnemonic
+   * Validate a recovery mnemonic
+   */
+  validateMnemonic(mnemonic: string): boolean {
+    return bip39.validateMnemonic(mnemonic);
+  }
+
+  /**
+   * Derive wallet from mnemonic for specified blockchain
+   */
+  deriveWalletFromMnemonic(mnemonic: string, blockchain: 'sei' | 'ethereum'): SingleWalletData {
+    console.log(`Deriving ${blockchain} wallet from mnemonic...`);
+    
+    if (!this.validateMnemonic(mnemonic)) {
+      throw new Error('Invalid mnemonic phrase');
+    }
+
+    const seed = bip39.mnemonicToSeedSync(mnemonic);
+    const root = hdkey.fromMasterSeed(seed);
+    const derivationPath = this.DERIVATION_PATHS[blockchain];
+    const child = root.derive(derivationPath);
+
+    const privateKey = child.privateKey;
+    const publicKey = secp256k1.publicKeyCreate(privateKey, true);
+
+    let address: string;
+    
+    if (blockchain === 'sei') {
+      // SEI address generation (bech32 with 'sei' prefix)
+      address = this.generateSeiAddress(publicKey);
+    } else {
+      // Ethereum address generation
+      address = this.generateEthereumAddress(publicKey);
+    }
+
+    const walletData: SingleWalletData = {
+      address,
+      privateKey: privateKey.toString('hex'),
+      publicKey: publicKey.toString('hex'),
+      derivationPath
+    };
+
+    console.log(`${blockchain} wallet derived:`, { address, derivationPath });
+    return walletData;
+  }
+
+  /**
+   * Generate SEI address from public key
+   */
+  private generateSeiAddress(publicKey: Buffer): string {
+    const crypto = require('crypto');
+    const bech32 = require('bech32');
+    
+    // Hash the public key
+    const hash = crypto.createHash('sha256').update(publicKey).digest();
+    const ripemd = crypto.createHash('ripemd160').update(hash).digest();
+    
+    // Convert to bech32 with 'sei' prefix
+    const words = bech32.toWords(ripemd);
+    const address = bech32.encode('sei', words);
+    
+    return address;
+  }
+
+  /**
+   * Generate Ethereum address from public key
+   */
+  private generateEthereumAddress(publicKey: Buffer): string {
+    const crypto = require('crypto');
+    
+    // Remove the first byte (compression flag) for Ethereum
+    const uncompressedKey = secp256k1.publicKeyConvert(publicKey, false).slice(1);
+    
+    // Hash with Keccak-256
+    const hash = crypto.createHash('sha3-256').update(uncompressedKey).digest();
+    
+    // Take last 20 bytes and add 0x prefix
+    const address = '0x' + hash.slice(-20).toString('hex');
+    
+    return address;
+  }
+
+  /**
+   * Securely store wallet addresses (addresses only, not private keys)
+   */
+  async storeWalletAddresses(seiAddress: string, evmAddress: string): Promise<void> {
+    console.log('Storing wallet addresses in secure storage...');
+    
+    const walletMetadata = {
+      seiAddress,
+      evmAddress,
+      timestamp: Date.now()
+    };
+
+    const db = await this.dbPromise;
+    await db.put('walletMetadata', walletMetadata, 'walletAddresses');
+    console.log('Wallet addresses stored successfully');
+  }
+
+  /**
+   * Retrieve wallet addresses from secure storage
+   */
+  async getWalletAddresses(): Promise<{seiAddress: string, evmAddress: string} | null> {
+    console.log('Retrieving wallet addresses from secure storage...');
+    
+    try {
+      const db = await this.dbPromise;
+      const walletMetadata = await db.get('walletMetadata', 'walletAddresses');
+      if (walletMetadata) {
+        console.log('Wallet addresses retrieved successfully');
+        return {
+          seiAddress: walletMetadata.seiAddress,
+          evmAddress: walletMetadata.evmAddress
+        };
+      }
+    } catch (error) {
+      console.error('Error retrieving wallet addresses:', error);
+    }
+    
+    return null;
+  }
+
+  /**
+   * Store encrypted mnemonic with user passphrase
+   */
+  async storeEncryptedMnemonic(mnemonic: string, passphrase: string): Promise<string> {
+    console.log('Encrypting and storing recovery mnemonic...');
+    
+    // Encrypt mnemonic with user's passphrase
+    const encryptedMnemonic = this.encryptData(mnemonic, passphrase);
+    
+    // Store encrypted mnemonic
+    const db = await this.dbPromise;
+    await db.put('encryptedWallets', {
+      data: encryptedMnemonic,
+      timestamp: Date.now()
+    }, 'encryptedMnemonic');
+
+    console.log('Recovery mnemonic encrypted and stored successfully');
+    return encryptedMnemonic;
+  }
+
+  /**
+   * Retrieve and decrypt mnemonic with user passphrase
+   */
+  async getDecryptedMnemonic(passphrase: string): Promise<string | null> {
+    console.log('Retrieving and decrypting recovery mnemonic...');
+    
+    try {
+      const db = await this.dbPromise;
+      const storedData = await db.get('encryptedWallets', 'encryptedMnemonic');
+      if (storedData && storedData.data) {
+        const decryptedMnemonic = this.decryptData(storedData.data, passphrase);
+        console.log('Recovery mnemonic decrypted successfully');
+        return decryptedMnemonic;
+      }
+    } catch (error) {
+      console.error('Error decrypting mnemonic:', error);
+    }
+    
+    return null;
+  }
+
+  /**
+   * Encrypt data with passphrase using CryptoJS
+   */
+  private encryptData(data: string, passphrase: string): string {
+    return CryptoJS.AES.encrypt(data, passphrase).toString();
+  }
+
+  /**
+   * Decrypt data with passphrase using CryptoJS
+   */
+  private decryptData(encryptedData: string, passphrase: string): string {
+    const bytes = CryptoJS.AES.decrypt(encryptedData, passphrase);
+    const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+    if (!decryptedData) {
+      throw new Error('Invalid passphrase or corrupted data');
+    }
+    return decryptedData;
+  }
+
+  /**
+   * Derive Sei and EVM wallets from a mnemonic (compatibility method)
    */
   async deriveWalletsFromMnemonic(mnemonic: string): Promise<{
     seiWallet: { address: string; publicKey: string; privateKey: string };
     evmWallet: { address: string; publicKey: string; privateKey: string };
   }> {
-    // For now, return mock wallets - this will be implemented with actual crypto libraries
-    // when the full integration is tested
+    const seiWallet = this.deriveWalletFromMnemonic(mnemonic, 'sei');
+    const evmWallet = this.deriveWalletFromMnemonic(mnemonic, 'ethereum');
+    
     return {
       seiWallet: {
-        address: 'sei1mock' + Math.random().toString(36).substring(2, 15),
-        publicKey: '0x' + Math.random().toString(36).substring(2, 15),
-        privateKey: '0x' + Math.random().toString(36).substring(2, 15)
+        address: seiWallet.address,
+        publicKey: seiWallet.publicKey,
+        privateKey: seiWallet.privateKey
       },
       evmWallet: {
-        address: '0x' + Math.random().toString(36).substring(2, 15),
-        publicKey: '0x' + Math.random().toString(36).substring(2, 15),
-        privateKey: '0x' + Math.random().toString(36).substring(2, 15)
+        address: evmWallet.address,
+        publicKey: evmWallet.publicKey,
+        privateKey: evmWallet.privateKey
       }
     };
   }

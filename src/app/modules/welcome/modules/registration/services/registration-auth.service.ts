@@ -2,6 +2,7 @@
 
 import { Injectable } from '@angular/core';
 import { WalletCreationResult } from '../../../../../services/wallet.service';
+import { StandardWalletCreationResult } from './registration.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../../../core/auth/auth.service';
 import { TokenService } from '../../../../../core/token/token.service';
@@ -20,9 +21,43 @@ export class RegistrationAuthService {
   /**
    * Complete authentication after wallet creation/retrieval
    */
-  async completeAuthentication(result: WalletCreationResult, email: string): Promise<void> {
+  async completeAuthentication(result: StandardWalletCreationResult, email: string): Promise<void> {
     try {
-      // Try to authenticate with the live backend
+      // Check if we already have tokens from the registration response
+      if (result.token && result.userId) {
+        console.log('Using tokens from registration response');
+        
+        // Use tokens from the registration response
+        this.tokenService.setToken(result.token);
+        if (result.refreshToken) {
+          this.tokenService.setRefreshToken(result.refreshToken);
+        }
+        
+        // Store user information with wallet addresses
+        const user = {
+          id: result.userId,
+          email: email,
+          walletAddress: result.sei_address,
+          ethWalletAddress: result.eth_address
+        };
+        
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('user_authenticated', 'true');
+        localStorage.setItem('user_wallet', JSON.stringify({
+          sei_address: result.sei_address,
+          eth_address: result.eth_address
+        }));
+        
+        console.log('Stored user with wallet addresses:', user);
+        
+        // Force refresh the AuthService to load the wallet addresses
+        this.authService.loadUserFromStorage();
+        
+        console.log('Authentication completed with registration tokens', result);
+        return;
+      }
+      
+      // Fallback: Try to authenticate with the live backend
       const authResponse = await this.authenticateWithBackend(email, result.sei_address, result.eth_address);
       
       if (authResponse && authResponse.token) {
@@ -45,7 +80,9 @@ export class RegistrationAuthService {
           eth_address: result.eth_address
         }));
         
-        // Force refresh the AuthService
+        console.log('Stored user with wallet addresses (backend auth):', user);
+        
+        // Force refresh the AuthService to load the wallet addresses
         this.authService.loadUserFromStorage();
         
         console.log('Authentication completed with live backend', result);
@@ -63,7 +100,7 @@ export class RegistrationAuthService {
   /**
    * Fallback mock authentication for development
    */
-  private completeMockAuthentication(result: WalletCreationResult, email: string): void {
+  private completeMockAuthentication(result: StandardWalletCreationResult, email: string): void {
     // Store auth data in localStorage/session
     localStorage.setItem('user_authenticated', 'true');
     localStorage.setItem('user_wallet', JSON.stringify({
@@ -78,7 +115,7 @@ export class RegistrationAuthService {
     this.tokenService.setToken(mockToken);
     this.tokenService.setRefreshToken('mock-refresh-token');
     
-    // Store user information in the auth service
+    // Store user information in the auth service with wallet addresses
     const mockUserId = `user_${Math.random().toString(36).substring(2, 15)}`;
     const user = {
       id: mockUserId,
@@ -90,10 +127,10 @@ export class RegistrationAuthService {
     // Store user in localStorage and update the AuthService
     localStorage.setItem('currentUser', JSON.stringify(user));
     
+    console.log('Mock authentication completed with wallet addresses:', user);
+    
     // Force refresh the AuthService by calling loadUserFromStorage
     this.authService.loadUserFromStorage();
-    
-    console.log('Mock authentication completed', result);
   }
 
   /**
