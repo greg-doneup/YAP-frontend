@@ -73,6 +73,7 @@
     "moment": "^2.29.4",
     "moment-timezone": "^0.5.43",
     "ngx-stripe": "17.0.0",
+    "node-fetch": "^3.3.2",
     "os-browserify": "^0.3.0",
     "path-browserify": "^1.0.1",
     "process": "^0.11.10",

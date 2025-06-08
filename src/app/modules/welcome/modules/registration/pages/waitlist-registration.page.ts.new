@@ -13,9 +13,11 @@ import { RegistrationAuthService } from '../services/registration-auth.service';
 export class WaitlistRegistrationPage {
   email: string = '';
   securePhrase: string = '';
+  name: string = '';
+  selectedLanguage: string = 'spanish';
   isLoading: boolean = false;
   
-  // Database lookup state - auto-filled from database
+  // Database lookup state
   databaseUserData: WaitlistUserData | null = null;
   emailCheckLoading: boolean = false;
   emailChecked: boolean = false;
@@ -59,6 +61,8 @@ export class WaitlistRegistrationPage {
       
       if (this.databaseUserData) {
         this.userDataFound = true;
+        this.name = this.databaseUserData.name; // Pre-fill name from database
+        this.selectedLanguage = this.databaseUserData.language_to_learn; // Pre-fill language
         console.log('Database user detected:', this.databaseUserData);
       } else {
         this.userDataFound = false;
@@ -77,8 +81,8 @@ export class WaitlistRegistrationPage {
   }
 
   /** 
-   * Unified wallet creation flow - uses same endpoint as standard registration
-   * Database lookup provides name, language_to_learn, and userId automatically
+   * Unified wallet creation flow
+   * Uses the same endpoint as standard registration
    */
   async createWallet() {
     if (!this.isFormValid()) {
@@ -94,12 +98,13 @@ export class WaitlistRegistrationPage {
     this.isLoading = true;
 
     try {
-      // Use the unified creation method - it will pull name/language from database automatically
+      // Always call the unified creation method
+      // It will automatically detect and handle database user conversion
       const result = await this.registrationService.createWalletWithConversion(
         this.email, 
         this.securePhrase,
-        this.databaseUserData?.name, // Auto-filled from database
-        this.databaseUserData?.language_to_learn // Auto-filled from database
+        this.name, // For database users, this gets overridden with existing data
+        this.selectedLanguage // For database users, this gets overridden with existing data
       );
 
       if (result.status === 'success') {
@@ -136,7 +141,7 @@ export class WaitlistRegistrationPage {
     }
   }
 
-  /** Form validation - only email and passphrase required */
+  /** Form validation */
   isFormValid(): boolean {
     if (!this.email || !this.securePhrase) {
       return false;
@@ -148,6 +153,13 @@ export class WaitlistRegistrationPage {
     
     if (this.securePhrase.length < 8) {
       return false;
+    }
+    
+    // For database users, name and language are pre-filled from database data
+    if (!this.userDataFound) {
+      if (!this.name || !this.selectedLanguage) {
+        return false;
+      }
     }
     
     return true;
@@ -174,6 +186,8 @@ export class WaitlistRegistrationPage {
     this.emailChecked = false;
     this.userDataFound = false;
     this.databaseUserData = null;
+    this.name = ''; // Clear name when email changes
+    this.selectedLanguage = 'spanish'; // Reset to default
   }
 
   /** Handle form submission - alias for createWallet */
@@ -183,54 +197,15 @@ export class WaitlistRegistrationPage {
 
   /** Handle secure phrase input events */
   onSecurePhraseInput(event: any) {
+    // This method can be used for real-time validation feedback
+    // For now, just update the model value (which ngModel already handles)
     const value = event.target.value;
     this.securePhrase = value;
-  }
-
-  /** Get passphrase strength indicator */
-  getPassphraseStrength(): { score: number; feedback: string; color: string } {
-    if (!this.securePhrase) {
-      return { score: 0, feedback: '', color: 'medium' };
-    }
-
-    let score = 0;
-    let feedback = [];
-
-    // Length check
-    if (this.securePhrase.length >= 8) score += 1;
-    if (this.securePhrase.length >= 12) score += 1;
-    if (this.securePhrase.length >= 16) score += 1;
-
-    // Character variety checks
-    if (/[a-z]/.test(this.securePhrase)) score += 1;
-    if (/[A-Z]/.test(this.securePhrase)) score += 1;
-    if (/[0-9]/.test(this.securePhrase)) score += 1;
-    if (/[^A-Za-z0-9]/.test(this.securePhrase)) score += 1;
-
-    // Generate feedback
-    if (this.securePhrase.length < 8) feedback.push('Use at least 8 characters');
-    if (!/[a-z]/.test(this.securePhrase)) feedback.push('Add lowercase letters');
-    if (!/[A-Z]/.test(this.securePhrase)) feedback.push('Add uppercase letters');
-    if (!/[0-9]/.test(this.securePhrase)) feedback.push('Add numbers');
-    if (!/[^A-Za-z0-9]/.test(this.securePhrase)) feedback.push('Add symbols');
-
-    let color = 'danger';
-    let strengthText = 'Weak';
-
-    if (score >= 4) {
-      color = 'warning';
-      strengthText = 'Medium';
-    }
-    if (score >= 6) {
-      color = 'success';
-      strengthText = 'Strong';
-    }
-
-    return {
-      score: Math.min(score, 7),
-      feedback: feedback.length > 0 ? feedback.join(', ') : `${strengthText} passphrase`,
-      color
-    };
+    
+    // You could add real-time validation here, such as:
+    // - Check password strength
+    // - Show validation messages
+    // - Update UI feedback
   }
 
   /** Get display text for the submit button */
@@ -241,11 +216,19 @@ export class WaitlistRegistrationPage {
     return this.userDataFound ? 'Convert Account' : 'Create Wallet';
   }
 
-  /** Get user info display text */
-  getUserInfoText(): string {
-    if (this.userDataFound && this.databaseUserData) {
-      return `Welcome back, ${this.databaseUserData.name}! We'll use your saved information (${this.databaseUserData.language_to_learn}).`;
+  /** Get helper text for name field */
+  getNameHelperText(): string {
+    if (this.userDataFound) {
+      return `Welcome back, ${this.name}! We'll use your name from our database.`;
     }
-    return '';
+    return 'Enter your full name';
+  }
+
+  /** Get helper text for language field */
+  getLanguageHelperText(): string {
+    if (this.userDataFound) {
+      return `We'll continue with ${this.selectedLanguage} as found in our database.`;
+    }
+    return 'Choose the language you want to learn';
   }
 }

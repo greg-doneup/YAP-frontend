@@ -22,10 +22,16 @@ export class RegistrationAuthService {
    * Complete authentication after wallet creation/retrieval
    */
   async completeAuthentication(result: StandardWalletCreationResult, email: string): Promise<void> {
+    console.log('🔍 [DEBUG] completeAuthentication called with:');
+    console.log('  result:', result);
+    console.log('  email:', email);
+    console.log('  result.token:', result.token);
+    console.log('  result.userId:', result.userId);
+    
     try {
       // Check if we already have tokens from the registration response
-      if (result.token && result.userId) {
-        console.log('Using tokens from registration response');
+      if (result.token) {
+        console.log('✅ Using tokens from registration response');
         
         // Use tokens from the registration response
         this.tokenService.setToken(result.token);
@@ -35,7 +41,7 @@ export class RegistrationAuthService {
         
         // Store user information with wallet addresses
         const user = {
-          id: result.userId,
+          id: result.userId || `user_${Math.random().toString(36).substring(2, 15)}`,
           email: email,
           walletAddress: result.sei_address,
           ethWalletAddress: result.eth_address
@@ -56,6 +62,10 @@ export class RegistrationAuthService {
         console.log('Authentication completed with registration tokens', result);
         return;
       }
+      
+      console.log('❌ No token in result, attempting backend authentication');
+      console.log('  - result.token exists:', !!result.token);
+      console.log('  - result.userId exists:', !!result.userId);
       
       // Fallback: Try to authenticate with the live backend
       const authResponse = await this.authenticateWithBackend(email, result.sei_address, result.eth_address);

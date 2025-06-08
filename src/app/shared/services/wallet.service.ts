@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 interface WaitlistSignupRequest {
@@ -44,7 +45,7 @@ export class WalletService {
    */
   async checkUserExists(email: string): Promise<boolean> {
     try {
-      const response = await this.http.get<UserProfile>(`${this.baseUrl}/wallet/email/${email}`).toPromise();
+      const response = await firstValueFrom(this.http.get<UserProfile>(`${this.baseUrl}/wallet/email/${email}`));
       return !!response;
     } catch (error: any) {
       if (error.status === 404) {
@@ -63,7 +64,7 @@ export class WalletService {
     nonce: string;
   } | null> {
     try {
-      const response = await this.http.get<UserProfile>(`${this.baseUrl}/wallet/email/${email}`).toPromise();
+      const response = await firstValueFrom(this.http.get<UserProfile>(`${this.baseUrl}/wallet/email/${email}`));
       
       if (response && response.encrypted_mnemonic && response.salt && response.nonce) {
         return {
@@ -87,7 +88,7 @@ export class WalletService {
    */
   async storeWalletData(request: WaitlistSignupRequest): Promise<any> {
     try {
-      const response = await this.http.post(`${this.baseUrl}/wallet/waitlist-signup`, request).toPromise();
+      const response = await firstValueFrom(this.http.post(`${this.baseUrl}/wallet/waitlist-signup`, request));
       return response;
     } catch (error) {
       console.error('Failed to store wallet data:', error);
@@ -111,7 +112,7 @@ export class WalletService {
     waitlist_bonus?: number;
   }> {
     try {
-      const response = await this.http.post<{
+      const response = await firstValueFrom(this.http.post<{
         success: boolean;
         encrypted_wallet_data: {
           encrypted_mnemonic: string;
@@ -125,7 +126,7 @@ export class WalletService {
       }>(`${this.baseUrl}/wallet/recover`, {
         email,
         passphrase
-      }).toPromise();
+      }));
       
       return response!;
     } catch (error: any) {
@@ -158,7 +159,7 @@ export class WalletService {
     user_id: string;
   }> {
     try {
-      const response = await this.http.post<{
+      const response = await firstValueFrom(this.http.post<{
         success: boolean;
         message: string;
         user_id: string;
@@ -166,7 +167,7 @@ export class WalletService {
         email,
         passphrase,
         encrypted_wallet_data
-      }).toPromise();
+      }));
       
       return response!;
     } catch (error: any) {
@@ -182,13 +183,13 @@ export class WalletService {
    */
   async registerWallet(email: string, passphrase: string, encrypted_mnemonic: string, salt: string, nonce: string): Promise<any> {
     try {
-      const response = await this.http.post(`${this.baseUrl}/wallet/register`, {
+      const response = await firstValueFrom(this.http.post(`${this.baseUrl}/wallet/register`, {
         email,
         passphrase,
         encrypted_mnemonic,
         salt,
         nonce
-      }).toPromise();
+      }));
       
       return response;
     } catch (error) {
@@ -202,7 +203,7 @@ export class WalletService {
    */
   async getUserProfile(email: string): Promise<UserProfile | null> {
     try {
-      const response = await this.http.get<UserProfile>(`${this.baseUrl}/wallet/email/${email}`).toPromise();
+      const response = await firstValueFrom(this.http.get<UserProfile>(`${this.baseUrl}/wallet/email/${email}`));
       return response!;
     } catch (error: any) {
       if (error.status === 404) {
@@ -217,7 +218,7 @@ export class WalletService {
    */
   async healthCheck(): Promise<{ status: string }> {
     try {
-      const response = await this.http.get<{ status: string }>(`${this.baseUrl}/health`).toPromise();
+      const response = await firstValueFrom(this.http.get<{ status: string }>(`${this.baseUrl}/health`));
       return response!;
     } catch (error) {
       console.error('Health check failed:', error);

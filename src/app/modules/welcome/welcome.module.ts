@@ -11,8 +11,6 @@ import { WelcomePageRoutingModule } from './welcome-routing.module';
 import { WelcomePage } from './welcome.page';
 import { CarouselPage } from './pages/carousel.page';
 import { IntroPage } from './pages/intro.page';
-import { WaitlistSignupPage } from './pages/waitlist-signup.page';
-import { WaitlistRecoveryPage } from './pages/waitlist-recovery.page';
 import { MicPermissionComponent } from './components/mic-permissio/mic-permission.component';
 
 @NgModule({
@@ -29,8 +27,6 @@ import { MicPermissionComponent } from './components/mic-permissio/mic-permissio
     WelcomePage,
     CarouselPage,
     IntroPage,
-    WaitlistSignupPage,
-    WaitlistRecoveryPage,
     MicPermissionComponent
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA]

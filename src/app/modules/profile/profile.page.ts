@@ -6,6 +6,7 @@ import { ProfileService } from '../../core/profile/profile.service';
 import { WalletService } from '../../services/wallet.service';
 import { LeaderboardService } from '../../core/leaderboard/leaderboard.service';
 import { CryptoBrowserService } from '../../shared/services/crypto-browser.service';
+import { firstValueFrom } from 'rxjs';
 
 interface ProfileData {
   user: any;
@@ -143,7 +144,7 @@ export class ProfilePage implements OnInit {
       // Load profile data
       try {
         if (currentUser.walletAddress) {
-          const profile = await this.profileService.getUserProfile(currentUser.walletAddress).toPromise();
+          const profile = await firstValueFrom(this.profileService.getUserProfile(currentUser.walletAddress));
           console.log('Profile data loaded:', profile);
           this.profileData.profile = profile;
         }
@@ -165,7 +166,7 @@ export class ProfilePage implements OnInit {
       // Load leaderboard rank
       try {
         if (currentUser.walletAddress) {
-          const rankData = await this.leaderboardService.getUserRank(currentUser.walletAddress).toPromise();
+          const rankData = await firstValueFrom(this.leaderboardService.getUserRank(currentUser.walletAddress));
           console.log('User rank loaded:', rankData);
           this.profileData.stats.userRank = rankData?.rank || null;
         }
@@ -218,7 +219,7 @@ export class ProfilePage implements OnInit {
         username: this.editForm.username
       };
 
-      await this.profileService.updateUserProfile(this.profileData.user.walletAddress, updateData).toPromise();
+      await firstValueFrom(this.profileService.updateUserProfile(this.profileData.user.walletAddress, updateData));
       
       // Update local data
       if (this.profileData.profile) {

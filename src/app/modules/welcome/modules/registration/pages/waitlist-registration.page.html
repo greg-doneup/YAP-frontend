@@ -5,7 +5,7 @@
         <ion-icon name="chevron-back"></ion-icon>
       </ion-button>
     </ion-buttons>
-    <ion-title>Waitlist Access</ion-title>
+    <ion-title>Account Registration</ion-title>
   </ion-toolbar>
 </ion-header>
 
@@ -16,102 +16,77 @@
       <div class="logo-container">
         <img src="assets/logo/YAP-LOGO.png" alt="YAP Logo" class="logo">
       </div>
-      <h1>Welcome Back!</h1>
-      <p class="subtitle">Access your waitlisted YAP account with special rewards</p>
+      <h1>Create Your Account</h1>
+      <p class="subtitle">Enter your email and create a secure passphrase</p>
     </div>
 
-    <!-- Security Audit Banner (conditional) -->
-    <div *ngIf="securityAudit" class="security-banner" [ngClass]="getSecurityAuditStatusColor()">
-      <div class="security-icon">
-        <ion-icon *ngIf="securityAudit.status === 'good'" name="shield-checkmark"></ion-icon>
-        <ion-icon *ngIf="securityAudit.status === 'warning'" name="shield-half"></ion-icon>
-        <ion-icon *ngIf="securityAudit.status === 'critical'" name="shield-alert"></ion-icon>
-      </div>
-      <div class="security-info">
-        <h4>Security Audit: {{ securityAudit.status | titlecase }}</h4>
-        <p>{{ securityAudit.message }}</p>
+    <!-- User Info Display (when database user found) -->
+    <div *ngIf="userDataFound && databaseUserData" class="user-info-banner">
+      <div class="user-info-content">
+        <ion-icon name="person-circle" class="user-icon"></ion-icon>
+        <div class="user-details">
+          <h4>Welcome back, {{ databaseUserData.name }}!</h4>
+          <p>We found your information for {{ databaseUserData.language_to_learn }}. Continue to convert your account.</p>
+        </div>
       </div>
     </div>
 
     <!-- Form Section -->
-    <form [formGroup]="setupForm" (ngSubmit)="onSubmit()" class="waitlist-form">
+    <form (ngSubmit)="onSubmit()" class="registration-form">
       <!-- Email Field -->
       <div class="form-group">
         <ion-item lines="none" class="custom-input">
-          <ion-label position="stacked">Waitlist Email</ion-label>
+          <ion-label position="stacked">Email Address</ion-label>
           <ion-input 
             type="email" 
-            formControlName="email"
-            placeholder="Enter your waitlist email"
+            [(ngModel)]="email"
+            name="email"
+            placeholder="Enter your email address"
+            (blur)="onEmailBlur()"
+            (ionInput)="onEmailChange()"
             [disabled]="isLoading">
           </ion-input>
+          <ion-spinner *ngIf="emailCheckLoading" slot="end" name="crescent"></ion-spinner>
         </ion-item>
-        <div *ngIf="setupForm.get('email')?.touched && setupForm.get('email')?.invalid" class="error-message">
-          <span *ngIf="setupForm.get('email')?.errors?.['required']">Email is required</span>
-          <span *ngIf="setupForm.get('email')?.errors?.['email']">Please enter a valid email address</span>
+        <div *ngIf="email && !isValidEmail(email)" class="error-message">
+          <span>Please enter a valid email address</span>
         </div>
       </div>
 
       <!-- Passphrase Field -->
       <div class="form-group">
         <ion-item lines="none" class="custom-input">
-          <ion-label position="stacked">Passphrase</ion-label>
+          <ion-label position="stacked">Secure Passphrase</ion-label>
           <ion-input 
-            [type]="hidePassphrase ? 'password' : 'text'" 
-            formControlName="passphrase"
-            placeholder="Enter your secure passphrase"
+            type="password"
+            [(ngModel)]="securePhrase"
+            name="securePhrase"
+            placeholder="Create a secure passphrase"
+            (ionInput)="onSecurePhraseInput($event)"
             [disabled]="isLoading">
           </ion-input>
-          <ion-button 
-            slot="end" 
-            fill="clear"
-            size="small"
-            (click)="togglePassphraseVisibility()">
-            <ion-icon [name]="hidePassphrase ? 'eye' : 'eye-off'"></ion-icon>
-          </ion-button>
         </ion-item>
 
-        <!-- Passphrase Validation Feedback -->
-        <div *ngIf="passphraseValidation && setupForm.get('passphrase')?.value" class="passphrase-feedback">
+        <!-- Passphrase Strength Indicator -->
+        <div *ngIf="securePhrase" class="passphrase-feedback">
           <div class="strength-meter">
-            <div class="strength-bar" [ngClass]="getStrengthColor()"></div>
+            <div class="strength-bar" 
+                 [style.width.%]="(getPassphraseStrength().score / 7) * 100"
+                 [ngClass]="'strength-' + getPassphraseStrength().color">
+            </div>
           </div>
-          <div class="strength-text" [ngClass]="getStrengthColor()">
-            <span>{{ passphraseValidation.strength | titlecase }}</span>
+          <div class="strength-text" [ngClass]="'text-' + getPassphraseStrength().color">
+            <span>{{ getPassphraseStrength().feedback }}</span>
             <ion-icon 
-              [name]="passphraseValidation.strength === 'strong' ? 'checkmark-circle' : 'alert-circle'"
-              [ngClass]="getStrengthColor()">
+              [name]="getPassphraseStrength().color === 'success' ? 'checkmark-circle' : 
+                       getPassphraseStrength().color === 'warning' ? 'alert-circle' : 'close-circle'"
+              [ngClass]="'icon-' + getPassphraseStrength().color">
             </ion-icon>
           </div>
-          <p class="strength-message">{{ passphraseValidation.message }}</p>
         </div>
 
-        <div *ngIf="setupForm.get('passphrase')?.touched && setupForm.get('passphrase')?.invalid" class="error-message">
-          <span *ngIf="setupForm.get('passphrase')?.errors?.['required']">Passphrase is required</span>
-          <span *ngIf="setupForm.get('passphrase')?.errors?.['minlength']">Passphrase must be at least 12 characters</span>
-        </div>
-      </div>
-
-      <!-- Recovery Options (Conditional) -->
-      <div class="recovery-section">
-        <div class="recovery-header" (click)="toggleRecoveryOptions()">
-          <h3>Trouble signing in?</h3>
-          <ion-icon [name]="showRecoveryOptions ? 'chevron-up' : 'chevron-down'"></ion-icon>
-        </div>
-        
-        <div *ngIf="showRecoveryOptions" class="recovery-options">
-          <p class="recovery-info">
-            If you forgot your passphrase, you can recover using your emergency recovery phrase.
-          </p>
-          
-          <ion-item lines="none" class="custom-input">
-            <ion-label position="stacked">Recovery Phrase (Optional)</ion-label>
-            <ion-textarea 
-              formControlName="recoveryPhrase"
-              placeholder="Enter your recovery phrase if you have one"
-              [disabled]="isLoading">
-            </ion-textarea>
-          </ion-item>
+        <div *ngIf="securePhrase && securePhrase.length < 8" class="error-message">
+          <span>Passphrase must be at least 8 characters</span>
         </div>
       </div>
 
@@ -119,16 +94,17 @@
       <ion-button 
         expand="block" 
         type="submit" 
-        [disabled]="setupForm.invalid || isLoading"
+        [disabled]="!isFormValid() || isLoading"
         class="submit-button">
-        <span>Access My Account</span>
-        <ion-icon name="log-in-outline" slot="end"></ion-icon>
+        <ion-spinner *ngIf="isLoading" name="crescent" slot="start"></ion-spinner>
+        <span>{{ getSubmitButtonText() }}</span>
+        <ion-icon name="arrow-forward" slot="end" *ngIf="!isLoading"></ion-icon>
       </ion-button>
 
       <!-- Standard Registration Option -->
       <div class="alternative-option">
-        <p>Not on the waitlist?</p>
-        <a (click)="navigateToStandardRegistration()">Create a standard account</a>
+        <p>Looking for a different option?</p>
+        <a (click)="navigateToStandardRegistration()">Standard Registration</a>
       </div>
     </form>
 
