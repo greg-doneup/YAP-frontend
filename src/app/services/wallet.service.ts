@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { generateMnemonic, validateMnemonic, mnemonicToSeedSync } from 'bip39';
 import { ethers } from 'ethers';
 import * as CryptoJS from 'crypto-js';
@@ -154,10 +154,10 @@ export class WalletService {
       passphrase: passphrase
     };
 
-    return this.http.post<WalletCreationResult>(
+    return await firstValueFrom(this.http.post<WalletCreationResult>(
       `${this.apiUrl}/wallet/waitlist-signup`, 
       payload
-    ).toPromise() as Promise<WalletCreationResult>;
+    ));
   }
 
   /**
@@ -176,7 +176,7 @@ export class WalletService {
       nonce: encryptedData.nonce
     };
 
-    return this.http.post(`${this.apiUrl}/wallet/register`, payload).toPromise();
+    return firstValueFrom(this.http.post(`${this.apiUrl}/wallet/register`, payload));
   }
 
   /**
@@ -188,9 +188,9 @@ export class WalletService {
       passphrase: passphrase
     };
 
-    return this.http.post<{mnemonic: string}>(
+    return await firstValueFrom(this.http.post<{mnemonic: string}>(
       `${this.apiUrl}/wallet/recover`, 
       payload
-    ).toPromise() as Promise<{mnemonic: string}>;
+    ));
   }
 }

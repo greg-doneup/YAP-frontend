@@ -108,7 +108,7 @@ h1 {
   }
 }
 
-.waitlist-form {
+.registration-form {
   margin-bottom: 2rem;
   
   .form-group {
@@ -158,29 +158,27 @@ h1 {
     padding: 0 12px;
     
     .strength-meter {
-      height: 4px;
-      background: rgba(255, 255, 255, 0.5);
+      height: 6px;
+      background: rgba(255, 255, 255, 0.3);
       border-radius: 4px;
       overflow: hidden;
       margin-bottom: 8px;
       
       .strength-bar {
         height: 100%;
-        width: 100%;
+        transition: width 0.3s ease, background-color 0.3s ease;
+        border-radius: 4px;
         
-        &.danger {
+        &.strength-danger {
           background: var(--ion-color-danger);
-          width: 33%;
         }
         
-        &.warning {
+        &.strength-warning {
           background: var(--ion-color-warning);
-          width: 66%;
         }
         
-        &.success {
+        &.strength-success {
           background: var(--ion-color-success);
-          width: 100%;
         }
       }
     }
@@ -189,33 +187,38 @@ h1 {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       margin-bottom: 4px;
+      font-weight: 500;
       
-      &.danger {
-        color: #ff4c4c;
-        text-shadow: 0px 0px 1px rgba(0, 0, 0, 0.2);
+      &.text-danger {
+        color: var(--ion-color-danger);
       }
       
-      &.warning {
-        color: #ffce00;
-        text-shadow: 0px 0px 1px rgba(0, 0, 0, 0.2);
+      &.text-warning {
+        color: var(--ion-color-warning);
       }
       
-      &.success {
-        color: #2dd36f;
-        text-shadow: 0px 0px 1px rgba(0, 0, 0, 0.2);
+      &.text-success {
+        color: var(--ion-color-success);
       }
       
       ion-icon {
-        font-size: 1rem;
+        font-size: 1.1rem;
+        margin-left: 0.5rem;
+        
+        &.icon-danger {
+          color: var(--ion-color-danger);
+        }
+        
+        &.icon-warning {
+          color: var(--ion-color-warning);
+        }
+        
+        &.icon-success {
+          color: var(--ion-color-success);
+        }
       }
-    }
-    
-    .strength-message {
-      font-size: 0.75rem;
-      color: var(--yap-body-text);
-      margin: 0;
     }
   }
 }
@@ -303,5 +306,48 @@ h1 {
   a {
     color: var(--ion-color-primary);
     text-decoration: none;
+  }
+}
+
+// User Info Banner (when database user found)
+.user-info-banner {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  
+  .user-info-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    
+    .user-icon {
+      font-size: 2rem;
+      color: var(--ion-color-success);
+      flex-shrink: 0;
+    }
+    
+    .user-details {
+      flex: 1;
+      
+      h4 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--yap-primary-text);
+      }
+      
+      p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--yap-body-text);
+        line-height: 1.3;
+      }
+    }
   }
 }

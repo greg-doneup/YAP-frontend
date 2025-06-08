@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 
 export interface SecurityMetrics {
@@ -231,9 +231,9 @@ export class SecurityMonitoringService {
   }> {
     return new Observable(observer => {
       const promises = [
-        this.getWalletSecurityMetrics().toPromise(),
-        this.getAuthSecurityMetrics().toPromise(),
-        this.getProfileSecurityMetrics().toPromise()
+        firstValueFrom(this.getWalletSecurityMetrics()),
+        firstValueFrom(this.getAuthSecurityMetrics()),
+        firstValueFrom(this.getProfileSecurityMetrics())
       ];
 
       Promise.allSettled(promises).then(results => {

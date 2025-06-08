@@ -4,8 +4,8 @@
 
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3000', // Development points to mock server
-  rpcUrl: 'http://localhost:3000/mock-rpc', // Mock RPC endpoint for development
+  apiUrl: 'http://localhost:8000', // Development points to mock server
+  rpcUrl: 'http://localhost:8000/mock-rpc', // Mock RPC endpoint for development
   enableErrorLogging: true // Added for error service logging control
 };
 

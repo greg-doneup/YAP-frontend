@@ -14,7 +14,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 
 // Middleware
 app.use(cors());
@@ -59,15 +59,16 @@ const mockDatabase = {
 
 // Initialize mock data
 function initializeMockData() {
-  // Create some sample users for testing
-  const sampleUsers = [
+  // Create some regular users for testing
+  const regularUsers = [
     {
       userId: 'sample-user-1',
       email: 'test1@example.com',
       name: 'Test User 1',
       language: 'spanish',
       xp: 150,
-      streak: 3
+      streak: 3,
+      hasWallet: true
     },
     {
       userId: 'sample-user-2', 
@@ -75,81 +76,42 @@ function initializeMockData() {
       name: 'Test User 2',
       language: 'french',
       xp: 250,
-      streak: 5
-    },
-    // Waitlist user who needs first-time setup (no wlw flag yet)
+      streak: 5,
+      hasWallet: true
+    }
+  ];
+
+  // Create waitlist users (have profile data but no wallet yet)
+  const waitlistUsers = [
     {
       userId: 'waitlist-user-1',
       email: 'waitlist@example.com',
       name: 'Waitlist User',
       language: 'spanish',
-      xp: 25,
+      xp: 0,
       streak: 0,
-      isWaitlist: true,
-      needsSetup: true
+      hasWallet: false,
+      isWaitlist: true
     },
-    // Waitlist user who already completed setup
     {
-      userId: 'waitlist-user-2',
-      email: 'secured@example.com',
-      name: 'Secured Waitlist User',
+      userId: 'waitlist-user-2', 
+      email: 'waitlist2@example.com',
+      name: 'Another Waitlist User',
       language: 'french',
-      xp: 50,
-      streak: 1,
-      isWaitlist: true,
-      hasWallet: true,
-      isSecured: true
+      xp: 0,
+      streak: 0,
+      hasWallet: false,
+      isWaitlist: true
     }
   ];
 
-  sampleUsers.forEach(user => {
+  // Process regular users (with wallets)
+  regularUsers.forEach(user => {
     // Create basic profile
     const basicProfile = createMockProfile(user.userId, user.email, user.name, user.language);
     
-    // Handle waitlist users
-    if (user.isWaitlist) {
-      basicProfile.waitlist_bonus = 25;
-      
-      // User with wallet that already completed secure account setup
-      if (user.isSecured) {
-        basicProfile.wlw = true;
-        basicProfile.sei_wallet = {
-          address: 'sei1mock' + crypto.randomBytes(8).toString('hex'),
-          public_key: 'sei_pub_' + crypto.randomBytes(16).toString('hex')
-        };
-        basicProfile.eth_wallet = {
-          address: '0x' + crypto.randomBytes(20).toString('hex'),
-          public_key: 'eth_pub_' + crypto.randomBytes(16).toString('hex')
-        };
-        
-        // Mock secure account data (already setup with passphrase "testpass123")
-        const testPassphrase = 'testpass123';
-        const salt = 'x0xmbtbles0x' + testPassphrase;
-        const derivedKey = crypto.pbkdf2Sync(testPassphrase, salt, 390000, 32, 'sha256');
-        const keyBase64 = derivedKey.toString('base64');
-        const passphraseHash = crypto.createHash('sha256').update(keyBase64).digest('hex');
-        
-        basicProfile.passphrase_hash = passphraseHash;
-        basicProfile.encrypted_wallet_data = {
-          encrypted_mnemonic: 'mock_encrypted_' + crypto.randomBytes(32).toString('hex'),
-          salt: crypto.randomBytes(16).toString('hex'),
-          nonce: crypto.randomBytes(12).toString('hex'),
-          sei_address: basicProfile.sei_wallet.address,
-          eth_address: basicProfile.eth_wallet.address
-        };
-        basicProfile.secured_at = new Date().toISOString();
-      }
-      // User needs first-time setup (no wlw flag, no passphrase_hash)
-      else if (user.needsSetup) {
-        // Don't set wlw flag - they need to complete setup first
-        basicProfile.wlw = false;
-      }
-    }
-    
-    // Add legacy wallet data for non-waitlist users who have wallets
-    if (user.hasWallet && !user.isWaitlist) {
+    if (user.hasWallet) {
       basicProfile.wlw = true;
-      basicProfile.waitlist_bonus = 25;
       basicProfile.sei_wallet = {
         address: 'sei1mock' + crypto.randomBytes(8).toString('hex'),
         public_key: 'sei_pub_' + crypto.randomBytes(16).toString('hex')
@@ -166,16 +128,56 @@ function initializeMockData() {
     
     mockDatabase.profiles.set(user.userId, basicProfile);
 
+    // Create user entry
+    mockDatabase.users.set(user.userId, {
+      userId: user.userId,
+      email: user.email,
+      name: user.name,
+      language_to_learn: user.language,
+      walletAddress: basicProfile.sei_wallet?.address,
+      ethWalletAddress: basicProfile.eth_wallet?.address
+    });
+
     // Create offchain profile
-    const offchainProfile = createMockOffchainProfile(user.userId, '0x' + crypto.randomBytes(20).toString('hex'));
-    offchainProfile.xp = user.xp;
-    offchainProfile.streak = user.streak;
+    const offchainProfile = createMockOffchainProfile(user.userId, basicProfile.eth_wallet?.address || '0x' + crypto.randomBytes(20).toString('hex'));
+    offchainProfile.xp = user.xp || 0;
+    offchainProfile.streak = user.streak || 0;
     mockDatabase.offchainProfiles.set(user.userId, offchainProfile);
   });
 
-  console.log('✅ Mock data initialized with sample users:');
-  console.log('   • waitlist@example.com (needs first-time setup)');
-  console.log('   • secured@example.com (already secured, passphrase: testpass123)');
+  // Process waitlist users (no wallets yet, just profile data)
+  waitlistUsers.forEach(user => {
+    // Create basic profile without wallet data
+    const basicProfile = createMockProfile(user.userId, user.email, user.name, user.language);
+    basicProfile.wlw = false; // No wallet yet
+    basicProfile.isWaitlistUser = true; // Mark as waitlist user
+    basicProfile.waitlist_signup_at = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(); // Random date in last 30 days
+    
+    mockDatabase.profiles.set(user.userId, basicProfile);
+
+    // Create user entry without wallet addresses
+    mockDatabase.users.set(user.userId, {
+      userId: user.userId,
+      email: user.email,
+      name: user.name,
+      language_to_learn: user.language,
+      hasWallet: false
+    });
+
+    // Create offchain profile
+    const offchainProfile = createMockOffchainProfile(user.userId, '0x' + crypto.randomBytes(20).toString('hex'));
+    offchainProfile.xp = user.xp || 0;
+    offchainProfile.streak = user.streak || 0;
+    mockDatabase.offchainProfiles.set(user.userId, offchainProfile);
+  });
+
+  console.log('✅ Mock data initialized:');
+  console.log('Regular users:');
+  console.log('   • test1@example.com (has wallet)');
+  console.log('   • test2@example.com (has wallet)');
+  console.log('Waitlist users:');
+  console.log('   • waitlist@example.com (no wallet, ready for conversion)');
+  console.log('   • waitlist2@example.com (no wallet, ready for conversion)');
 }
 
 initializeMockData();
@@ -300,13 +302,13 @@ function createMockOffchainProfile(userId, ethWalletAddress) {
 // AUTH SERVICE ENDPOINTS
 // =============================================================================
 
-// POST /auth/wallet/signup - Handle standard registration with encrypted wallet data (non-waitlist)
+// POST /auth/wallet/signup - Handle new user registration
 apiRouter.post('/auth/wallet/signup', (req, res) => {
   const { 
     name, 
     email, 
     language_to_learn, 
-    passphrase,
+    passphrase_hash, // Backend should receive the hashed passphrase, not raw passphrase
     encrypted_mnemonic,
     salt,
     nonce,
@@ -320,56 +322,121 @@ apiRouter.post('/auth/wallet/signup', (req, res) => {
   if (!email) {
     return res.status(400).json({ message: "email required" });
   }
-  if (!name) {
-    return res.status(400).json({ message: "name required" });
-  }
-  if (!language_to_learn) {
-    return res.status(400).json({ message: "language_to_learn required" });
-  }
-  if (!passphrase) {
-    return res.status(400).json({ message: "passphrase required" });
+  if (!passphrase_hash) {
+    return res.status(400).json({ message: "passphrase_hash required (frontend should hash the passphrase)" });
   }
   if (!encrypted_mnemonic || !salt || !nonce || !sei_address || !eth_address) {
     return res.status(400).json({ message: "encrypted wallet data required" });
   }
 
-  // Check email uniqueness
+  // Check if user already exists (waitlist user conversion)
   const existingProfile = Array.from(mockDatabase.profiles.values())
     .find(profile => profile.email === email);
   
+  // For waitlist conversion, name and language are optional (taken from existing profile)
+  // For new registration, name and language are required
+  if (!existingProfile || !existingProfile.isWaitlistUser) {
+    if (!name) {
+      return res.status(400).json({ message: "name required" });
+    }
+    if (!language_to_learn) {
+      return res.status(400).json({ message: "language_to_learn required" });
+    }
+  }
+  
   if (existingProfile) {
-    return res.status(409).json({ message: "Email already registered" });
+    // Check if this is a waitlist user conversion
+    if (existingProfile.wlw === false && existingProfile.isWaitlistUser) {
+      console.log('🔄 Converting waitlist user to full account:', email);
+      
+      // Update existing profile with wallet data
+      existingProfile.wlw = true; // Now has wallet
+      existingProfile.passphrase_hash = passphrase_hash;
+      existingProfile.encrypted_mnemonic = encrypted_mnemonic;
+      existingProfile.salt = salt;
+      existingProfile.nonce = nonce;
+      existingProfile.sei_wallet = {
+        address: sei_address,
+        public_key: sei_public_key || 'sei_pub_' + crypto.randomBytes(16).toString('hex')
+      };
+      existingProfile.eth_wallet = {
+        address: eth_address,
+        public_key: eth_public_key || 'eth_pub_' + crypto.randomBytes(16).toString('hex')
+      };
+      existingProfile.secured_at = new Date().toISOString();
+      existingProfile.updatedAt = new Date().toISOString();
+      existingProfile.converted = true; // Mark as converted
+      
+      // Update profile in database
+      mockDatabase.profiles.set(existingProfile.userId, existingProfile);
+
+      // Update user entry with wallet addresses
+      const existingUser = mockDatabase.users.get(existingProfile.userId);
+      if (existingUser) {
+        existingUser.walletAddress = sei_address;
+        existingUser.ethWalletAddress = eth_address;
+        existingUser.hasWallet = true;
+        mockDatabase.users.set(existingProfile.userId, existingUser);
+      }
+
+      // Generate tokens for converted user
+      const accessToken = generateToken({
+        sub: existingProfile.userId,
+        type: 'access',
+        walletAddress: sei_address,
+        ethWalletAddress: eth_address,
+        currentLessonId: 'lesson-1',
+        currentWordId: 'word-1',
+        nextWordAvailableAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+      });
+
+      const refreshToken = generateRefreshToken(existingProfile.userId);
+
+      console.log(`✅ Waitlist conversion completed for ${email}`);
+
+      return res.json({
+        token: accessToken,
+        refreshToken,
+        userId: existingProfile.userId,
+        walletAddress: sei_address,
+        ethWalletAddress: eth_address,
+        name: existingProfile.name,
+        language_to_learn: existingProfile.initial_language_to_learn,
+        isWaitlistConversion: true,
+        starting_points: 100, // Bonus points for waitlist users
+        message: 'Waitlist user converted to full account successfully'
+      });
+      
+    } else {
+      // Regular user already exists with wallet
+      return res.status(409).json({ message: "Email already registered" });
+    }
   }
 
-  // Generate a unique user ID (matching real auth service - 64 char hex)
+  // Generate new user ID
   const userId = crypto.randomBytes(32).toString('hex');
   
-  // Derive passphrase hash (same as wallet service secure-account endpoint)
-  const passphraseSalt = 'x0xmbtbles0x' + passphrase;
-  const iterations = 390000;
-  const derivedKey = crypto.pbkdf2Sync(passphrase, passphraseSalt, iterations, 32, 'sha256');
-  const keyBase64 = derivedKey.toString('base64');
-  const passphraseHash = crypto.createHash('sha256').update(keyBase64).digest('hex');
+  // Backend stores the pre-hashed passphrase (no additional hashing needed)
+  // Frontend should have already done: PBKDF2(passphrase, salt, iterations) -> SHA256(derivedKey)
 
   // Create user entry
   mockDatabase.users.set(userId, {
     userId,
     email,
-    name,
-    language_to_learn,
+    name: name,
+    language_to_learn: language_to_learn,
     walletAddress: sei_address,
     ethWalletAddress: eth_address
   });
 
   // Create basic profile with wallet and security data
-  const basicProfile = {
+  const profileData = {
     userId,
     email,
-    name,
+    name: name,
     initial_language_to_learn: language_to_learn,
     wlw: true, // Has wallet
-    waitlist_bonus: 0, // Standard registration gets no bonus points
-    passphrase_hash: passphraseHash,
+    passphrase_hash: passphrase_hash, // Store the frontend-provided hash
     encrypted_wallet_data: {
       encrypted_mnemonic,
       salt,
@@ -392,13 +459,15 @@ apiRouter.post('/auth/wallet/signup', (req, res) => {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
-  mockDatabase.profiles.set(userId, basicProfile);
 
-  // Create offchain profile with 0 starting points
+  // Create new profile
+  mockDatabase.profiles.set(userId, profileData);
+
+  // Create offchain profile
   const offchainProfile = {
     userId,
     ethWalletAddress: eth_address,
-    xp: 0, // Standard accounts start with 0 XP
+    xp: 0,
     streak: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -418,7 +487,7 @@ apiRouter.post('/auth/wallet/signup', (req, res) => {
 
   const refreshToken = generateRefreshToken(userId);
 
-  console.log(`✅ Standard registration completed for ${email} - no bonus points`);
+  console.log(`✅ Registration completed for ${email} (${name})`);
 
   res.json({
     token: accessToken,
@@ -426,94 +495,189 @@ apiRouter.post('/auth/wallet/signup', (req, res) => {
     userId,
     walletAddress: sei_address,
     ethWalletAddress: eth_address,
-    starting_points: 0, // Explicitly show no bonus points for standard registration
-    message: 'Standard account created successfully'
+    name: name,
+    language_to_learn: language_to_learn,
+    message: 'Account created successfully'
   });
 });
 
-// CORRECT NON-CUSTODIAL WALLET AUTHENTICATION
+// WALLET AUTHENTICATION - Handle both email/passphrase and userId/walletAddress flows
 apiRouter.post('/auth/wallet', (req, res) => {
-  console.log('=== NON-CUSTODIAL WALLET AUTHENTICATION ===');
+  console.log('=== WALLET AUTHENTICATION ===');
+  console.log('🔍 [DEBUG] Request body keys:', Object.keys(req.body));
+  console.log('🔍 [DEBUG] Full request body:', req.body);
+  
   const { 
+    // Format 1: Email/passphrase authentication (new wallet setup)
     email, 
     passphrase, 
     encryptedMnemonic, 
     seiWalletAddress, 
     evmWalletAddress, 
-    signupMethod 
+    signupMethod,
+    // Format 2: UserId/wallet address authentication (existing user login)
+    userId,
+    walletAddress,
+    ethWalletAddress
   } = req.body;
 
-  console.log('Wallet authentication request:', {
-    email,
-    seiWalletAddress,
-    evmWalletAddress,
-    signupMethod,
-    encryptedMnemonicLength: encryptedMnemonic?.length
+  // Determine which authentication format is being used
+  const isEmailPassphraseAuth = email && passphrase;
+  const isUserIdWalletAuth = userId && (walletAddress || ethWalletAddress);
+
+  console.log('Authentication type:', {
+    isEmailPassphraseAuth,
+    isUserIdWalletAuth,
+    hasEmail: !!email,
+    hasPassphrase: !!passphrase,
+    hasUserId: !!userId,
+    hasWalletAddress: !!walletAddress
   });
 
   try {
-    // Create secure passphrase hash (matching backend)
-    const salt = `yap-wallet-${email}`;
-    const iterations = 100000;
-    const derivedKey = crypto.pbkdf2Sync(passphrase, salt, iterations, 32, 'sha256');
-    const serverSecret = 'default-development-secret-change-in-production';
-    const finalInput = Buffer.concat([derivedKey, Buffer.from(serverSecret)]);
-    const passphraseHash = crypto.createHash('sha256').update(finalInput).digest('hex');
+    if (isEmailPassphraseAuth) {
+      // FORMAT 1: Email/passphrase authentication (new account creation)
+      console.log('Processing email/passphrase authentication for:', email);
+      
+      // Create secure passphrase hash (matching backend)
+      const salt = `yap-wallet-${email}`;
+      const iterations = 100000;
+      const derivedKey = crypto.pbkdf2Sync(passphrase, salt, iterations, 32, 'sha256');
+      const serverSecret = 'default-development-secret-change-in-production';
+      const finalInput = Buffer.concat([derivedKey, Buffer.from(serverSecret)]);
+      const passphraseHash = crypto.createHash('sha256').update(finalInput).digest('hex');
 
-    // Generate user ID
-    const userId = crypto.createHash('sha256').update(`${email}-${passphraseHash}`).digest('hex');
+      // Generate user ID
+      const userIdFromHash = crypto.createHash('sha256').update(`${email}-${passphraseHash}`).digest('hex');
 
-    // Store wallet data (in production this would go to MongoDB)
-    const walletData = {
-      email,
-      passphraseHash,
-      encryptedMnemonic,  // Encrypted by frontend with user's passphrase
-      seiWalletAddress,   // Generated by frontend from mnemonic
-      evmWalletAddress,   // Generated by frontend from mnemonic
-      signupMethod,
-      createdAt: new Date().toISOString()
-    };
-
-    // Store in mock database
-    mockDatabase.users[email] = {
-      ...mockDatabase.users[email],
-      ...walletData,
-      userId
-    };
-
-    // Generate JWT token
-    const accessToken = jwt.sign(
-      { 
-        userId, 
+      // Store wallet data (in production this would go to MongoDB)
+      const walletData = {
         email,
-        type: 'wallet_auth'
-      },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+        passphraseHash,
+        encryptedMnemonic,  // Encrypted by frontend with user's passphrase
+        seiWalletAddress,   // Generated by frontend from mnemonic
+        evmWalletAddress,   // Generated by frontend from mnemonic
+        signupMethod,
+        createdAt: new Date().toISOString()
+      };
 
-    const refreshToken = jwt.sign(
-      { userId, email, type: 'refresh' },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+      // Store in mock database
+      const existingUserData = mockDatabase.users.get(userIdFromHash) || {};
+      mockDatabase.users.set(userIdFromHash, {
+        ...existingUserData,
+        ...walletData,
+        userId: userIdFromHash
+      });
 
-    console.log('Wallet authentication successful for user:', userId);
-    console.log('Frontend-generated wallet addresses stored:', {
-      sei: seiWalletAddress,
-      evm: evmWalletAddress
-    });
+      // Create/update profile data for auth validation
+      const existingProfile = mockDatabase.profiles.get(userIdFromHash);
+      if (!existingProfile) {
+        mockDatabase.profiles.set(userIdFromHash, {
+          userId: userIdFromHash,
+          email: email,
+          name: 'User',
+          language: 'spanish'
+        });
+      }
 
-    // Return success - NO wallet addresses (frontend already has them)
-    res.json({
-      success: true,
-      token: accessToken,
-      refreshToken,
-      userId,
-      email,
-      message: 'Wallet authenticated successfully'
-      // Note: Not returning walletAddress/ethWalletAddress - frontend generated them
-    });
+      // Generate JWT token
+      const accessToken = jwt.sign(
+        { 
+          sub: userIdFromHash,
+          userId: userIdFromHash, 
+          email,
+          type: 'wallet_auth'
+        },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      const refreshToken = jwt.sign(
+        { sub: userIdFromHash, userId: userIdFromHash, email, type: 'refresh' },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      console.log('Email/passphrase authentication successful for user:', userIdFromHash);
+      console.log('Frontend-generated wallet addresses stored:', {
+        sei: seiWalletAddress,
+        evm: evmWalletAddress
+      });
+
+      // Return success - NO wallet addresses (frontend already has them)
+      res.json({
+        success: true,
+        token: accessToken,
+        refreshToken,
+        userId: userIdFromHash,
+        email,
+        message: 'Wallet authenticated successfully'
+        // Note: Not returning walletAddress/ethWalletAddress - frontend generated them
+      });
+
+    } else if (isUserIdWalletAuth) {
+      // FORMAT 2: UserId/wallet address authentication (existing user direct wallet login)
+      console.log('Processing userId/wallet address authentication for:', userId);
+      
+      // Find user by wallet addresses in our mock database
+      let foundUser = null;
+      for (const [userId, userData] of mockDatabase.users.entries()) {
+        if (userData.userId === userId && 
+            (userData.seiWalletAddress === walletAddress || userData.evmWalletAddress === ethWalletAddress)) {
+          foundUser = userData;
+          break;
+        }
+      }
+
+      if (!foundUser) {
+        return res.status(404).json({
+          error: 'USER_NOT_FOUND',
+          message: 'No user found with provided userId and wallet addresses'
+        });
+      }
+
+      // Generate JWT token for existing user
+      const accessToken = jwt.sign(
+        { 
+          sub: foundUser.userId,
+          userId: foundUser.userId, 
+          email: foundUser.email,
+          type: 'wallet_direct_auth'
+        },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      const refreshToken = jwt.sign(
+        { sub: foundUser.userId, userId: foundUser.userId, email: foundUser.email, type: 'refresh' },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      console.log('UserId/wallet authentication successful for user:', foundUser.userId);
+
+      res.json({
+        success: true,
+        token: accessToken,
+        refreshToken,
+        userId: foundUser.userId,
+        message: 'Wallet authenticated successfully'
+      });
+
+    } else {
+      // Invalid request format
+      return res.status(400).json({
+        error: 'INVALID_REQUEST_FORMAT',
+        message: 'Request must include either (email + passphrase) or (userId + walletAddress/ethWalletAddress)',
+        received: {
+          hasEmail: !!email,
+          hasPassphrase: !!passphrase,
+          hasUserId: !!userId,
+          hasWalletAddress: !!walletAddress,
+          hasEthWalletAddress: !!ethWalletAddress
+        }
+      });
+    }
 
   } catch (error) {
     console.error('Wallet authentication error:', error);
@@ -573,6 +737,7 @@ apiRouter.post('/auth/wallet/recover', (req, res) => {
     // Generate new tokens
     const accessToken = jwt.sign(
       { 
+        sub: storedUser.userId,
         userId: storedUser.userId, 
         email,
         type: 'wallet_recovery'
@@ -582,7 +747,7 @@ apiRouter.post('/auth/wallet/recover', (req, res) => {
     );
 
     const refreshToken = jwt.sign(
-      { userId: storedUser.userId, email, type: 'refresh' },
+      { sub: storedUser.userId, userId: storedUser.userId, email, type: 'refresh' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -663,8 +828,8 @@ apiRouter.get('/auth/validate', authenticateToken, (req, res) => {
     userId: userId,
     email: basicProfile?.email,
     name: basicProfile?.name,
-    walletAddress: userData?.walletAddress,
-    ethWalletAddress: userData?.ethWalletAddress
+    walletAddress: userData?.seiWalletAddress,
+    ethWalletAddress: userData?.evmWalletAddress
   });
 });
 
@@ -718,9 +883,7 @@ apiRouter.post('/email-lookup', (req, res) => {
 
   // Determine account status based on profile data
   let status = 'registered';
-  if (existingProfile.waitlist_signup_at && !existingProfile.secured_at) {
-    status = 'waitlist';
-  } else if (existingProfile.secured_at) {
+  if (existingProfile.secured_at) {
     status = 'secured';
   }
 
@@ -731,83 +894,7 @@ apiRouter.post('/email-lookup', (req, res) => {
     status,
     userId: existingProfile.userId,
     hasWallet: !!existingProfile.encrypted_mnemonic,
-    isWaitlist: status === 'waitlist',
     message: `Account found with status: ${status}`
-  });
-});
-
-// POST /waitlist-signup - Waitlist signup with email
-apiRouter.post('/waitlist-signup', (req, res) => {
-  const { email, name, language_to_learn } = req.body;
-
-  if (!email) {
-    return res.status(400).json({
-      error: 'invalid_input',
-      message: 'Email is required'
-    });
-  }
-
-  if (!name) {
-    return res.status(400).json({
-      error: 'invalid_input', 
-      message: 'Name is required'
-    });
-  }
-
-  if (!language_to_learn) {
-    return res.status(400).json({
-      error: 'invalid_input',
-      message: 'Language to learn is required'
-    });
-  }
-
-  // Check if email already exists
-  const existingProfile = Array.from(mockDatabase.profiles.values())
-    .find(profile => profile.email === email);
-
-  if (existingProfile) {
-    return res.status(409).json({
-      error: 'conflict',
-      message: 'Email already registered'
-    });
-  }
-
-  // Generate unique user ID
-  const userId = crypto.randomBytes(32).toString('hex');
-
-  // Create waitlist profile entry
-  const waitlistProfile = {
-    userId,
-    email,
-    name,
-    initial_language_to_learn: language_to_learn,
-    waitlist_signup_at: new Date().toISOString(),
-    waitlist_bonus: 100, // Waitlist users get bonus points
-    wlw: false, // No wallet yet
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  mockDatabase.profiles.set(userId, waitlistProfile);
-
-  // Create user entry
-  mockDatabase.users.set(userId, {
-    userId,
-    email,
-    name,
-    language_to_learn,
-    isWaitlist: true
-  });
-
-  console.log(`📝 Waitlist signup for ${email} - ${name}`);
-
-  res.json({
-    userId,
-    email,
-    name,
-    status: 'waitlist',
-    bonus_points: 100,
-    message: 'Successfully added to waitlist'
   });
 });
 
@@ -918,13 +1005,12 @@ apiRouter.post('/secure-account', (req, res) => {
     mockDatabase.users.set(existingProfile.userId, user);
   }
 
-  // Create offchain profile if it doesn't exist (waitlist users get bonus XP)
+  // Create offchain profile if it doesn't exist
   if (!mockDatabase.offchainProfiles.has(existingProfile.userId)) {
-    const startingXP = existingProfile.waitlist_signup_at ? 100 : 0; // Waitlist bonus
     const offchainProfile = {
       userId: existingProfile.userId,
       ethWalletAddress: eth_address,
-      xp: startingXP,
+      xp: 0,
       streak: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -942,7 +1028,7 @@ apiRouter.post('/secure-account', (req, res) => {
       sei: sei_address,
       eth: eth_address
     },
-    starting_xp: existingProfile.waitlist_signup_at ? 100 : 0,
+    starting_xp: 0,
     message: 'Account successfully secured with wallet'
   });
 });
@@ -1069,7 +1155,6 @@ apiRouter.post('/register', (req, res) => {
     name,
     initial_language_to_learn: language_to_learn,
     wlw: false, // No wallet yet
-    waitlist_bonus: 0, // No bonus for direct registration
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -1191,20 +1276,16 @@ apiRouter.get('/api/v2/admin/security-metrics', (req, res) => {
   const totalUsers = mockDatabase.users.size;
   const securedUsers = Array.from(mockDatabase.profiles.values())
     .filter(p => p.secured_at).length;
-  const waitlistUsers = Array.from(mockDatabase.profiles.values())
-    .filter(p => p.waitlist_signup_at).length;
   const recoveryHashUsers = Array.from(mockDatabase.profiles.values())
     .filter(p => p.recovery_hash).length;
 
   const metrics = {
     total_users: totalUsers,
     secured_users: securedUsers,
-    waitlist_users: waitlistUsers,
     users_with_recovery_hash: recoveryHashUsers,
     security_compliance: {
       encryption_rate: securedUsers > 0 ? 100 : 0, // All secured users have encryption
-      recovery_setup_rate: totalUsers > 0 ? Math.round((recoveryHashUsers / totalUsers) * 100) : 0,
-      waitlist_conversion_rate: waitlistUsers > 0 ? Math.round((securedUsers / waitlistUsers) * 100) : 0
+      recovery_setup_rate: totalUsers > 0 ? Math.round((recoveryHashUsers / totalUsers) * 100) : 0
     },
     timestamp: new Date().toISOString()
   };
@@ -1511,162 +1592,17 @@ apiRouter.get('/wallet/email/:email', (req, res) => {
   // Return wallet-related profile data
   const walletProfile = {
     email: userProfile.email,
+    name: userProfile.name,
+    language_to_learn: userProfile.initial_language_to_learn,
     encrypted_mnemonic: userProfile.encrypted_mnemonic,
     salt: userProfile.salt,
     nonce: userProfile.nonce,
     sei_wallet: userProfile.sei_wallet,
     eth_wallet: userProfile.eth_wallet,
-    wlw: userProfile.wlw,
-    waitlist_bonus: userProfile.waitlist_bonus
+    wlw: userProfile.wlw
   };
 
   res.json(walletProfile);
-});
-
-// POST /wallet/waitlist-signup - Handle waitlist user signup with encrypted wallet data
-apiRouter.post('/wallet/waitlist-signup', (req, res) => {
-  const {
-    email,
-    passphrase,
-    encrypted_mnemonic,
-    salt,
-    nonce,
-    sei_address,
-    sei_public_key,
-    eth_address,
-    eth_public_key
-  } = req.body;
-
-  // Validate required fields
-  if (!email || !passphrase || !encrypted_mnemonic || !salt || !nonce || 
-      !sei_address || !sei_public_key || !eth_address || !eth_public_key) {
-    return res.status(400).json({
-      error: 'invalid_input',
-      message: 'Missing required fields'
-    });
-  }
-
-  // Find existing user profile
-  const existingProfile = Array.from(mockDatabase.profiles.values())
-    .find(profile => profile.email === email);
-
-  if (!existingProfile) {
-    return res.status(404).json({
-      error: 'profile_not_found',
-      message: 'Profile not found for waitlist signup'
-    });
-  }
-
-  // Check if user already has a wallet
-  if (existingProfile.wlw) {
-    return res.status(400).json({
-      error: 'wallet_exists',
-      message: 'User already has a wallet'
-    });
-  }
-
-  // Create user entry in users table if it doesn't exist
-  if (!mockDatabase.users.has(existingProfile.userId)) {
-    mockDatabase.users.set(existingProfile.userId, {
-      userId: existingProfile.userId,
-      email: existingProfile.email,
-      name: existingProfile.name,
-      language_to_learn: existingProfile.initial_language_to_learn,
-      walletAddress: sei_address,
-      ethWalletAddress: eth_address
-    });
-  }
-
-  // Update profile with wallet data
-  existingProfile.wlw = true;
-  existingProfile.waitlist_bonus = 25;
-  existingProfile.sei_wallet = {
-    address: sei_address,
-    public_key: sei_public_key
-  };
-  existingProfile.eth_wallet = {
-    address: eth_address,
-    public_key: eth_public_key
-  };
-  existingProfile.encrypted_mnemonic = encrypted_mnemonic;
-  existingProfile.salt = salt;
-  existingProfile.nonce = nonce;
-  existingProfile.updatedAt = new Date().toISOString();
-
-  // Update in mock database
-  mockDatabase.profiles.set(existingProfile.userId, existingProfile);
-
-  res.json({
-    status: 'wallet_created',
-    sei_address: sei_address,
-    eth_address: eth_address,
-    waitlist_bonus: 25,
-    message: 'Wallet created successfully for waitlist user'
-  });
-});
-
-// POST /wallet/secure-account - First-time passphrase setup for waitlist users (following pw_security.py pattern)
-apiRouter.post('/wallet/secure-account', (req, res) => {
-  const { email, passphrase, encrypted_wallet_data } = req.body;
-
-  if (!email || !passphrase) {
-    return res.status(400).json({
-      error: 'invalid_input',
-      message: 'Email and passphrase are required'
-    });
-  }
-
-  // Find waitlist user by email
-  const userProfile = Array.from(mockDatabase.profiles.values())
-    .find(profile => profile.email === email);
-
-  if (!userProfile) {
-    return res.status(404).json({
-      error: 'user_not_found',
-      message: 'Email not found in waitlist'
-    });
-  }
-
-  // Check if user already has secure account setup
-  if (userProfile.wlw === true && userProfile.passphrase_hash) {
-    return res.status(409).json({
-      error: 'already_secured',
-      message: 'Account already has secure passphrase setup'
-    });
-  }
-
-  // Derive key from passphrase (mimicking pw_security.py PBKDF2 process)
-  const crypto = require('crypto');
-  const salt = 'x0xmbtbles0x' + passphrase; // Using same salt pattern as pw_security.py
-  const iterations = 390000; // Same as pw_security.py
-  
-  try {
-    // Derive key using PBKDF2
-    const derivedKey = crypto.pbkdf2Sync(passphrase, salt, iterations, 32, 'sha256');
-    const keyBase64 = derivedKey.toString('base64');
-    
-    // Hash the key (same as pw_security.py: hashlib.sha256(key).hexdigest())
-    const passphraseHash = crypto.createHash('sha256').update(keyBase64).digest('hex');
-    
-    // Update user profile with secure account data
-    userProfile.wlw = true;
-    userProfile.passphrase_hash = passphraseHash;
-    userProfile.encrypted_wallet_data = encrypted_wallet_data;
-    userProfile.secured_at = new Date().toISOString();
-    userProfile.updatedAt = new Date().toISOString();
-    
-    res.json({
-      success: true,
-      message: 'Secure account setup completed',
-      user_id: userProfile.userId
-    });
-  } catch (error) {
-    console.error('Error setting up secure account:', error);
-    res.status(500).json({
-      error: 'setup_failed',
-      message: 'Failed to setup secure account'
-    });
-  }
 });
 
 // POST /wallet/recover - Authenticate user and return encrypted wallet data
@@ -1725,8 +1661,7 @@ apiRouter.post('/wallet/recover', (req, res) => {
     res.json({
       success: true,
       encrypted_wallet_data: userProfile.encrypted_wallet_data,
-      user_id: userProfile.userId,
-      waitlist_bonus: userProfile.waitlist_bonus || 0
+      user_id: userProfile.userId
     });
   } catch (error) {
     console.error('Error during wallet recovery:', error);
@@ -2647,10 +2582,6 @@ app.listen(PORT, () => {
   console.log('🔑 Authentication:');
   console.log('   • Use POST /auth/wallet to get tokens');
   console.log('   • Include "Authorization: Bearer <token>" header for protected endpoints');
-  console.log('');
-  console.log('💰 Wallet Service Test Data:');
-  console.log('   • Email: waitlist@example.com (has encrypted wallet data)');
-  console.log('   • Test passphrase: any string 6+ characters for mock recovery');
   console.log('');
   console.log('📚 API Documentation: See API_SPECIFICATION.md');
 });

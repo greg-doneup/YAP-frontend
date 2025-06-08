@@ -4,8 +4,6 @@ import { Routes, RouterModule } from '@angular/router';
 import { WelcomePage } from './welcome.page';
 import { IntroPage } from './pages/intro.page';
 import { CarouselPage } from './pages/carousel.page';
-import { WaitlistSignupPage } from './pages/waitlist-signup.page';
-import { WaitlistRecoveryPage } from './pages/waitlist-recovery.page';
 import { ShowOnceGuard } from './guards/show-once.guard';
 
 const routes: Routes = [
@@ -18,14 +16,6 @@ const routes: Routes = [
   {
     path: 'legacy',
     component: CarouselPage,
-  },
-  {
-    path: 'waitlist-signup',
-    component: WaitlistSignupPage,
-  },
-  {
-    path: 'waitlist-recovery',
-    component: WaitlistRecoveryPage,
   },
   {
     path: 'registration',

@@ -16,13 +16,27 @@
       <div class="logo-container">
         <img src="assets/logo/YAP-LOGO.png" alt="YAP Logo" class="logo">
       </div>
-      <h1>Create Your Account</h1>
-      <p class="subtitle">Join YAP today and start your language learning journey!</p>
+      <h1 *ngIf="!isWaitlistUser">Create Your Account</h1>
+      <h1 *ngIf="isWaitlistUser">Welcome Back!</h1>
+      <p class="subtitle" *ngIf="!isWaitlistUser">Join YAP today and start your language learning journey!</p>
+      <p class="subtitle" *ngIf="isWaitlistUser">Complete your waitlist account setup with a secure wallet!</p>
+    </div>
+
+    <!-- Waitlist Status Indicator -->
+    <div class="waitlist-status" *ngIf="isWaitlistUser">
+      <div class="status-card">
+        <ion-icon name="star" color="warning"></ion-icon>
+        <div class="status-content">
+          <h3>Waitlist Account Detected!</h3>
+          <p>Welcome back, {{waitlistUserData?.name}}! We'll use your existing information and give you bonus points.</p>
+        </div>
+      </div>
     </div>
 
     <!-- Form Section -->
     <form class="registration-form" (ngSubmit)="onSubmit()">
-      <div class="form-group">
+      <!-- Name Field - conditional based on waitlist status -->
+      <div class="form-group" *ngIf="!isWaitlistUser">
         <ion-item lines="none" class="custom-input">
           <ion-label position="stacked">Name</ion-label>
           <ion-input
@@ -36,8 +50,23 @@
         </ion-item>
       </div>
 
+      <!-- Pre-filled Name for Waitlist Users -->
+      <div class="form-group" *ngIf="isWaitlistUser">
+        <ion-item lines="none" class="custom-input readonly-field">
+          <ion-label position="stacked">Name (from waitlist)</ion-label>
+          <ion-input
+            type="text"
+            [value]="waitlistUserData?.name"
+            readonly
+            [disabled]="true">
+          </ion-input>
+          <ion-icon name="checkmark-circle" slot="end" color="success"></ion-icon>
+        </ion-item>
+      </div>
+
+      <!-- Email Field with waitlist detection -->
       <div class="form-group">
-        <ion-item lines="none" class="custom-input">
+        <ion-item lines="none" class="custom-input" [class.waitlist-detected]="isWaitlistUser">
           <ion-label position="stacked">Email Address</ion-label>
           <ion-input
             type="email"
@@ -45,8 +74,48 @@
             name="email"
             placeholder="Enter your email address"
             required
-            [disabled]="isLoading">
+            [disabled]="isLoading"
+            (ngModelChange)="onEmailChange()"
+            (ionBlur)="onEmailBlur()">
           </ion-input>
+          <ion-spinner name="crescent" slot="end" *ngIf="emailCheckLoading"></ion-spinner>
+          <ion-icon name="star" slot="end" color="warning" *ngIf="isWaitlistUser"></ion-icon>
+        </ion-item>
+        <p class="help-text" *ngIf="isWaitlistUser">
+          <ion-icon name="information-circle"></ion-icon>
+          This email is in our waitlist! You'll receive bonus points.
+        </p>
+      </div>
+
+      <!-- Language Selection - conditional based on waitlist status -->
+      <div class="form-group" *ngIf="!isWaitlistUser">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Learning Language</ion-label>
+          <ion-select
+            [(ngModel)]="selectedLanguage"
+            name="language"
+            placeholder="Select language to learn"
+            required
+            [disabled]="isLoading">
+            <ion-select-option value="spanish">Spanish</ion-select-option>
+            <ion-select-option value="french">French</ion-select-option>
+            <ion-select-option value="german">German</ion-select-option>
+            <ion-select-option value="italian">Italian</ion-select-option>
+          </ion-select>
+        </ion-item>
+      </div>
+
+      <!-- Pre-filled Language for Waitlist Users -->
+      <div class="form-group" *ngIf="isWaitlistUser">
+        <ion-item lines="none" class="custom-input readonly-field">
+          <ion-label position="stacked">Learning Language (from waitlist)</ion-label>
+          <ion-input
+            type="text"
+            [value]="waitlistUserData?.language_to_learn | titlecase"
+            readonly
+            [disabled]="true">
+          </ion-input>
+          <ion-icon name="checkmark-circle" slot="end" color="success"></ion-icon>
         </ion-item>
       </div>
 
@@ -83,13 +152,30 @@
         expand="block" 
         type="submit" 
         [disabled]="!isFormValid() || isLoading"
-        class="submit-button">
-        <span>Create My Account</span>
-        <ion-icon name="rocket-outline" slot="end"></ion-icon>
+        class="submit-button"
+        [class.waitlist-button]="isWaitlistUser">
+        <ion-spinner name="crescent" *ngIf="isLoading"></ion-spinner>
+        <span *ngIf="!isLoading && !isWaitlistUser">Create My Account</span>
+        <span *ngIf="!isLoading && isWaitlistUser">Convert Waitlist Account</span>
+        <span *ngIf="isLoading && !isWaitlistUser">Creating Account...</span>
+        <span *ngIf="isLoading && isWaitlistUser">Converting Account...</span>
+        <ion-icon name="rocket-outline" slot="end" *ngIf="!isLoading && !isWaitlistUser"></ion-icon>
+        <ion-icon name="star-outline" slot="end" *ngIf="!isLoading && isWaitlistUser"></ion-icon>
       </ion-button>
 
-      <!-- Waitlist Option -->
-      <div class="alternative-option">
+      <!-- Bonus Points Preview for Waitlist Users -->
+      <div class="bonus-preview" *ngIf="isWaitlistUser">
+        <div class="bonus-card">
+          <ion-icon name="gift" color="warning"></ion-icon>
+          <div class="bonus-content">
+            <h4>Waitlist Bonus</h4>
+            <p>You'll receive <strong>25 bonus points</strong> for being on our waitlist!</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Alternative Option - only show for non-waitlist users -->
+      <div class="alternative-option" *ngIf="!isWaitlistUser">
         <p>Were you on our waitlist?</p>
         <a (click)="navigateToWaitlistRegistration()">Access your waitlist account</a>
       </div>
