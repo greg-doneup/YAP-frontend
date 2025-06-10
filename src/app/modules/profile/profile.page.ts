@@ -153,15 +153,67 @@ export class ProfilePage implements OnInit {
         this.profileData.profile = null;
       }
 
-      // Load statistics (mock data for now)
-      this.profileData.stats = {
-        daysPracticed: 15,
-        highestStreak: 7,
-        totalYAP: 1250,
-        currentXP: 2500,
-        currentStreak: 3,
-        userRank: 42
-      };
+      // Load real statistics from backend
+      try {
+        if (currentUser.id) {
+          const offchainProfile = await firstValueFrom(this.profileService.getOffchainProfile(currentUser.id));
+          console.log('Offchain profile loaded:', offchainProfile);
+          
+          // Calculate additional stats from XP history if wallet address is available
+          let daysPracticed = 0;
+          let totalYAP = 0;
+          
+          if (currentUser.walletAddress) {
+            try {
+              const xpHistory = await firstValueFrom(this.profileService.getXpHistory(currentUser.walletAddress, 100));
+              console.log('XP history loaded:', xpHistory);
+              
+              // Calculate days practiced (unique dates with XP gains)
+              const uniqueDates = new Set(xpHistory.map(entry => entry.date.split('T')[0]));
+              daysPracticed = uniqueDates.size;
+              
+              // Calculate total YAP earned (sum of all positive XP gains)
+              totalYAP = xpHistory
+                .filter(entry => entry.amount > 0)
+                .reduce((sum, entry) => sum + entry.amount, 0);
+              
+              console.log(`Calculated stats: ${daysPracticed} days practiced, ${totalYAP} total YAP`);
+            } catch (historyError) {
+              console.error('Error loading XP history for stats calculation:', historyError);
+            }
+          }
+          
+          this.profileData.stats = {
+            daysPracticed: daysPracticed,
+            highestStreak: offchainProfile?.streak || 0, // Use current streak as highest for now
+            totalYAP: totalYAP,
+            currentXP: offchainProfile?.xp || 0,
+            currentStreak: offchainProfile?.streak || 0,
+            userRank: null // Will be updated below from leaderboard service
+          };
+        } else {
+          // Fallback to zeros if no user ID
+          this.profileData.stats = {
+            daysPracticed: 0,
+            highestStreak: 0,
+            totalYAP: 0,
+            currentXP: 0,
+            currentStreak: 0,
+            userRank: null
+          };
+        }
+      } catch (error) {
+        console.error('Error loading statistics:', error);
+        // Fallback to zeros on error
+        this.profileData.stats = {
+          daysPracticed: 0,
+          highestStreak: 0,
+          totalYAP: 0,
+          currentXP: 0,
+          currentStreak: 0,
+          userRank: null
+        };
+      }
 
       // Load leaderboard rank
       try {

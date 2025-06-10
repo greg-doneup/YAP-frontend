@@ -43,15 +43,15 @@ export class RegistrationAuthService {
         const user = {
           id: result.userId || `user_${Math.random().toString(36).substring(2, 15)}`,
           email: email,
-          walletAddress: result.sei_address,
-          ethWalletAddress: result.eth_address
+          walletAddress: result.walletAddress || result.sei_address,
+          ethWalletAddress: result.ethWalletAddress || result.eth_address
         };
         
         localStorage.setItem('currentUser', JSON.stringify(user));
         localStorage.setItem('user_authenticated', 'true');
         localStorage.setItem('user_wallet', JSON.stringify({
-          sei_address: result.sei_address,
-          eth_address: result.eth_address
+          sei_address: result.walletAddress || result.sei_address,
+          eth_address: result.ethWalletAddress || result.eth_address
         }));
         
         console.log('Stored user with wallet addresses:', user);
@@ -68,7 +68,9 @@ export class RegistrationAuthService {
       console.log('  - result.userId exists:', !!result.userId);
       
       // Fallback: Try to authenticate with the live backend
-      const authResponse = await this.authenticateWithBackend(email, result.sei_address, result.eth_address);
+      const authResponse = await this.authenticateWithBackend(email, 
+        result.walletAddress || result.sei_address, 
+        result.ethWalletAddress || result.eth_address);
       
       if (authResponse && authResponse.token) {
         // Use real tokens from backend
@@ -79,15 +81,15 @@ export class RegistrationAuthService {
         const user = {
           id: authResponse.userId || `user_${Math.random().toString(36).substring(2, 15)}`,
           email: email,
-          walletAddress: result.sei_address,
-          ethWalletAddress: result.eth_address
+          walletAddress: result.walletAddress || result.sei_address,
+          ethWalletAddress: result.ethWalletAddress || result.eth_address
         };
         
         localStorage.setItem('currentUser', JSON.stringify(user));
         localStorage.setItem('user_authenticated', 'true');
         localStorage.setItem('user_wallet', JSON.stringify({
-          sei_address: result.sei_address,
-          eth_address: result.eth_address
+          sei_address: result.walletAddress || result.sei_address,
+          eth_address: result.ethWalletAddress || result.eth_address
         }));
         
         console.log('Stored user with wallet addresses (backend auth):', user);
@@ -114,12 +116,14 @@ export class RegistrationAuthService {
     // Store auth data in localStorage/session
     localStorage.setItem('user_authenticated', 'true');
     localStorage.setItem('user_wallet', JSON.stringify({
-      sei_address: result.sei_address,
-      eth_address: result.eth_address
+      sei_address: result.walletAddress || result.sei_address,
+      eth_address: result.ethWalletAddress || result.eth_address
     }));
     
     // Create a mock JWT token for authentication
-    const mockToken = this.generateMockToken(email, result.sei_address, result.eth_address);
+    const mockToken = this.generateMockToken(email, 
+      result.walletAddress || result.sei_address, 
+      result.ethWalletAddress || result.eth_address);
     
     // Set the token in the token service
     this.tokenService.setToken(mockToken);
@@ -130,8 +134,8 @@ export class RegistrationAuthService {
     const user = {
       id: mockUserId,
       email: email,
-      walletAddress: result.sei_address,
-      ethWalletAddress: result.eth_address
+      walletAddress: result.walletAddress || result.sei_address,
+      ethWalletAddress: result.ethWalletAddress || result.eth_address
     };
     
     // Store user in localStorage and update the AuthService

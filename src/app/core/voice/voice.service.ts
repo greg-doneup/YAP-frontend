@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Observable, from, throwError, BehaviorSubject } from 'rxjs';
-import { catchError, tap, map, finalize, share } from 'rxjs/operators';
+import { Observable, from, throwError, BehaviorSubject, of } from 'rxjs';
+import { catchError, tap, map, finalize, share, delay } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { ErrorService } from '../error/error.service';
 import { ConnectivityService } from '../connectivity/connectivity.service';
@@ -16,12 +16,43 @@ export enum RecordingState {
   PLAYBACK = 'playback',
 }
 
+export interface WordAnalysis {
+  word: string;
+  expected: string;
+  pronunciation_score: number;
+  is_correct: boolean;
+  phonetic_expected?: string;
+  phonetic_actual?: string;
+}
+
+export interface PronunciationMetrics {
+  pronunciation: number;
+  speed: number;
+  similarity: number;
+  overall: number;
+}
+
+export interface CEFRFeedback {
+  level: string;
+  strengths: string[];
+  areas_for_improvement: string[];
+  recommendations: string[];
+  next_focus: string;
+}
+
 export interface PronunciationResult {
   score: number;
   transcript: string;
   pass: boolean;
   expected: string;
   corrected?: string;
+  // Enhanced assessment data
+  word_analysis?: WordAnalysis[];
+  metrics?: PronunciationMetrics;
+  cefr_feedback?: CEFRFeedback;
+  audio_waveform?: number[];
+  speaking_duration?: number;
+  expected_duration?: number;
 }
 
 export interface VoiceCapabilities {
@@ -287,7 +318,76 @@ export class VoiceService {
     return this.rateLimiter.executeIfAllowed(
       VoiceService.RL_VERIFY,
       () => {
+        // Check if we have audio chunks from recording
         if (!this.audioChunks.length) {
+          // In development mode, return a mock successful result with detailed breakdown
+          if (!environment.production) {
+            console.log('🎤 [DEV MODE] Mock pronunciation verification for:', expectedText);
+            
+            // Generate mock word analysis
+            const words = expectedText.split(' ');
+            const wordAnalysis: WordAnalysis[] = words.map((word, index) => ({
+              word: word,
+              expected: word,
+              pronunciation_score: 80 + Math.random() * 20, // Score between 80-100
+              is_correct: Math.random() > 0.2, // 80% chance of being correct
+              phonetic_expected: `/${word.toLowerCase()}/`,
+              phonetic_actual: `/${word.toLowerCase()}/`
+            }));
+            
+            // Generate mock metrics
+            const pronunciationScore = 85 + Math.random() * 15;
+            const speedScore = 75 + Math.random() * 25;
+            const similarityScore = 80 + Math.random() * 20;
+            
+            const metrics: PronunciationMetrics = {
+              pronunciation: Math.round(pronunciationScore),
+              speed: Math.round(speedScore),
+              similarity: Math.round(similarityScore),
+              overall: Math.round((pronunciationScore + speedScore + similarityScore) / 3)
+            };
+            
+            // Generate mock CEFR feedback
+            const cefrFeedback: CEFRFeedback = {
+              level: 'A1.1',
+              strengths: [
+                'Clear pronunciation of vowel sounds',
+                'Good word separation',
+                'Consistent volume'
+              ],
+              areas_for_improvement: [
+                'Work on consonant clarity',
+                'Practice natural rhythm'
+              ],
+              recommendations: [
+                'Listen to native speakers more frequently',
+                'Practice with tongue twisters',
+                'Record yourself regularly'
+              ],
+              next_focus: 'Focus on consonant pronunciation and natural speech rhythm'
+            };
+            
+            // Generate mock audio waveform data
+            const waveformLength = 100;
+            const audioWaveform = Array.from({ length: waveformLength }, () => Math.random() * 100);
+            
+            return of({
+              score: metrics.overall,
+              transcript: expectedText,
+              pass: metrics.overall >= 70,
+              expected: expectedText,
+              corrected: expectedText,
+              word_analysis: wordAnalysis,
+              metrics: metrics,
+              cefr_feedback: cefrFeedback,
+              audio_waveform: audioWaveform,
+              speaking_duration: 2.5 + Math.random() * 1.5, // 2.5-4 seconds
+              expected_duration: 3.0
+            } as PronunciationResult).pipe(
+              delay(2000), // Simulate processing time
+              finalize(() => this.recordingStateSubject.next(RecordingState.READY))
+            );
+          }
           return throwError(() => new Error('No recording available for verification'));
         }
         

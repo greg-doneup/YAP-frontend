@@ -59,91 +59,21 @@ const mockDatabase = {
 
 // Initialize mock data
 function initializeMockData() {
-  // Create some regular users for testing
-  const regularUsers = [
-    {
-      userId: 'sample-user-1',
-      email: 'test1@example.com',
-      name: 'Test User 1',
-      language: 'spanish',
-      xp: 150,
-      streak: 3,
-      hasWallet: true
-    },
-    {
-      userId: 'sample-user-2', 
-      email: 'test2@example.com',
-      name: 'Test User 2',
-      language: 'french',
-      xp: 250,
-      streak: 5,
-      hasWallet: true
-    }
-  ];
-
-  // Create waitlist users (have profile data but no wallet yet)
+  // Only create the essential waitlist user
   const waitlistUsers = [
     {
-      userId: 'waitlist-user-1',
+      userId: 'waitlist-user-main',
       email: 'waitlist@example.com',
-      name: 'Waitlist User',
+      name: 'Spanish Learner',
       language: 'spanish',
-      xp: 0,
+      xp: 0,  // Will be 25 after conversion
       streak: 0,
       hasWallet: false,
-      isWaitlist: true
-    },
-    {
-      userId: 'waitlist-user-2', 
-      email: 'waitlist2@example.com',
-      name: 'Another Waitlist User',
-      language: 'french',
-      xp: 0,
-      streak: 0,
-      hasWallet: false,
-      isWaitlist: true
+      isWaitlist: true,
+      learningStage: 'waitlist',
+      signupDate: '2025-06-08'
     }
   ];
-
-  // Process regular users (with wallets)
-  regularUsers.forEach(user => {
-    // Create basic profile
-    const basicProfile = createMockProfile(user.userId, user.email, user.name, user.language);
-    
-    if (user.hasWallet) {
-      basicProfile.wlw = true;
-      basicProfile.sei_wallet = {
-        address: 'sei1mock' + crypto.randomBytes(8).toString('hex'),
-        public_key: 'sei_pub_' + crypto.randomBytes(16).toString('hex')
-      };
-      basicProfile.eth_wallet = {
-        address: '0x' + crypto.randomBytes(20).toString('hex'),
-        public_key: 'eth_pub_' + crypto.randomBytes(16).toString('hex')
-      };
-      // Mock encrypted mnemonic data (for testing recovery flow)
-      basicProfile.encrypted_mnemonic = 'mock_encrypted_' + crypto.randomBytes(32).toString('hex');
-      basicProfile.salt = crypto.randomBytes(16).toString('hex');
-      basicProfile.nonce = crypto.randomBytes(12).toString('hex');
-    }
-    
-    mockDatabase.profiles.set(user.userId, basicProfile);
-
-    // Create user entry
-    mockDatabase.users.set(user.userId, {
-      userId: user.userId,
-      email: user.email,
-      name: user.name,
-      language_to_learn: user.language,
-      walletAddress: basicProfile.sei_wallet?.address,
-      ethWalletAddress: basicProfile.eth_wallet?.address
-    });
-
-    // Create offchain profile
-    const offchainProfile = createMockOffchainProfile(user.userId, basicProfile.eth_wallet?.address || '0x' + crypto.randomBytes(20).toString('hex'));
-    offchainProfile.xp = user.xp || 0;
-    offchainProfile.streak = user.streak || 0;
-    mockDatabase.offchainProfiles.set(user.userId, offchainProfile);
-  });
 
   // Process waitlist users (no wallets yet, just profile data)
   waitlistUsers.forEach(user => {
@@ -151,7 +81,8 @@ function initializeMockData() {
     const basicProfile = createMockProfile(user.userId, user.email, user.name, user.language);
     basicProfile.wlw = false; // No wallet yet
     basicProfile.isWaitlistUser = true; // Mark as waitlist user
-    basicProfile.waitlist_signup_at = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(); // Random date in last 30 days
+    basicProfile.waitlist_signup_at = user.signupDate ? new Date(user.signupDate).toISOString() : new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString();
+    basicProfile.learningStage = 'waitlist';
     
     mockDatabase.profiles.set(user.userId, basicProfile);
 
@@ -161,23 +92,23 @@ function initializeMockData() {
       email: user.email,
       name: user.name,
       language_to_learn: user.language,
-      hasWallet: false
+      hasWallet: false,
+      learningStage: 'waitlist',
+      signupDate: user.signupDate
     });
 
-    // Create offchain profile
-    const offchainProfile = createMockOffchainProfile(user.userId, '0x' + crypto.randomBytes(20).toString('hex'));
-    offchainProfile.xp = user.xp || 0;
-    offchainProfile.streak = user.streak || 0;
+    // Create offchain profile for waitlist users
+    const offchainProfile = createMockOffchainProfile(user.userId, '0x' + crypto.randomBytes(20).toString('hex'), false);
+    offchainProfile.xp = 0;
+    offchainProfile.streak = 0;
+    offchainProfile.learningStage = 'waitlist';
+    offchainProfile.completedLessons = [];
     mockDatabase.offchainProfiles.set(user.userId, offchainProfile);
   });
 
-  console.log('✅ Mock data initialized:');
-  console.log('Regular users:');
-  console.log('   • test1@example.com (has wallet)');
-  console.log('   • test2@example.com (has wallet)');
-  console.log('Waitlist users:');
-  console.log('   • waitlist@example.com (no wallet, ready for conversion)');
-  console.log('   • waitlist2@example.com (no wallet, ready for conversion)');
+  console.log('✅ Mock data initialized with essential waitlist user:');
+  console.log('Waitlist users (awaiting wallet creation):');
+  console.log('   • waitlist@example.com - Spanish Learner (Signed up: 2025-06-08)');
 }
 
 initializeMockData();
@@ -287,15 +218,64 @@ function createMockProfile(userId, email, name, language) {
   };
 }
 
-function createMockOffchainProfile(userId, ethWalletAddress) {
+function createMockOffchainProfile(userId, ethWalletAddress, isWaitlistConversion = false) {
   return {
     userId,
     ethWalletAddress,
-    xp: Math.floor(Math.random() * 500),
-    streak: Math.floor(Math.random() * 10),
+    xp: isWaitlistConversion ? 25 : 0,  // 25-point bonus for waitlist conversions, 0 for new accounts
+    streak: 0,  // All new accounts start with 0 streak
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+}
+
+// Helper function to determine next word delay based on learning stage
+function getNextWordDelayByStage(learningStage) {
+  const delays = {
+    'beginner': 2 * 60 * 60 * 1000,    // 2 hours for complete beginners
+    'first_week': 4 * 60 * 60 * 1000,  // 4 hours for first week learners
+    'second_week': 6 * 60 * 60 * 1000, // 6 hours for second week
+    'third_week': 8 * 60 * 60 * 1000,  // 8 hours for third week
+    'first_month': 12 * 60 * 60 * 1000, // 12 hours for first month learners
+    'waitlist': 0                       // No delay for waitlist users
+  };
+  
+  return delays[learningStage] || 6 * 60 * 60 * 1000; // Default 6 hours
+}
+
+// Helper function to update learning stage based on progress
+function updateLearningStage(offchainProfile, user) {
+  const completedLessons = offchainProfile.completedLessons?.length || 0;
+  const totalXP = offchainProfile.xp || 0;
+  const streak = offchainProfile.streak || 0;
+  
+  let newStage = offchainProfile.learningStage;
+  
+  // Progress from beginner to first_week
+  if (newStage === 'beginner' && (completedLessons >= 1 || totalXP >= 50)) {
+    newStage = 'first_week';
+  }
+  // Progress from first_week to second_week  
+  else if (newStage === 'first_week' && (completedLessons >= 2 || totalXP >= 100 || streak >= 5)) {
+    newStage = 'second_week';
+  }
+  // Progress from second_week to third_week
+  else if (newStage === 'second_week' && (completedLessons >= 3 || totalXP >= 150 || streak >= 7)) {
+    newStage = 'third_week';
+  }
+  // Progress from third_week to first_month
+  else if (newStage === 'third_week' && (completedLessons >= 4 || totalXP >= 200 || streak >= 10)) {
+    newStage = 'first_month';
+  }
+  
+  if (newStage !== offchainProfile.learningStage) {
+    offchainProfile.learningStage = newStage;
+    if (user) {
+      user.learningStage = newStage;
+      mockDatabase.users.set(user.userId, user);
+    }
+    console.log(`[PROGRESS] User ${user?.userId} advanced to learning stage: ${newStage}`);
+  }
 }
 
 // =============================================================================
@@ -379,6 +359,10 @@ apiRouter.post('/auth/wallet/signup', (req, res) => {
         mockDatabase.users.set(existingProfile.userId, existingUser);
       }
 
+      // Create/update offchain profile with waitlist conversion bonus
+      const offchainProfile = createMockOffchainProfile(existingProfile.userId, eth_address, true);
+      mockDatabase.offchainProfiles.set(existingProfile.userId, offchainProfile);
+
       // Generate tokens for converted user
       const accessToken = generateToken({
         sub: existingProfile.userId,
@@ -403,7 +387,7 @@ apiRouter.post('/auth/wallet/signup', (req, res) => {
         name: existingProfile.name,
         language_to_learn: existingProfile.initial_language_to_learn,
         isWaitlistConversion: true,
-        starting_points: 100, // Bonus points for waitlist users
+        starting_points: offchainProfile.xp, // Use actual XP from offchain profile
         message: 'Waitlist user converted to full account successfully'
       });
       
@@ -463,15 +447,8 @@ apiRouter.post('/auth/wallet/signup', (req, res) => {
   // Create new profile
   mockDatabase.profiles.set(userId, profileData);
 
-  // Create offchain profile
-  const offchainProfile = {
-    userId,
-    ethWalletAddress: eth_address,
-    xp: 0,
-    streak: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+  // Create offchain profile using the helper function
+  const offchainProfile = createMockOffchainProfile(userId, eth_address, false);
   mockDatabase.offchainProfiles = mockDatabase.offchainProfiles || new Map();
   mockDatabase.offchainProfiles.set(userId, offchainProfile);
 
@@ -1484,7 +1461,7 @@ apiRouter.post('/offchain/profile', authenticateToken, (req, res) => {
   }
 
   // Create new offchain profile
-  const profile = createMockOffchainProfile(userId, req.user.ethWalletAddress);
+  const profile = createMockOffchainProfile(userId, req.user.ethWalletAddress, false);
   mockDatabase.offchainProfiles.set(userId, profile);
 
   res.status(201).json(profile);
@@ -1861,32 +1838,94 @@ apiRouter.get('/learning/progress/history', (req, res) => {
   res.json({ completions });
 });
 
-// GET /learning/daily - Get vocabulary for current lesson
+// GET /learning/daily - Get vocabulary for current lesson (language-specific)
 apiRouter.get('/learning/daily', (req, res) => {
   const { userId } = req.query;
   
-  // Return mock vocabulary
-  const vocabulary = [
-    {
-      id: 'word-1',
-      term: 'hello',
-      definition: 'a greeting',
-      example: 'Hello, how are you?'
-    },
-    {
-      id: 'word-2',
-      term: 'goodbye',
-      definition: 'a farewell',
-      example: 'Goodbye, see you later!'
-    },
-    {
-      id: 'word-3',
-      term: 'thanks',
-      definition: 'expression of gratitude',
-      example: 'Thanks for your help.'
-    }
-  ];
+  if (!userId) {
+    // Return default vocabulary if no user specified
+    const defaultVocabulary = [
+      {
+        id: 'default-word-1',
+        term: 'hello',
+        translation: 'a greeting',
+        difficulty: 1,
+        examples: ['Hello, how are you?'],
+        tags: ['greeting', 'common']
+      }
+    ];
+    return res.json(defaultVocabulary);
+  }
 
+  // Get user's language preference
+  const user = mockDatabase.users.get(userId);
+  if (!user || !user.language_to_learn) {
+    // Fallback to English if user not found
+    const vocabulary = [
+      {
+        id: 'en-word-1',
+        term: 'hello',
+        translation: 'a greeting',
+        difficulty: 1,
+        examples: ['Hello, how are you?'],
+        tags: ['greeting', 'common']
+      }
+    ];
+    return res.json(vocabulary);
+  }
+
+  // Find appropriate lesson based on user's language and progress
+  const userLanguage = user.language_to_learn;
+  const userLevel = user.currentLevel || 'A1.1';
+  
+  // Get the user's current lesson or find the first lesson for their language
+  let currentLesson = null;
+  const offchainProfile = mockDatabase.offchainProfiles.get(userId);
+  
+  if (offchainProfile && offchainProfile.completedLessons && offchainProfile.completedLessons.length > 0) {
+    // User has progress, find next lesson
+    const availableLessons = Array.from(mockDatabase.lessons.values())
+      .filter(lesson => lesson.language === userLanguage && lesson.level === userLevel);
+    
+    // Find first incomplete lesson
+    currentLesson = availableLessons.find(lesson => 
+      !offchainProfile.completedLessons.includes(lesson.lesson_id)
+    );
+    
+    // If all lessons completed, return the last lesson
+    if (!currentLesson && availableLessons.length > 0) {
+      currentLesson = availableLessons[availableLessons.length - 1];
+    }
+  } else {
+    // New user, find first lesson for their language
+    currentLesson = Array.from(mockDatabase.lessons.values())
+      .find(lesson => lesson.language === userLanguage && lesson.level === userLevel);
+  }
+
+  if (!currentLesson) {
+    // No lessons found for user's language, return generic vocabulary
+    const fallbackVocabulary = [
+      {
+        id: 'fallback-word-1',
+        term: 'learning',
+        translation: 'the process of acquiring knowledge',
+        difficulty: 1,
+        examples: ['Learning languages is fun!'],
+        tags: ['education', 'common']
+      }
+    ];
+    return res.json(fallbackVocabulary);
+  }
+
+  // Return the vocabulary from the current lesson
+  const vocabulary = currentLesson.new_vocabulary.map(word => ({
+    ...word,
+    lessonId: currentLesson.lesson_id,
+    lessonTitle: currentLesson.title,
+    language: currentLesson.language
+  }));
+
+  console.log(`[DAILY] Serving ${vocabulary.length} ${userLanguage} words for user ${userId} from lesson ${currentLesson.lesson_id}`);
   res.json(vocabulary);
 });
 
@@ -1901,90 +1940,167 @@ apiRouter.post('/learning/daily/complete', (req, res) => {
     });
   }
 
-  // Mock pronunciation assessment based on detail level
-  const level = detailLevel || 'phoneme';
-  const pronunciationScore = 0.75 + Math.random() * 0.25; // Random score between 0.75-1.0
-  const grammarScore = 0.8 + Math.random() * 0.2;
-  const pass = pronunciationScore >= 0.7;
+  // Mock realistic pronunciation assessment for Spanish phrases
+  const expectedText = transcript || 'Me gusta aprender idiomas nuevos';
+  const words = expectedText.split(' ');
+  
+  // Generate realistic word-by-word scores
+  const wordDetails = words.map((word, index) => {
+    const baseScore = 0.7 + Math.random() * 0.25; // 0.7 to 0.95
+    return {
+      word: word,
+      score: baseScore,
+      startTime: index * 0.5,
+      endTime: (index + 1) * 0.5,
+      confidence: 0.85 + Math.random() * 0.15,
+      issues: baseScore < 0.8 ? ['pronunciation'] : []
+    };
+  });
 
-  const baseResponse = {
-    pass,
-    pronunciationScore,
-    grammarScore,
-    expected: transcript || 'I am saying hello.',
-    corrected: transcript || 'I am saying hello.'
-  };
+  const overallScore = wordDetails.reduce((sum, word) => sum + word.score, 0) / wordDetails.length;
+  const pronunciationScore = Math.round(overallScore * 100);
+  const speedScore = 85 + Math.round(Math.random() * 15);
+  const similarityScore = 88 + Math.round(Math.random() * 12);
+  const pass = overallScore >= 0.7;
 
-  if (level === 'summary') {
-    res.json(baseResponse);
-    return;
-  }
-
-  // Add detailed information for phoneme and detailed levels
   const detailedResponse = {
-    ...baseResponse,
-    wordDetails: [
-      {
-        word: 'hello',
-        score: pronunciationScore,
-        startTime: 0.5,
-        endTime: 0.9,
-        confidence: 0.95,
-        issues: pronunciationScore < 0.8 ? ['stress'] : []
-      }
-    ],
+    pass,
+    pronunciationScore: overallScore,
+    overallScore: pronunciationScore,
+    speedScore,
+    similarityScore,
+    expected: expectedText,
+    corrected: expectedText,
+    wordDetails,
     phonemeDetails: [
       {
-        phoneme: 'HH',
-        score: 0.75,
-        startTime: 0.5,
-        endTime: 0.6,
-        issues: []
-      },
-      {
-        phoneme: 'AH',
+        phoneme: 'M',
         score: 0.9,
-        startTime: 0.6,
-        endTime: 0.7,
+        startTime: 0.0,
+        endTime: 0.1,
         issues: []
       },
       {
-        phoneme: 'L',
-        score: 0.95,
-        startTime: 0.7,
-        endTime: 0.8,
+        phoneme: 'E',
+        score: 0.85,
+        startTime: 0.1,
+        endTime: 0.2,
         issues: []
-      },
-      {
-        phoneme: 'OW',
-        score: 0.8,
-        startTime: 0.8,
-        endTime: 0.9,
-        issues: pronunciationScore < 0.8 ? ['stress'] : []
       }
     ],
-    feedback: pronunciationScore < 0.8 
-      ? ['Work on the stress pattern in the word \'hello\'', 'Your pronunciation of \'h\' sound could be improved']
-      : ['Good pronunciation!'],
-    transcript: transcript || 'I am saying hello.'
+    feedback: overallScore >= 0.9 
+      ? ['¡Excelente pronunciación!', 'Your Spanish accent is very natural.']
+      : overallScore >= 0.8
+      ? ['Muy bien!', 'Good pronunciation with minor areas to improve.']
+      : ['Keep practicing!', 'Focus on the highlighted words for better pronunciation.'],
+    transcript: expectedText,
+    audioAnalysis: {
+      duration: words.length * 0.5,
+      volume: 'good',
+      clarity: 'high'
+    }
   };
 
-  // Store completion
+  // Store completion and update user progress
   const completion = {
     userId,
     lessonId,
     wordId,
     date: new Date().toISOString().split('T')[0],
-    pronunciationScore,
-    grammarScore,
+    pronunciationScore: overallScore,
+    grammarScore: 0.9,
     pass,
     timestamp: new Date().toISOString()
   };
 
+  console.log(`[PRONUNCIATION] User ${userId} completed ${wordId} with score: ${pronunciationScore}%`);
+  
+  // Store completion and update user progress
   if (!mockDatabase.completions.has(userId)) {
     mockDatabase.completions.set(userId, []);
   }
   mockDatabase.completions.get(userId).unshift(completion);
+
+  // Update user progress if completion was successful
+  if (pass) {
+    const user = mockDatabase.users.get(userId);
+    const offchainProfile = mockDatabase.offchainProfiles.get(userId);
+    
+    if (user && offchainProfile) {
+      // Award XP based on learning stage and performance
+      const baseXP = 10;
+      let bonusXP = 0;
+      
+      // Bonus XP for excellent pronunciation
+      if (pronunciationScore >= 0.9) bonusXP += 5;
+      if (pronunciationScore >= 0.95) bonusXP += 5;
+      
+      // Bonus XP for beginners to encourage continued learning
+      if (offchainProfile.learningStage === 'beginner' || offchainProfile.learningStage === 'first_week') {
+        bonusXP += 3;
+      }
+      
+      const totalXPGained = baseXP + bonusXP;
+      offchainProfile.xp = (offchainProfile.xp || 0) + totalXPGained;
+      
+      // Update streak if this is a daily completion
+      const today = new Date().toISOString().split('T')[0];
+      const lastActivity = offchainProfile.lastActivity ? new Date(offchainProfile.lastActivity).toISOString().split('T')[0] : null;
+      
+      if (lastActivity !== today) {
+        // First completion today
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        if (lastActivity === yesterdayStr) {
+          // Consecutive day, increment streak
+          offchainProfile.streak = (offchainProfile.streak || 0) + 1;
+        } else if (!lastActivity || lastActivity !== today) {
+          // Either first time or streak broken, reset to 1
+          offchainProfile.streak = 1;
+        }
+      }
+      
+      offchainProfile.lastActivity = new Date().toISOString();
+      
+      // Track completed words
+      if (!offchainProfile.completedWords) {
+        offchainProfile.completedWords = [];
+      }
+      if (!offchainProfile.completedWords.includes(wordId)) {
+        offchainProfile.completedWords.push(wordId);
+      }
+      
+      // Check if lesson is completed (all words done)
+      const lesson = mockDatabase.lessons.get(lessonId);
+      if (lesson) {
+        const lessonWordIds = lesson.new_vocabulary.map(w => w.id);
+        const userCompletedWordsInLesson = offchainProfile.completedWords.filter(id => lessonWordIds.includes(id));
+        
+        if (userCompletedWordsInLesson.length >= lessonWordIds.length) {
+          // Lesson completed!
+          if (!offchainProfile.completedLessons) {
+            offchainProfile.completedLessons = [];
+          }
+          if (!offchainProfile.completedLessons.includes(lessonId)) {
+            offchainProfile.completedLessons.push(lessonId);
+            
+            // Bonus XP for lesson completion
+            offchainProfile.xp += 25;
+            
+            // Update learning stage if appropriate
+            updateLearningStage(offchainProfile, user);
+          }
+        }
+      }
+      
+      // Save updated progress
+      mockDatabase.offchainProfiles.set(userId, offchainProfile);
+      
+      console.log(`[PROGRESS] User ${userId} gained ${totalXPGained} XP (total: ${offchainProfile.xp}), streak: ${offchainProfile.streak}`);
+    }
+  }
 
   res.json(detailedResponse);
 });
@@ -2000,19 +2116,20 @@ apiRouter.post('/learning/daily/tts/sentence', (req, res) => {
     });
   }
 
-  // Return mock MP3 data (minimal header)
-  res.set({
-    'Content-Type': 'audio/mp3',
-    'Content-Disposition': 'attachment; filename="pronunciation_example.mp3"'
+  // Generate mock audio URL based on text and language
+  const audioId = Buffer.from(text).toString('base64').substring(0, 16);
+  const mockAudioUrl = `data:audio/mp3;base64,SUQzAwAAAAABVFNTRQAAAA8AAABNUEVHIFZlcnNpb24=`;
+
+  console.log(`[TTS] Generated audio for: "${text}" in ${languageCode || 'es-ES'}`);
+
+  res.json({
+    success: true,
+    audioUrl: mockAudioUrl,
+    text: text,
+    languageCode: languageCode || 'es-ES',
+    duration: text.length * 0.1, // Rough estimate
+    format: 'mp3'
   });
-  
-  // Send minimal MP3 header (for demo purposes)
-  const mockMp3Header = Buffer.from([
-    0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-  ]);
-  
-  res.send(mockMp3Header);
 });
 
 // GET /learning/daily/tts/:wordId - Get TTS for vocabulary word
@@ -2151,30 +2268,123 @@ apiRouter.get('/learning/lessons', (req, res) => {
   res.json({ lessons });
 });
 
-// GET /learning/quiz - Get quiz words
+// GET /learning/quiz - Get quiz words (language-specific)
 apiRouter.get('/learning/quiz', (req, res) => {
   const { userId } = req.query;
 
-  const words = [
-    {
-      id: 'word-1',
-      term: 'hello',
-      definition: 'a greeting',
-      example: 'Hello, how are you?'
-    },
-    {
-      id: 'word-2',
-      term: 'goodbye',
-      definition: 'a farewell',
-      example: 'Goodbye, see you later!'
-    }
-  ];
+  if (!userId) {
+    // Return default quiz if no user specified
+    const defaultWords = [
+      {
+        id: 'quiz-default-1',
+        term: 'practice',
+        translation: 'to exercise or rehearse',
+        difficulty: 1,
+        examples: ['Practice makes perfect.'],
+        tags: ['education']
+      }
+    ];
+    return res.json({
+      words: defaultWords,
+      expected: 'I am practicing vocabulary words.'
+    });
+  }
 
+  // Get user's language preference and progress
+  const user = mockDatabase.users.get(userId);
+  if (!user || !user.language_to_learn) {
+    const fallbackWords = [
+      {
+        id: 'quiz-fallback-1',
+        term: 'study',
+        translation: 'to learn about something',
+        difficulty: 1,
+        examples: ['I study languages every day.'],
+        tags: ['education']
+      }
+    ];
+    return res.json({
+      words: fallbackWords,
+      expected: 'I am studying new words.'
+    });
+  }
+
+  const userLanguage = user.language_to_learn;
+  const offchainProfile = mockDatabase.offchainProfiles.get(userId);
+  
+  // Find lessons for user's language
+  const userLessons = Array.from(mockDatabase.lessons.values())
+    .filter(lesson => lesson.language === userLanguage);
+
+  if (userLessons.length === 0) {
+    return res.json({
+      words: [],
+      expected: 'No vocabulary available for this language yet.'
+    });
+  }
+
+  // Get words from completed lessons for review
+  let quizWords = [];
+  let expectedPhrase = '';
+
+  if (offchainProfile && offchainProfile.completedLessons && offchainProfile.completedLessons.length > 0) {
+    // User has completed lessons, create review quiz
+    const completedLessons = userLessons.filter(lesson => 
+      offchainProfile.completedLessons.includes(lesson.lesson_id)
+    );
+    
+    // Collect vocabulary from completed lessons
+    const allCompletedWords = [];
+    completedLessons.forEach(lesson => {
+      allCompletedWords.push(...lesson.new_vocabulary);
+    });
+    
+    // Select up to 5 words for quiz
+    quizWords = allCompletedWords.slice(0, 5);
+    
+    // Create language-specific expected phrase
+    expectedPhrase = generateExpectedPhraseForLanguage(userLanguage, quizWords);
+  } else {
+    // New user, use words from first lesson as preview
+    const firstLesson = userLessons[0];
+    quizWords = firstLesson.new_vocabulary.slice(0, 3);
+    expectedPhrase = generateExpectedPhraseForLanguage(userLanguage, quizWords);
+  }
+
+  // Add language and lesson context to words
+  const enhancedWords = quizWords.map(word => ({
+    ...word,
+    language: userLanguage,
+    quizType: 'review'
+  }));
+
+  console.log(`[QUIZ] Generated ${userLanguage} quiz with ${enhancedWords.length} words for user ${userId}`);
+  
   res.json({
-    words,
-    expected: 'I am practicing hello, goodbye, thanks, please, sorry.'
+    words: enhancedWords,
+    expected: expectedPhrase,
+    language: userLanguage,
+    quizType: offchainProfile?.completedLessons?.length > 0 ? 'review' : 'preview'
   });
 });
+
+// Helper function to generate language-specific expected phrases
+function generateExpectedPhraseForLanguage(language, words) {
+  const wordTerms = words.map(w => w.term).join(', ');
+  
+  const templates = {
+    'spanish': `Estoy practicando las palabras: ${wordTerms}.`,
+    'french': `Je pratique les mots: ${wordTerms}.`,
+    'german': `Ich übe die Wörter: ${wordTerms}.`,
+    'japanese': `これらのことばをれんしゅうしています: ${wordTerms}。`,
+    'italian': `Sto praticando le parole: ${wordTerms}.`,
+    'portuguese': `Estou praticando as palavras: ${wordTerms}.`,
+    'korean': `이 단어들을 연습하고 있습니다: ${wordTerms}.`,
+    'arabic': `أتدرب على هذه الكلمات: ${wordTerms}.`
+  };
+  
+  return templates[language] || `I am practicing these words: ${wordTerms}.`;
+}
 
 // POST /learning/quiz/submit - Submit quiz answers
 apiRouter.post('/learning/quiz/submit', (req, res) => {
@@ -2244,7 +2454,7 @@ apiRouter.post('/complete', authenticateToken, (req, res) => {
   // Get or create offchain profile
   let offchainProfile = mockDatabase.offchainProfiles.get(userId);
   if (!offchainProfile) {
-    offchainProfile = createMockOffchainProfile(userId);
+    offchainProfile = createMockOffchainProfile(userId, '', false);
     mockDatabase.offchainProfiles.set(userId, offchainProfile);
   }
 
@@ -2492,48 +2702,315 @@ app.use((err, req, res, next) => {
 // =============================================================================
 
 function initializeLessonsData() {
-  // Initialize mock lessons
+  // Initialize comprehensive language-specific lessons
   const lessons = [
+    // Spanish Lessons (A1.1 Level)
     {
-      lesson_id: 'lesson-1',
-      title: 'Basic Greetings',
-      description: 'Learn basic greetings',
-      language: 'english',
-      level: 'beginner',
+      lesson_id: 'spanish-basics-1',
+      title: 'Conversación Básica',
+      description: 'Aprende frases conversacionales básicas en español',
+      language: 'spanish',
+      level: 'A1.1',
+      focus: 'conversation_basics',
       new_vocabulary: [
         {
-          id: 'word-1',
-          term: 'hello',
-          definition: 'a greeting',
-          example: 'Hello, how are you?'
+          id: 'es-phrase-1',
+          term: 'Me gusta aprender idiomas nuevos',
+          translation: 'I like to learn new languages',
+          difficulty: 1,
+          examples: ['Me gusta aprender idiomas nuevos como el español.', '¿Te gusta aprender idiomas nuevos?'],
+          tags: ['conversation', 'preferences', 'learning']
         },
         {
-          id: 'word-2',
-          term: 'goodbye',
-          definition: 'a farewell',
-          example: 'Goodbye, see you later!'
+          id: 'es-phrase-2',
+          term: 'Hola, ¿cómo estás?',
+          translation: 'Hello, how are you?',
+          difficulty: 1,
+          examples: ['Hola, ¿cómo estás hoy?', 'Hola María, ¿cómo estás?'],
+          tags: ['greeting', 'conversation']
+        },
+        {
+          id: 'es-phrase-3',
+          term: '¿De dónde eres?',
+          translation: 'Where are you from?',
+          difficulty: 1,
+          examples: ['Hola, ¿de dónde eres?', 'Me puedes decir ¿de dónde eres?'],
+          tags: ['conversation', 'introduction']
+        },
+        {
+          id: 'es-phrase-4',
+          term: 'Mucho gusto en conocerte',
+          translation: 'Nice to meet you',
+          difficulty: 1,
+          examples: ['Mucho gusto en conocerte, Ana.', 'Igualmente, mucho gusto en conocerte.'],
+          tags: ['politeness', 'introduction']
         }
+      ],
+      speaking_exercises: [
+        {
+          type: 'introduction',
+          prompt: 'Preséntate usando las palabras que aprendiste',
+          items: [
+            {
+              question: '¿Cómo te presentarías a alguien nuevo?',
+              example_answer: 'Hola, me llamo [tu nombre]. Mucho gusto.'
+            }
+          ],
+          leveling_note: 'Focus on clear pronunciation of vowels'
+        }
+      ],
+      review_points: [
+        'Spanish vowels are always pronounced the same way',
+        'The letter "h" is silent in Spanish',
+        'Remember to roll your "r" sounds lightly'
       ]
     },
+
+    // French Lessons (A1.1 Level)
     {
-      lesson_id: 'lesson-2',
-      title: 'Common Phrases',
-      description: 'Learn common phrases',
-      language: 'english',
-      level: 'beginner',
+      lesson_id: 'french-basics-1',
+      title: 'Salutations de Base',
+      description: 'Apprendre les salutations de base en français',
+      language: 'french',
+      level: 'A1.1',
+      focus: 'greetings_and_introductions',
       new_vocabulary: [
         {
-          id: 'word-3',
-          term: 'thanks',
-          definition: 'expression of gratitude',
-          example: 'Thanks for your help.'
+          id: 'fr-word-1',
+          term: 'bonjour',
+          translation: 'hello/good morning',
+          difficulty: 1,
+          examples: ['Bonjour, comment allez-vous?', 'Bonjour madame.'],
+          tags: ['greeting', 'formal']
         },
         {
-          id: 'word-4',
-          term: 'please',
-          definition: 'polite request',
-          example: 'Please help me.'
+          id: 'fr-word-2',
+          term: 'salut',
+          translation: 'hi/bye',
+          difficulty: 1,
+          examples: ['Salut! Ça va?', 'Salut, à bientôt!'],
+          tags: ['greeting', 'informal']
+        },
+        {
+          id: 'fr-word-3',
+          term: 'merci',
+          translation: 'thank you',
+          difficulty: 1,
+          examples: ['Merci beaucoup!', 'Merci pour votre aide.'],
+          tags: ['politeness', 'common']
+        },
+        {
+          id: 'fr-word-4',
+          term: 's\'il vous plaît',
+          translation: 'please (formal)',
+          difficulty: 2,
+          examples: ['Aidez-moi, s\'il vous plaît.', 'Pouvez-vous répéter, s\'il vous plaît?'],
+          tags: ['politeness', 'formal']
         }
+      ],
+      speaking_exercises: [
+        {
+          type: 'introduction',
+          prompt: 'Présentez-vous en utilisant les mots que vous avez appris',
+          items: [
+            {
+              question: 'Comment vous présenteriez-vous à quelqu\'un de nouveau?',
+              example_answer: 'Bonjour, je m\'appelle [votre nom]. Enchanté(e).'
+            }
+          ],
+          leveling_note: 'Pay attention to nasal vowels and liaison'
+        }
+      ],
+      review_points: [
+        'French has nasal vowels that don\'t exist in English',
+        'Silent letters at the end of words are common',
+        'Liaison connects words when speaking'
+      ]
+    },
+
+    // German Lessons (A1.1 Level)
+    {
+      lesson_id: 'german-basics-1',
+      title: 'Grundlegende Begrüßungen',
+      description: 'Lerne grundlegende Begrüßungen auf Deutsch',
+      language: 'german',
+      level: 'A1.1',
+      focus: 'greetings_and_introductions',
+      new_vocabulary: [
+        {
+          id: 'de-word-1',
+          term: 'hallo',
+          translation: 'hello',
+          difficulty: 1,
+          examples: ['Hallo, wie geht es dir?', 'Hallo! Schön dich zu sehen.'],
+          tags: ['greeting', 'common']
+        },
+        {
+          id: 'de-word-2',
+          term: 'auf Wiedersehen',
+          translation: 'goodbye',
+          difficulty: 2,
+          examples: ['Auf Wiedersehen! Bis morgen.', 'Auf Wiedersehen, hab einen schönen Tag.'],
+          tags: ['farewell', 'formal']
+        },
+        {
+          id: 'de-word-3',
+          term: 'danke',
+          translation: 'thank you',
+          difficulty: 1,
+          examples: ['Danke für deine Hilfe.', 'Vielen Dank!'],
+          tags: ['politeness', 'common']
+        },
+        {
+          id: 'de-word-4',
+          term: 'bitte',
+          translation: 'please/you\'re welcome',
+          difficulty: 1,
+          examples: ['Hilf mir bitte.', 'Bitte schön!'],
+          tags: ['politeness', 'common']
+        }
+      ],
+      speaking_exercises: [
+        {
+          type: 'introduction',
+          prompt: 'Stelle dich vor mit den Wörtern, die du gelernt hast',
+          items: [
+            {
+              question: 'Wie würdest du dich jemandem Neuen vorstellen?',
+              example_answer: 'Hallo, ich heiße [dein Name]. Freut mich, dich kennenzulernen.'
+            }
+          ],
+          leveling_note: 'Focus on umlauts (ä, ö, ü) and consonant clusters'
+        }
+      ],
+      review_points: [
+        'German has three types of umlauts: ä, ö, ü',
+        'Consonant clusters can be challenging for English speakers',
+        'Word stress usually falls on the first syllable'
+      ]
+    },
+
+    // Japanese Lessons (A1.1 Level)
+    {
+      lesson_id: 'japanese-basics-1',
+      title: 'きほんのあいさつ',
+      description: 'Learn basic greetings in Japanese',
+      language: 'japanese',
+      level: 'A1.1',
+      focus: 'greetings_and_introductions',
+      new_vocabulary: [
+        {
+          id: 'ja-word-1',
+          term: 'こんにちは',
+          translation: 'hello/good afternoon',
+          difficulty: 2,
+          examples: ['こんにちは！げんきですか？', 'こんにちは。はじめまして。'],
+          tags: ['greeting', 'common', 'hiragana']
+        },
+        {
+          id: 'ja-word-2',
+          term: 'さようなら',
+          translation: 'goodbye',
+          difficulty: 2,
+          examples: ['さようなら！またあした。', 'さようなら。きをつけて。'],
+          tags: ['farewell', 'formal', 'hiragana']
+        },
+        {
+          id: 'ja-word-3',
+          term: 'ありがとう',
+          translation: 'thank you',
+          difficulty: 2,
+          examples: ['ありがとうございます。', 'ありがとう！'],
+          tags: ['politeness', 'common', 'hiragana']
+        },
+        {
+          id: 'ja-word-4',
+          term: 'すみません',
+          translation: 'excuse me/sorry',
+          difficulty: 2,
+          examples: ['すみません、たすけてください。', 'すみません！'],
+          tags: ['politeness', 'common', 'hiragana']
+        }
+      ],
+      speaking_exercises: [
+        {
+          type: 'introduction',
+          prompt: 'まなんだことばをつかって、じこしょうかいしてください',
+          items: [
+            {
+              question: 'あたらしいひとに、どうやってじこしょうかいしますか？',
+              example_answer: 'こんにちは。わたしは[なまえ]です。よろしくおねがいします。'
+            }
+          ],
+          leveling_note: 'Focus on correct pitch accent and long vowels'
+        }
+      ],
+      review_points: [
+        'Japanese uses pitch accent, not stress accent',
+        'Long vowels are important for meaning',
+        'Politeness levels change the vocabulary used'
+      ]
+    },
+
+    // Italian Lessons (A1.1 Level)
+    {
+      lesson_id: 'italian-basics-1',
+      title: 'Saluti di Base',
+      description: 'Impara i saluti di base in italiano',
+      language: 'italian',
+      level: 'A1.1',
+      focus: 'greetings_and_introductions',
+      new_vocabulary: [
+        {
+          id: 'it-word-1',
+          term: 'ciao',
+          translation: 'hello/goodbye (informal)',
+          difficulty: 1,
+          examples: ['Ciao! Come stai?', 'Ciao, ci vediamo dopo!'],
+          tags: ['greeting', 'informal', 'common']
+        },
+        {
+          id: 'it-word-2',
+          term: 'buongiorno',
+          translation: 'good morning/good day',
+          difficulty: 1,
+          examples: ['Buongiorno, signora!', 'Buongiorno! Come va?'],
+          tags: ['greeting', 'formal']
+        },
+        {
+          id: 'it-word-3',
+          term: 'grazie',
+          translation: 'thank you',
+          difficulty: 1,
+          examples: ['Grazie mille!', 'Grazie per l\'aiuto.'],
+          tags: ['politeness', 'common']
+        },
+        {
+          id: 'it-word-4',
+          term: 'per favore',
+          translation: 'please',
+          difficulty: 1,
+          examples: ['Aiutami, per favore.', 'Puoi ripetere, per favore?'],
+          tags: ['politeness', 'common']
+        }
+      ],
+      speaking_exercises: [
+        {
+          type: 'introduction',
+          prompt: 'Presentati usando le parole che hai imparato',
+          items: [
+            {
+              question: 'Come ti presenteresti a qualcuno di nuovo?',
+              example_answer: 'Ciao, mi chiamo [il tuo nome]. Piacere di conoscerti.'
+            }
+          ],
+          leveling_note: 'Focus on rolling R sounds and double consonants'
+        }
+      ],
+      review_points: [
+        'Italian R is always rolled',
+        'Double consonants are pronounced longer',
+        'Vowels are always pronounced clearly'
       ]
     }
   ];
@@ -2542,7 +3019,8 @@ function initializeLessonsData() {
     mockDatabase.lessons.set(lesson.lesson_id, lesson);
   });
 
-  console.log('Mock lessons initialized with', lessons.length, 'lessons');
+  console.log('Mock lessons initialized with', lessons.length, 'language-specific lessons');
+  console.log('Supported languages: Spanish, French, German, Japanese, Italian');
 }
 
 // Initialize lessons data on startup

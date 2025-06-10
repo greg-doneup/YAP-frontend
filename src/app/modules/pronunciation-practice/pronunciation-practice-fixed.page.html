@@ -1,0 +1,352 @@
+<ion-header [translucent]="true">
+  <ion-toolbar class="transparent-toolbar">
+    <ion-buttons slot="start">
+      <ion-button fill="clear" (click)="goBack()" class="back-button">
+        <ion-icon name="chevron-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title class="header-title">
+      <div class="lesson-context">
+        <span class="lesson-level">{{ currentLevel }}</span>
+        <span class="lesson-separator">•</span>
+        <span class="lesson-number">Lesson {{ lessonNumber }}</span>
+      </div>
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="pronunciation-practice-container">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="loading-content">
+      <div class="loading-spinner">
+        <ion-spinner name="dots"></ion-spinner>
+      </div>
+      <h3>Preparing your lesson</h3>
+      <p>Loading pronunciation practice content...</p>
+    </div>
+  </div>
+
+  <!-- Main Practice Content -->
+  <div *ngIf="!isLoading" class="practice-content">
+    
+    <!-- Progress Header -->
+    <div class="progress-header">
+      <div class="progress-info">
+        <span class="phrase-counter">{{ currentPhraseIndex + 1 }} of {{ totalPhrases }}</span>
+        <span class="progress-label">phrases</span>
+      </div>
+      
+      <div class="progress-track">
+        <div class="progress-fill" [style.width.%]="progressPercentage"></div>
+        <div class="progress-indicator" [style.left.%]="progressPercentage"></div>
+      </div>
+    </div>
+
+    <!-- Main Phrase Card -->
+    <div *ngIf="currentPhrase" class="phrase-card">
+      <div class="phrase-content">
+        <div class="phrase-header">
+          <div class="difficulty-indicator">
+            <span class="difficulty-label">{{ currentPhrase.level }}</span>
+          </div>
+        </div>
+        
+        <div class="phrase-main">
+          <h2 class="target-phrase">{{ currentPhrase.phrase }}</h2>
+          <p class="phrase-translation">{{ currentPhrase.translation }}</p>
+        </div>
+        
+        <div class="phrase-actions">
+          <button class="action-button listen-button" (click)="playPhrase()">
+            <div class="button-icon">
+              <ion-icon name="volume-high"></ion-icon>
+            </div>
+            <span class="button-label">Listen</span>
+          </button>
+          
+          <button class="action-button breakdown-button" (click)="playWordByWord()">
+            <div class="button-icon">
+              <ion-icon name="list"></ion-icon>
+            </div>
+            <span class="button-label">Breakdown</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recording Interface -->
+    <div class="recording-interface">
+      <div class="recording-card">
+        <div class="recording-header">
+          <h3 class="recording-title">Record Your Pronunciation</h3>
+          <p class="recording-subtitle">Speak clearly and naturally</p>
+        </div>
+        
+        <div class="recording-area">
+          <div class="microphone-container" [class.active]="isRecording" [class.processing]="isProcessing">
+            <button 
+              class="microphone-button" 
+              [class.recording]="isRecording"
+              [class.processing]="isProcessing"
+              [disabled]="isProcessing || phraseCompleted"
+              (click)="isRecording ? stopRecording() : startRecording()">
+              <div class="mic-ripple" *ngIf="isRecording"></div>
+              <div class="mic-ripple-2" *ngIf="isRecording"></div>
+              <div class="processing-spinner" *ngIf="isProcessing">
+                <ion-spinner name="dots"></ion-spinner>
+              </div>
+              <ion-icon 
+                [name]="isProcessing ? 'hourglass' : (isRecording ? 'stop' : 'mic')" 
+                class="mic-icon" 
+                [class.hidden]="isProcessing">
+              </ion-icon>
+            </button>
+          </div>
+          
+          <div class="recording-status">
+            <div class="status-indicator" 
+                 [class.active]="isRecording" 
+                 [class.processing]="isProcessing"
+                 [class.success]="phraseCompleted"></div>
+            <span class="status-text">
+              {{ getRecordingStatusText() }}
+            </span>
+          </div>
+          
+          <!-- Success Feedback -->
+          <div class="success-feedback" *ngIf="showSuccess" [@slideInOut]>
+            <div class="success-icon">
+              <ion-icon name="checkmark-circle"></ion-icon>
+            </div>
+            <span class="success-text">Great job!</span>
+            <div class="score-display" *ngIf="pronunciationScore > 0">
+              Score: {{ pronunciationScore }}%
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subtle Progress Help Text -->
+    <div class="progress-help" *ngIf="!phraseCompleted && !isRecording && !isProcessing">
+      <p class="help-text">Complete this phrase to continue to the next one</p>
+    </div>
+  </div>
+  
+  <!-- Error State -->
+  <div *ngIf="!isLoading && phrases.length === 0" class="error-state">
+    <div class="error-content">
+      <ion-icon name="warning-outline" class="error-icon"></ion-icon>
+      <h3>No practice content available</h3>
+      <p>We couldn't load any pronunciation exercises. Please try again.</p>
+      <button class="retry-button" (click)="loadPhrases()">
+        <ion-icon name="refresh-outline"></ion-icon>
+        <span>Retry</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Assessment Screen Overlay -->
+  <div class="assessment-overlay" *ngIf="showAssessment" [@slideInOut]>
+    <div class="assessment-container">
+      <!-- Assessment Header -->
+      <div class="assessment-header">
+        <button class="close-button" (click)="closeAssessment()">
+          <ion-icon name="chevron-back"></ion-icon>
+        </button>
+        <div class="lesson-info">
+          <span class="lesson-level">{{ currentLevel }}</span>
+          <span class="lesson-separator">•</span>
+          <span class="lesson-title">Lesson {{ lessonNumber }}</span>
+        </div>
+      </div>
+      
+      <div class="assessment-content">
+        <!-- Overall Score Circle with Success Animation -->
+        <div class="score-section" *ngIf="pronunciationResult?.metrics">
+          <div class="score-circle-container">
+            <div class="score-circle" 
+                 [class.success]="pronunciationResult.metrics.overall >= 70">
+              <div class="circle-background"></div>
+              <div class="circle-progress" 
+                   [style.--progress]="pronunciationResult.metrics.overall / 100">
+                <div class="score-content">
+                  <div class="success-icon" *ngIf="pronunciationResult.metrics.overall >= 70">
+                    <ion-icon name="checkmark"></ion-icon>
+                  </div>
+                  <span class="score-value">{{ pronunciationResult.metrics.overall }}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Metrics Breakdown with Modern Design -->
+        <div class="metrics-section" *ngIf="pronunciationResult?.metrics">
+          <div class="metric-item">
+            <div class="metric-header">
+              <span class="metric-label">Pronunciation</span>
+              <span class="metric-score">{{ pronunciationResult.metrics.pronunciation }}%</span>
+            </div>
+            <div class="metric-bar-container">
+              <div class="metric-bar">
+                <div class="metric-fill" 
+                     [style.width.%]="pronunciationResult.metrics.pronunciation"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="metric-item">
+            <div class="metric-header">
+              <span class="metric-label">Speed</span>
+              <span class="metric-score">{{ pronunciationResult.metrics.speed }}%</span>
+            </div>
+            <div class="metric-bar-container">
+              <div class="metric-bar">
+                <div class="metric-fill" 
+                     [style.width.%]="pronunciationResult.metrics.speed"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="metric-item">
+            <div class="metric-header">
+              <span class="metric-label">Similarity</span>
+              <span class="metric-score">{{ pronunciationResult.metrics.similarity }}%</span>
+            </div>
+            <div class="metric-bar-container">
+              <div class="metric-bar">
+                <div class="metric-fill" 
+                     [style.width.%]="pronunciationResult.metrics.similarity"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Word-by-Word Analysis with Pills -->
+        <div class="word-analysis-section" *ngIf="pronunciationResult?.word_analysis">
+          <div class="analysis-icon">
+            <ion-icon name="create-outline"></ion-icon>
+          </div>
+          <div class="words-grid">
+            <div *ngFor="let word of pronunciationResult.word_analysis" 
+                 class="word-pill" 
+                 [class.correct]="word.is_correct"
+                 [class.incorrect]="!word.is_correct">
+              <span class="word-text">{{ word.word }}</span>
+            </div>
+          </div>
+          
+          <!-- Legend -->
+          <div class="analysis-legend">
+            <div class="legend-item">
+              <div class="legend-color correct"></div>
+              <span>Correct</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color incorrect"></div>
+              <span>Needs work</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Audio Controls with Waveform -->
+        <div class="audio-section">
+          <div class="audio-icon">
+            <ion-icon name="musical-note"></ion-icon>
+          </div>
+          
+          <div class="audio-controls">
+            <button class="audio-button primary" (click)="playUserRecording()">
+              <ion-icon name="play"></ion-icon>
+              <span>Your Recording</span>
+            </button>
+            
+            <button class="audio-button secondary" (click)="playExpectedAudio()">
+              <ion-icon name="volume-high"></ion-icon>
+              <span>Expected Audio</span>
+            </button>
+          </div>
+          
+          <!-- Audio Waveform Visualization -->
+          <div class="waveform-container" *ngIf="pronunciationResult?.audio_waveform">
+            <div *ngFor="let point of pronunciationResult.audio_waveform; let i = index" 
+                 class="waveform-bar"
+                 [style.height.%]="point"
+                 [style.animation-delay.ms]="i * 20"></div>
+          </div>
+        </div>
+        
+        <!-- CEFR Feedback with Modern Card Design -->
+        <div class="feedback-section" *ngIf="pronunciationResult?.cefr_feedback">
+          <div class="target-icon">
+            <ion-icon name="flag"></ion-icon>
+          </div>
+          
+          <div class="cefr-level-display">
+            <div class="level-badge">{{ pronunciationResult.cefr_feedback.level }}</div>
+          </div>
+          
+          <div class="feedback-categories">
+            <div class="feedback-group strengths" *ngIf="pronunciationResult.cefr_feedback.strengths.length > 0">
+              <div class="group-header">
+                <ion-icon name="checkmark-circle" class="success-icon"></ion-icon>
+                <span>Strengths</span>
+              </div>
+              <ul class="feedback-items">
+                <li *ngFor="let strength of pronunciationResult.cefr_feedback.strengths">
+                  <span>{{ strength }}</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div class="feedback-group improvements" *ngIf="pronunciationResult.cefr_feedback.areas_for_improvement.length > 0">
+              <div class="group-header">
+                <ion-icon name="bulb" class="warning-icon"></ion-icon>
+                <span>Areas for Improvement</span>
+              </div>
+              <ul class="feedback-items">
+                <li *ngFor="let area of pronunciationResult.cefr_feedback.areas_for_improvement">
+                  <span>{{ area }}</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div class="feedback-group recommendations" *ngIf="pronunciationResult.cefr_feedback.recommendations.length > 0">
+              <div class="group-header">
+                <ion-icon name="library" class="info-icon"></ion-icon>
+                <span>Recommendations</span>
+              </div>
+              <ul class="feedback-items">
+                <li *ngFor="let recommendation of pronunciationResult.cefr_feedback.recommendations">
+                  <span>{{ recommendation }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="next-focus-card" *ngIf="pronunciationResult.cefr_feedback.next_focus">
+            <div class="focus-content">
+              <p>{{ pronunciationResult.cefr_feedback.next_focus }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="assessment-actions">
+          <button *ngIf="!phraseCompleted" class="action-button retry" (click)="tryAgain()">
+            <ion-icon name="refresh-outline"></ion-icon>
+            <span>Try Again</span>
+          </button>
+          
+          <button *ngIf="phraseCompleted" class="action-button continue" (click)="continueToNext()">
+            <span>Continue</span>
+            <ion-icon name="arrow-forward"></ion-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</ion-content>

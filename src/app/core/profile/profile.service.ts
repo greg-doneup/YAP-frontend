@@ -53,6 +53,19 @@ export interface StreakInfo {
 }
 
 /**
+ * Offchain profile data (XP, streak, wallet info)
+ */
+export interface OffchainProfile {
+  userId: string;
+  ethWalletAddress?: string;
+  email?: string;
+  xp: number;
+  streak: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
  * Service for interacting with user profiles
  * Provides methods to retrieve and update user information, XP, streaks, and preferences
  */
@@ -238,6 +251,19 @@ export class ProfileService {
           return this.createUserProfile(walletAddress);
         }
         // Otherwise, propagate the error
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Get offchain profile data (XP, streak, etc.)
+   * @param userId User's ID (not wallet address)
+   */
+  getOffchainProfile(userId: string): Observable<OffchainProfile> {
+    return this.apiService.get<OffchainProfile>(`profile/${userId}`).pipe(
+      catchError(error => {
+        this.errorService.handleError(error, 'offchain-profile-fetch');
         return throwError(() => error);
       })
     );
