@@ -30,11 +30,9 @@ export class DashboardPage implements OnInit, OnDestroy {
   userLevel = 'A1 - Beginner';
   activeTab = 'progress'; // Default active tab
   weekdays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  showingRecommended: boolean = false; // Toggle between daily and recommended lessons
   
   // Lesson properties
   todaysLessons: Lesson[] = [];
-  recommendedLessons: Lesson[] = [];
   nextLesson: Lesson | null = null;
   
   // User progress
@@ -134,10 +132,6 @@ export class DashboardPage implements OnInit, OnDestroy {
       console.log('🔄 Lesson Service - Today\'s lessons updated:', lessons);
     });
     
-    this.lessonService.recommendedLessons$.subscribe(lessons => {
-      console.log('🔄 Lesson Service - Recommended lessons updated:', lessons);
-    });
-    
     this.lessonService.nextUncompletedLesson$.subscribe(lesson => {
       console.log('🔄 Lesson Service - Next lesson updated:', lesson);
     });
@@ -193,12 +187,6 @@ export class DashboardPage implements OnInit, OnDestroy {
       this.todaysGoal.progress = completedLessons;
     });
     this.subscriptions.push(lessonsSub);
-    
-    // Subscribe to recommended lessons
-    const recommendedSub = this.lessonService.recommendedLessons$.subscribe(lessons => {
-      this.recommendedLessons = lessons;
-    });
-    this.subscriptions.push(recommendedSub);
     
     // Subscribe to next lesson
     const nextLessonSub = this.lessonService.nextUncompletedLesson$.subscribe(lesson => {
@@ -363,7 +351,7 @@ export class DashboardPage implements OnInit, OnDestroy {
 
   continueLearning() {
     this.showLevelDropdown = false; // Ensure dropdown is closed
-    this.router.navigate(['/practice']);
+    this.router.navigate(['/vocab-practice']);
   }
 
   withdraw() {
@@ -425,7 +413,7 @@ export class DashboardPage implements OnInit, OnDestroy {
     }
     
     // Navigate to the lesson
-    this.router.navigate(['/practice'], { 
+    this.router.navigate(['/vocab-practice'], { 
       queryParams: { 
         lessonId: lesson.id, 
         type: lesson.type 
@@ -450,13 +438,12 @@ export class DashboardPage implements OnInit, OnDestroy {
       
       // Refresh data
       this.lessonService.loadLessonsForDay(this.selectedDay).subscribe();
-      this.lessonService.updateRecommendedLessons();
     });
   }
   
   goToNextLesson() {
     if (this.nextLesson) {
-      this.router.navigate(['/practice'], { 
+      this.router.navigate(['/vocab-practice'], { 
         queryParams: { 
           lessonId: this.nextLesson.id, 
           type: this.nextLesson.type 
@@ -464,8 +451,13 @@ export class DashboardPage implements OnInit, OnDestroy {
       });
     } else {
       // If no next lesson, go to general practice page
-      this.router.navigate(['/practice'], { queryParams: { next: true } });
+      this.router.navigate(['/vocab-practice'], { queryParams: { next: true } });
     }
+  }
+  
+  goToPronunciationPractice() {
+    this.showLevelDropdown = false; // Ensure dropdown is closed
+    this.router.navigate(['/practice']);
   }
   
   // Listen feature
@@ -656,9 +648,6 @@ export class DashboardPage implements OnInit, OnDestroy {
         reward: "+5 points"
       };
     }
-    
-    // Also refresh the recommended lessons
-    this.lessonService.updateRecommendedLessons();
   }
   
   /**

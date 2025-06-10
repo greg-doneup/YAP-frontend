@@ -113,14 +113,8 @@ export class StandardRegistrationPage {
           await this.authService.completeAuthentication(result, this.email);
         }
 
-        // Navigate to success page with wallet info
-        this.router.navigate(['/welcome/registration/success'], {
-          state: {
-            walletData: result,
-            isWaitlistConversion: result.isWaitlistConversion,
-            bonusPoints: result.starting_points
-          }
-        });
+        // Navigate to dashboard after successful registration
+        this.router.navigate(['/dashboard']);
       } else {
         await this.showAlert('Registration Failed', result.message || 'Failed to create wallet');
       }

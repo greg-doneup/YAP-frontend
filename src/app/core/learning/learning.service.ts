@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import { ErrorService } from '../error/error.service';
 import { ConnectivityService } from '../connectivity/connectivity.service';
 import { ApiService } from '../api-service.service';
+import { AuthService } from '../auth/auth.service';
 
 /**
  * Vocabulary item model matching the backend schema
@@ -112,23 +113,20 @@ export class LearningService {
   constructor(
     private apiService: ApiService,
     private errorService: ErrorService,
-    private connectivityService: ConnectivityService
+    private connectivityService: ConnectivityService,
+    private authService: AuthService
   ) { }
 
   /**
    * Get today's vocabulary items for learning
    */
   getDailyVocab(): Observable<VocabItem[]> {
-    return this.connectivityService.callWithRetry<VocabItem[]>(
-      'learning/daily',
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        retries: 2
-      }
-    ).pipe(
+    // Get current user ID to pass as parameter
+    const currentUser = this.authService.currentUserValue;
+    const userId = currentUser?.id || 'waitlist-user-main'; // Fallback to default user
+    
+    // Use ApiService directly to support query parameters
+    return this.apiService.get<VocabItem[]>('learning/daily', { userId }).pipe(
       catchError(error => {
         this.errorService.handleError(error, 'daily-vocab-fetch');
         return throwError(() => error);
@@ -140,7 +138,14 @@ export class LearningService {
    * Get quiz words for today
    */
   getTodaysQuiz(): Observable<{words: VocabItem[], expected: string}> {
-    return this.apiService.get<{words: VocabItem[], expected: string}>('learning/quiz').pipe(
+    const currentUser = this.authService.currentUserValue;
+    if (!currentUser?.id) {
+      return throwError(() => new Error('User not authenticated'));
+    }
+
+    return this.apiService.get<{words: VocabItem[], expected: string}>('learning/quiz', {
+      userId: currentUser.id
+    }).pipe(
       catchError(error => {
         this.errorService.handleError(error, 'quiz-fetch');
         return throwError(() => error);
@@ -323,6 +328,54 @@ export class LearningService {
     }>('learning/completion-status', { wallet: walletAddress }).pipe(
       catchError(error => {
         this.errorService.handleError(error, 'completion-status-fetch');
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Generate TTS audio for a phrase
+   * @param text The text to convert to speech
+   * @param languageCode The language code for TTS
+   */
+  generateTTS(text: string, languageCode: string): Observable<{audioUrl: string}> {
+    return this.apiService.post<{audioUrl: string}>('learning/daily/tts/sentence', {
+      text,
+      languageCode
+    }).pipe(
+      catchError(error => {
+        this.errorService.handleError(error, 'tts-generation');
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Submit pronunciation assessment
+   * @param data The assessment data including audio and text
+   */
+  submitPronunciationAssessment(data: any): Observable<any> {
+    return this.apiService.post<any>('learning/daily/complete', data).pipe(
+      catchError(error => {
+        this.errorService.handleError(error, 'pronunciation-assessment');
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Get lessons by language and level for pronunciation practice
+   * @param language The target language (e.g., 'spanish', 'french')
+   * @param level The CEFR level (e.g., 'A1.1', 'A1.2')
+   */
+  getLessonsByLanguageAndLevel(language: string, level: string): Observable<Lesson[]> {
+    return this.apiService.get<{lessons: Lesson[]}>('learning/lessons', {
+      language,
+      level
+    }).pipe(
+      map(response => response.lessons || []),
+      catchError(error => {
+        this.errorService.handleError(error, 'lessons-fetch');
         return throwError(() => error);
       })
     );

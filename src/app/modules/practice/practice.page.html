@@ -1,99 +1,179 @@
 <ion-header [translucent]="true">
-  <ion-toolbar>
+  <ion-toolbar class="practice-header">
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/daily"></ion-back-button>
+      <ion-back-button defaultHref="/dashboard" class="header-back-btn">
+        <ion-icon name="chevron-back" class="back-icon"></ion-icon>
+        Back
+      </ion-back-button>
     </ion-buttons>
-    <ion-title>Pronunciation Practice</ion-title>
+    <ion-title class="header-title">
+      <div class="lesson-context">
+        <span class="lesson-level">{{ getCurrentLessonLevel() }}</span>
+        <span class="lesson-separator">•</span>
+        <span class="lesson-number">Lesson {{ getCurrentLessonNumber() }}</span>
+      </div>
+    </ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" class="skip-btn" (click)="skipLesson()">
+        <span>Skip</span>
+        <ion-icon name="chevron-forward" slot="end"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="ion-padding">
+<ion-content [fullscreen]="true" class="practice-content">
   <div class="practice-container" *ngIf="currentVocab">
-    <!-- Vocabulary Term -->
-    <div class="vocab-section">
-      <h1 class="term">{{ currentVocab.term }}</h1>
-      <p class="translation" *ngIf="currentVocab.translation">{{ currentVocab.translation }}</p>
+    
+    <!-- Microphone Icon with Pulse -->
+    <div class="microphone-section">
+      <div class="mic-container" [class.recording]="recordingState === 'recording'">
+        <div class="pulse-ring" *ngIf="recordingState === 'recording'"></div>
+        <div class="pulse-ring pulse-ring-delay" *ngIf="recordingState === 'recording'"></div>
+        <ion-icon name="mic" class="mic-icon"></ion-icon>
+      </div>
+    </div>
+
+    <!-- Main Phrase Display -->
+    <div class="phrase-section">
+      <h1 class="main-phrase">{{ currentVocab.term }}</h1>
       
-      <!-- Language variant selector -->
-      <div class="language-variant-selector">
-        <ion-label class="accent-label">Accent variant:</ion-label>
-        <ion-select 
-          [value]="languageCode" 
-          (ionChange)="onLanguageVariantChange($event)"
-          interface="popover"
-          class="accent-select">
-          <ion-select-option *ngFor="let variant of availableLanguageVariants" [value]="variant.code">
-            {{ variant.name }}
-          </ion-select-option>
-        </ion-select>
+      <!-- Word-by-word breakdown with pronunciation feedback -->
+      <div class="phrase-breakdown" *ngIf="showWordAnalysis && pronunciationResult">
+        <div class="word-segments">
+          <span *ngFor="let word of getWordAnalysis()" 
+                class="word-segment"
+                [class.correct]="word.score >= 0.8"
+                [class.needs-work]="word.score >= 0.6 && word.score < 0.8"
+                [class.poor]="word.score < 0.6">
+            {{ word.text }}
+            <div class="word-underline" [style.background-color]="getWordColor(word.score)"></div>
+          </span>
+        </div>
       </div>
     </div>
-    
-    <!-- Recording Controls -->
+
+    <!-- Translation -->
+    <div class="translation-section">
+      <p class="translation">{{ currentVocab.translation }}</p>
+    </div>
+
+    <!-- Action Buttons Based on Flow State -->
     <div class="controls-section">
-      <div [ngSwitch]="recordingState">
-        <!-- Ready state -->
-        <div *ngSwitchCase="'ready'" class="control-buttons">
-          <ion-button class="main-button" expand="full" color="primary" (click)="startRecording()">
-            <ion-icon name="mic-outline" slot="start"></ion-icon>
-            Start Recording
-          </ion-button>
-          <ion-button expand="full" color="medium" (click)="playSample()">
-            <ion-icon name="volume-high-outline" slot="start"></ion-icon>
-            Hear Pronunciation
-          </ion-button>
+      
+      <!-- Step 1: Initial state - Show phrase and listen option -->
+      <div *ngIf="flowState === 'initial'" class="initial-controls">
+        <ion-button class="listen-button" expand="full" fill="outline" 
+                    (click)="playPhraseAudio()" [disabled]="isPlayingAudio">
+          <ion-icon name="volume-high-outline" slot="start"></ion-icon>
+          <span *ngIf="!isPlayingAudio">Listen</span>
+          <span *ngIf="isPlayingAudio">Playing...</span>
+        </ion-button>
+        <ion-button class="try-button" expand="full" color="primary" 
+                    (click)="startRecordingFlow()">
+          <ion-icon name="mic-outline" slot="start"></ion-icon>
+          Try it
+        </ion-button>
+      </div>
+      
+      <!-- Step 2: Recording state -->
+      <div *ngIf="flowState === 'recording'" class="recording-controls">
+        <div class="recording-indicator">
+          <div class="recording-pulse"></div>
+          <p class="recording-text">Recording your pronunciation...</p>
+        </div>
+        <ion-button class="stop-record-button" expand="full" color="danger" 
+                    (click)="stopAndSubmitRecording()">
+          <ion-icon name="stop-circle-outline" slot="start"></ion-icon>
+          Stop & Submit
+        </ion-button>
+      </div>
+      
+      <!-- Step 3: Processing state -->
+      <div *ngIf="flowState === 'processing'" class="processing-controls">
+        <ion-spinner name="circles" color="primary"></ion-spinner>
+        <p class="processing-text">Analyzing your pronunciation...</p>
+      </div>
+      
+    </div>
+
+    <!-- Step 4: Results with word-by-word analysis -->
+    <div class="results-section" *ngIf="flowState === 'results' && pronunciationResult">
+      
+      <!-- Score Circles -->
+      <div class="score-circles">
+        <div class="score-circle" [class.good]="pronunciationResult.overallScore >= 80" 
+             [class.okay]="pronunciationResult.overallScore >= 60 && pronunciationResult.overallScore < 80"
+             [class.needs-work]="pronunciationResult.overallScore < 60">
+          <span class="score-number">{{ pronunciationResult.overallScore }}</span>
+          <span class="score-label">Pronunciation</span>
         </div>
         
-        <!-- Recording state -->
-        <div *ngSwitchCase="'recording'" class="recording-controls">
-          <div class="pulse-animation">
-            <ion-icon name="mic" color="danger"></ion-icon>
+        <div class="score-circle" [class.good]="pronunciationResult.speedScore >= 80" 
+             [class.okay]="pronunciationResult.speedScore >= 60 && pronunciationResult.speedScore < 80"
+             [class.needs-work]="pronunciationResult.speedScore < 60">
+          <span class="score-number">{{ pronunciationResult.speedScore }}</span>
+          <span class="score-label">Speed</span>
+        </div>
+        
+        <div class="score-circle" [class.good]="pronunciationResult.similarityScore >= 80" 
+             [class.okay]="pronunciationResult.similarityScore >= 60 && pronunciationResult.similarityScore < 80"
+             [class.needs-work]="pronunciationResult.similarityScore < 60">
+          <span class="score-number">{{ pronunciationResult.similarityScore }}</span>
+          <span class="score-label">Similarity</span>
+        </div>
+      </div>
+      
+      <!-- Audio Waveform Visualization -->
+      <div class="audio-visualization">
+        <div class="waveform">
+          <div class="bar" *ngFor="let bar of audioVisualization; let i = index" 
+               [style.height.%]="bar"
+               [style.background-color]="getBarColor(i)"></div>
+        </div>
+      </div>
+      
+      <!-- Feedback Message -->
+      <div class="feedback-message">
+        <h3>{{ getFeedbackTitle() }}</h3>
+        <p>{{ getFeedbackMessage() }}</p>
+      </div>
+      
+      <!-- Action Buttons for Results -->
+      <div class="result-actions">
+        <ion-button fill="outline" (click)="retryRecording()">
+          <ion-icon name="refresh-outline" slot="start"></ion-icon>
+          Try Again
+        </ion-button>
+        <ion-button color="primary" (click)="continueToNext()">
+          <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
+          Next
+        </ion-button>
+      </div>
+      
+    </div>
+
+    <!-- Lesson Progress Section -->
+    <div class="lesson-progress-section">
+      <div class="lesson-info">
+        <div class="lesson-meta">
+          <span class="current-lesson">{{ getCurrentLessonTitle() }}</span>
+          <div class="progress-indicators">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="getLessonProgress()"></div>
+            </div>
+            <span class="progress-text">{{ getCurrentPhraseNumber() }} of {{ getTotalPhrasesInLesson() }} phrases</span>
           </div>
-          <p class="recording-text">Recording...</p>
-          <div class="control-buttons recording-buttons">
-            <ion-button expand="block" color="danger" (click)="stopRecording()">
-              <ion-icon name="stop-circle-outline" slot="start"></ion-icon>
-              Stop
-            </ion-button>
-            <ion-button expand="block" color="medium" (click)="cancelRecording()">
-              <ion-icon name="close-circle-outline" slot="start"></ion-icon>
-              Cancel
-            </ion-button>
-          </div>
-        </div>
-        
-        <!-- Processing state -->
-        <div *ngSwitchCase="'processing'" class="processing">
-          <ion-spinner name="circles"></ion-spinner>
-          <p>Processing your pronunciation...</p>
-        </div>
-        
-        <!-- Complete state -->
-        <div *ngSwitchCase="'complete'" class="control-buttons">
-          <ion-button expand="full" color="primary" (click)="startRecording()">
-            <ion-icon name="refresh-outline" slot="start"></ion-icon>
-            Record Again
-          </ion-button>
         </div>
       </div>
     </div>
-    
-    <!-- Pronunciation Feedback -->
-    <div class="feedback-section" *ngIf="pronunciationResult">
-      <app-pronunciation-feedback 
-        [result]="pronunciationResult"
-        [showDetails]="true"
-        [languageCode]="languageCode"
-        (playSample)="playSample()"
-        (playRecording)="playRecording()"
-        (playPhoneme)="playPhoneme($event)">
-      </app-pronunciation-feedback>
-    </div>
+
   </div>
-  
-  <!-- Loading state when no vocab -->
-  <div class="loading-container" *ngIf="!currentVocab">
-    <ion-spinner name="dots"></ion-spinner>
-    <p>Loading vocabulary...</p>
+
+  <!-- Loading State -->
+  <div *ngIf="!currentVocab" class="loading-state">
+    <ion-spinner name="circles"></ion-spinner>
+    <p>Loading your practice phrase...</p>
   </div>
+
 </ion-content>

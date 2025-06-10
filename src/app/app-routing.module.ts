@@ -29,8 +29,13 @@ const routes: Routes = [
     canActivate: [AuthGuard]
   },
   {
-    path: 'practice',
+    path: 'vocab-practice',
     loadChildren: () => import('./modules/practice/practice.module').then( m => m.PracticePageModule),
+    canActivate: [AuthGuard]
+  },
+  {
+    path: 'practice',
+    loadChildren: () => import('./modules/pronunciation-practice/pronunciation-practice.module').then( m => m.PronunciationPracticePageModule),
     canActivate: [AuthGuard]
   },
   {

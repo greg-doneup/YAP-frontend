@@ -152,85 +152,33 @@
       <div class="lessons-header">
         <h2 class="section-title" *ngIf="selectedDay">{{ selectedDay }}'s Lessons</h2>
         <h2 class="section-title" *ngIf="!selectedDay">Today's Lessons</h2>
-        
-        <!-- Lesson Plan Type Selector -->
-        <div class="lesson-view-toggle">
-          <span class="toggle-option" [class.active]="!showingRecommended" (click)="showingRecommended = false">
-            Daily
-          </span>
-          <span class="toggle-option" [class.active]="showingRecommended" (click)="showingRecommended = true">
-            Recommended
-          </span>
-        </div>
       </div>
       
-      <!-- Daily Lessons --> 
-      <div *ngIf="!showingRecommended">
-        <!-- Lesson Cards - Dynamic -->
-        <div *ngIf="todaysLessons.length === 0" class="no-lessons-message">
-          <p>No lessons available for {{ selectedDay }}</p>
-          <ion-button expand="block" fill="outline" color="light" (click)="continueLearning()">
-            <span class="button-text">View all lessons</span>
-          </ion-button>
-        </div>
-        
-        <div *ngFor="let lesson of todaysLessons" class="lesson-card" [attr.data-id]="lesson.id" (click)="startLesson(lesson)">
-          <div class="lesson-media">
-            <img [src]="lesson.imageUrl || 'assets/images/card-banner/yap_composed_banner.jpg'" [alt]="lesson.title + ' Thumbnail'" class="lesson-thumbnail">
-            <div class="lesson-type-icon" [ngClass]="lesson.type">
-              <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
-            </div>
-            <div *ngIf="lesson.isNextLevel" class="next-level-badge">Next Level</div>
-          </div>
-          <div class="lesson-details">
-            <h3 class="lesson-title">{{ lesson.title }}</h3>
-            <div class="lesson-badge" [ngClass]="lesson.type + '-badge'">
-              <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
-              <span>{{ lesson.type | titlecase }}</span>
-            </div>
-            <div class="lesson-progress">
-              <div class="progress-bar">
-                <div class="progress-fill" [style.width.%]="lesson.progress"></div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Lesson Cards - Dynamic -->
+      <div *ngIf="todaysLessons.length === 0" class="no-lessons-message">
+        <p>No lessons available for {{ selectedDay }}</p>
+        <ion-button expand="block" fill="outline" color="light" (click)="continueLearning()">
+          <span class="button-text">View all lessons</span>
+        </ion-button>
       </div>
       
-      <!-- Recommended Lessons -->
-      <div *ngIf="showingRecommended">
-        <div *ngIf="recommendedLessons.length === 0" class="no-lessons-message">
-          <p>Great job! You've completed all lessons at this level.</p>
-          <ion-button expand="block" fill="outline" color="light" (click)="checkNextLevel()">
-            <span class="button-text">Try the next level</span>
-          </ion-button>
-        </div>
-        
-        <div *ngFor="let lesson of recommendedLessons" class="lesson-card" [attr.data-id]="lesson.id" (click)="startLesson(lesson)">
-          <div class="lesson-media">
-            <img [src]="lesson.imageUrl || 'assets/images/card-banner/yap_composed_banner.jpg'" [alt]="lesson.title + ' Thumbnail'" class="lesson-thumbnail">
-            <div class="lesson-type-icon" [ngClass]="lesson.type">
-              <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
-            </div>
-            <div *ngIf="lesson.isNextLevel" class="next-level-badge">Next Level</div>
-            <div *ngIf="!lesson.isNextLevel" class="recommended-badge">Recommended</div>
+      <div *ngFor="let lesson of todaysLessons" class="lesson-card" [attr.data-id]="lesson.id" (click)="startLesson(lesson)">
+        <div class="lesson-media">
+          <img [src]="lesson.imageUrl || 'assets/images/card-banner/yap_composed_banner.jpg'" [alt]="lesson.title + ' Thumbnail'" class="lesson-thumbnail">
+          <div class="lesson-type-icon" [ngClass]="lesson.type">
+            <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
           </div>
-          <div class="lesson-details">
-            <h3 class="lesson-title">{{ lesson.title }}</h3>
-            <div class="lesson-meta">
-              <div class="lesson-badge" [ngClass]="lesson.type + '-badge'">
-                <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
-                <span>{{ lesson.type | titlecase }}</span>
-              </div>
-              <div class="lesson-time">
-                <ion-icon name="time-outline"></ion-icon>
-                <span>{{ lesson.estimatedTime }} min</span>
-              </div>
-            </div>
-            <div class="lesson-progress">
-              <div class="progress-bar">
-                <div class="progress-fill" [style.width.%]="lesson.progress"></div>
-              </div>
+          <div *ngIf="lesson.isNextLevel" class="next-level-badge">Next Level</div>
+        </div>
+        <div class="lesson-details">
+          <h3 class="lesson-title">{{ lesson.title }}</h3>
+          <div class="lesson-badge" [ngClass]="lesson.type + '-badge'">
+            <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
+            <span>{{ lesson.type | titlecase }}</span>
+          </div>
+          <div class="lesson-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="lesson.progress"></div>
             </div>
           </div>
         </div>
@@ -315,6 +263,17 @@
           class="continue-btn"
           (click)="continueLearning()">
           <span class="button-text">{{ isNewUser || todaysGoal.progress === 0 ? 'Start learning' : 'Continue learning' }}</span>
+        </ion-button>
+        
+        <!-- Pronunciation Practice Button -->
+        <ion-button 
+          expand="block" 
+          fill="outline" 
+          color="primary" 
+          class="pronunciation-practice-btn"
+          (click)="goToPronunciationPractice()">
+          <ion-icon name="mic-outline" slot="start"></ion-icon>
+          <span class="button-text">Pronunciation Practice</span>
         </ion-button>
       </div>
     </div>

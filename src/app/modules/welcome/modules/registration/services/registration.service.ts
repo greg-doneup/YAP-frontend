@@ -12,6 +12,10 @@ import { AuthService } from '../../../../../core/auth/auth.service';
  * Extended wallet creation result with points field and auth tokens
  * Note: Standard accounts have zero starting points
  * Only waitlisted accounts receive bonus points
+ * 
+ * Backend may return either format:
+ * - sei_address/eth_address (legacy format)
+ * - walletAddress/ethWalletAddress (new format)
  */
 export interface StandardWalletCreationResult extends WalletCreationResult {
   starting_points: number;
@@ -21,6 +25,9 @@ export interface StandardWalletCreationResult extends WalletCreationResult {
   isWaitlistConversion?: boolean;
   name?: string;
   language_to_learn?: string;
+  // Additional wallet address fields from backend
+  walletAddress?: string;
+  ethWalletAddress?: string;
 }
 
 /**
