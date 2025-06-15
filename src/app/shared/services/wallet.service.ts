@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { SecureWalletRecoveryService, DecryptedWalletData } from './secure-wallet-recovery.service';
 
 interface WaitlistSignupRequest {
   email: string;
@@ -38,7 +39,10 @@ interface UserProfile {
 export class WalletService {
   private baseUrl = environment.apiUrl || 'http://localhost:8000';
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private secureWalletRecoveryService: SecureWalletRecoveryService
+  ) {}
 
   /**
    * Check if user exists by email
@@ -222,6 +226,47 @@ export class WalletService {
       return response!;
     } catch (error) {
       console.error('Health check failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Secure wallet recovery using new architecture (zero server-side passphrase exposure)
+   */
+  async recoverWalletSecurely(email: string, passphrase: string): Promise<{
+    success: boolean;
+    mnemonic: string;
+    seiAddress: string;
+    ethAddress: string;
+    userId: string;
+  }> {
+    try {
+      console.log('🔐 Starting secure wallet recovery...');
+      
+      // Use the new secure recovery service
+      const recoveredData = await this.secureWalletRecoveryService.recoverWalletSecurely(email, passphrase);
+      
+      return {
+        success: true,
+        mnemonic: recoveredData.mnemonic,
+        seiAddress: recoveredData.seiAddress,
+        ethAddress: recoveredData.ethAddress,
+        userId: recoveredData.userId
+      };
+    } catch (error: any) {
+      console.error('❌ Secure wallet recovery failed:', error);
+      
+      // Map specific errors for frontend handling
+      if (error.message?.includes('Invalid passphrase')) {
+        throw { error: 'invalid_passphrase', message: 'Invalid passphrase provided' };
+      }
+      if (error.message?.includes('No secure wallet found')) {
+        throw { error: 'no_secure_wallet', message: 'No secure wallet found for this account' };
+      }
+      if (error.message?.includes('No account found')) {
+        throw { error: 'user_not_found', message: 'No account found with this email' };
+      }
+      
       throw error;
     }
   }

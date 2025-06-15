@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as CryptoJS from 'crypto-js';
 import { BehaviorSubject } from 'rxjs';
+import { SecureWalletRecoveryService, DecryptedWalletData } from './secure-wallet-recovery.service';
 
 // Import crypto libraries for proper wallet generation
 declare var require: any;
@@ -48,7 +49,7 @@ export class CryptoService {
     ethereum: "m/44'/60'/0'/0/0"
   };
 
-  constructor() {
+  constructor(private secureWalletRecoveryService: SecureWalletRecoveryService) {
     this.dbPromise = this.openDB();
   }
 
@@ -1183,5 +1184,36 @@ export class CryptoService {
     localStorage.setItem(lastBackupKey, now.toString());
     
     return backup;
+  }
+
+  /**
+   * Secure wallet recovery using zero server-side passphrase exposure architecture
+   */
+  async recoverWalletSecurely(email: string, passphrase: string): Promise<WalletData> {
+    try {
+      console.log('🔐 CryptoService: Starting secure wallet recovery');
+      
+      // Use the secure recovery service
+      const recoveredData = await this.secureWalletRecoveryService.recoverWalletSecurely(email, passphrase);
+      
+      // Derive full wallet data from the recovered mnemonic
+      const wallets = await this.deriveWalletsFromMnemonic(recoveredData.mnemonic);
+      
+      const walletData: WalletData = {
+        mnemonic: recoveredData.mnemonic,
+        seiWallet: wallets.seiWallet,
+        evmWallet: wallets.evmWallet
+      };
+      
+      // Store recovered wallet securely in local storage
+      await this.storeWalletSecurely(email, walletData, passphrase);
+      
+      console.log('✅ CryptoService: Secure wallet recovery completed');
+      return walletData;
+      
+    } catch (error) {
+      console.error('❌ CryptoService: Secure wallet recovery failed:', error);
+      throw error;
+    }
   }
 }

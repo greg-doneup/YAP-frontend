@@ -21,11 +21,11 @@ export class IntroPage implements OnInit, AfterViewInit {
   private isInitialized = false;
 
   ngOnInit() {
-    console.log('IntroPage initialized');
+    this.setViewportHeight();
+    this.setupViewportListeners();
   }
 
   ngAfterViewInit() {
-    console.log('IntroPage AfterViewInit - setting up Swiper');
     this.initializeSwiper();
   }
 
@@ -37,7 +37,6 @@ export class IntroPage implements OnInit, AfterViewInit {
         
         if (swiperEl) {
           this.swiperInstance = swiperEl;
-          console.log('Swiper element found:', this.swiperInstance);
           
           // Configure Swiper parameters
           Object.assign(swiperEl, {
@@ -60,19 +59,16 @@ export class IntroPage implements OnInit, AfterViewInit {
           
           // Set up event listeners for slide changes
           swiperEl.addEventListener('swiperslidechange', (event: any) => {
-            console.log('Swiper slide change event:', event);
             this.handleSlideChange(event);
           });
 
           swiperEl.addEventListener('slidechange', (event: any) => {
-            console.log('Generic slide change event:', event);
             this.handleSlideChange(event);
           });
 
           // Wait for Swiper to be ready
           const checkSwiper = () => {
             if (swiperEl.swiper) {
-              console.log('Swiper ready!', swiperEl.swiper);
               this.isInitialized = true;
               resolve();
             } else {
@@ -102,12 +98,16 @@ export class IntroPage implements OnInit, AfterViewInit {
     }
     
     if (newIndex !== this.currentSlide) {
-      console.log('Slide changed from', this.currentSlide, 'to', newIndex);
       this.currentSlide = newIndex;
       
       // Trigger animations for Daily Practice slide (slide 3, index 2)
       if (newIndex === 2) {
         this.triggerDailyPracticeAnimation();
+      }
+      
+      // Trigger animations for Community slide (slide 4, index 3)
+      if (newIndex === 3) {
+        this.triggerCommunityAnimation();
       }
       
       this.cdr.detectChanges();
@@ -126,6 +126,30 @@ export class IntroPage implements OnInit, AfterViewInit {
         console.log('Added slide-active class to Daily Practice container');
       } else {
         console.warn('Daily Practice container not found');
+      }
+    }, 100);
+  }
+
+  /** Trigger animations for Community slide */
+  private triggerCommunityAnimation() {
+    console.log('Triggering Community animations');
+    
+    // Add a small delay to ensure the slide DOM is ready
+    setTimeout(() => {
+      // Debug: Check if the community animation container exists
+      const animationContainer = document.querySelector('.community-animation-container');
+      const communityNetwork = document.querySelector('.community-animation-container .community-network');
+      const userAvatars = document.querySelectorAll('.community-users .user-avatar');
+      
+      console.log('Animation container found:', animationContainer);
+      console.log('Community network found:', communityNetwork);
+      console.log('User avatars found:', userAvatars.length);
+      
+      if (communityNetwork) {
+        communityNetwork.classList.add('slide-active');
+        console.log('Added slide-active class to Community container');
+      } else {
+        console.warn('Community container not found');
       }
     }, 100);
   }
@@ -192,14 +216,14 @@ export class IntroPage implements OnInit, AfterViewInit {
       backgroundClass: 'slide-secondary'
     },
     {
-      image: 'assets/images/practice/practice.svg',
+      image: 'assets/images/intro/practice.svg',
       title: 'Daily Practice',
       description: 'Real-time pronunciation feedback helps you improve',
       buttonText: 'Next',
       backgroundClass: 'slide-tertiary'
     },
     {
-      image: 'assets/images/community/community.svg',
+      image: '', // No image for community slide
       title: 'Join the Community',
       description: 'Connect with other language learners around the world',
       buttonText: 'Next',
@@ -335,5 +359,33 @@ export class IntroPage implements OnInit, AfterViewInit {
     // Navigate to waitlist registration for existing users
     console.log('Navigating to waitlist registration for existing users');
     this.router.navigate(['/welcome/registration/waitlist']);
+  }
+
+  /** Set up dynamic viewport height for mobile browsers */
+  private setViewportHeight() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  }
+
+  /** Listen for viewport changes to handle mobile browser UI */
+  private setupViewportListeners() {
+    // Update viewport height on window resize
+    window.addEventListener('resize', () => {
+      this.setViewportHeight();
+    });
+
+    // Handle orientation change
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        this.setViewportHeight();
+      }, 100);
+    });
+
+    // Handle visual viewport changes (mobile browser UI)
+    if ('visualViewport' in window) {
+      (window as any).visualViewport.addEventListener('resize', () => {
+        this.setViewportHeight();
+      });
+    }
   }
 }

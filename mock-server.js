@@ -1085,17 +1085,95 @@ apiRouter.post('/recover', (req, res) => {
   });
 });
 
-// POST /register - Complete user registration (name, email, language)
-apiRouter.post('/register', (req, res) => {
-  const { name, email, language_to_learn } = req.body;
+// POST /auth/refresh - Refresh access token
+apiRouter.post('/auth/refresh', (req, res) => {
+  const { refreshToken } = req.body;
 
-  // Validate required fields
-  if (!name) {
+  if (!refreshToken) {
     return res.status(400).json({
-      error: 'invalid_input',
-      message: 'Name is required'
+      message: "Refresh token required"
     });
   }
+
+  if (!mockDatabase.refreshTokens.has(refreshToken)) {
+    return res.status(401).json({
+      message: "Invalid or revoked refresh token"
+    });
+  }
+
+  // Find user by refresh token (simplified for mock)
+  const userId = 'mock-user-' + crypto.randomBytes(4).toString('hex');
+  
+  const newAccessToken = generateToken({
+    sub: userId,
+    type: 'access',
+    currentLessonId: 'lesson-1',
+    currentWordId: 'word-1',
+    nextWordAvailableAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+  });
+
+  const newRefreshToken = generateRefreshToken(userId);
+  
+  // Remove old refresh token
+  mockDatabase.refreshTokens.delete(refreshToken);
+
+  res.json({
+    token: newAccessToken,
+    refreshToken: newRefreshToken,
+    userId
+  });
+});
+
+// POST /auth/logout - Logout and invalidate tokens
+apiRouter.post('/auth/logout', authenticateToken, (req, res) => {
+  // In a real implementation, we'd invalidate all refresh tokens for this user
+  res.json({ message: 'Successfully logged out' });
+});
+
+// GET /auth/validate - Validate current token
+apiRouter.get('/auth/validate', authenticateToken, (req, res) => {
+  const userId = req.user.sub;
+  const basicProfile = mockDatabase.profiles.get(userId);
+  const userData = mockDatabase.users.get(userId);
+  
+  res.json({
+    userId: userId,
+    email: basicProfile?.email,
+    name: basicProfile?.name,
+    walletAddress: userData?.seiWalletAddress,
+    ethWalletAddress: userData?.evmWalletAddress
+  });
+});
+
+// POST /auth/revoke - Revoke a specific refresh token
+apiRouter.post('/auth/revoke', authenticateToken, (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing refresh token'
+    });
+  }
+
+  if (!mockDatabase.refreshTokens.has(refreshToken)) {
+    return res.status(404).json({
+      error: 'not_found',
+      message: 'Token not found'
+    });
+  }
+
+  mockDatabase.refreshTokens.delete(refreshToken);
+  res.json({ message: 'Token revoked' });
+});
+
+// =============================================================================
+// WALLET SERVICE ENDPOINTS 🆕
+// =============================================================================
+
+// POST /email-lookup - Check if email exists and get account status
+apiRouter.post('/email-lookup', (req, res) => {
+  const { email } = req.body;
 
   if (!email) {
     return res.status(400).json({
@@ -1104,110 +1182,184 @@ apiRouter.post('/register', (req, res) => {
     });
   }
 
-  if (!language_to_learn) {
-    return res.status(400).json({
-      error: 'invalid_input',
-      message: 'Language to learn is required'
-    });
-  }
-
-  // Check if email already exists
+  // Find profile by email
   const existingProfile = Array.from(mockDatabase.profiles.values())
     .find(profile => profile.email === email);
 
-  if (existingProfile) {
-    return res.status(409).json({
-      error: 'conflict',
-      message: 'Email already registered'
-    });
-  }
-
-  // Generate unique user ID
-  const userId = crypto.randomBytes(32).toString('hex');
-
-  // Create basic profile entry (no wallet yet)
-  const basicProfile = {
-    userId,
-    email,
-    name,
-    initial_language_to_learn: language_to_learn,
-    wlw: false, // No wallet yet
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  mockDatabase.profiles.set(userId, basicProfile);
-
-  // Create user entry
-  mockDatabase.users.set(userId, {
-    userId,
-    email,
-    name,
-    language_to_learn,
-    hasWallet: false
-  });
-
-  console.log(`📋 Basic registration for ${email} - ${name}`);
-
-  res.json({
-    userId,
-    email,
-    name,
-    status: 'registered',
-    next_step: 'secure_account',
-    message: 'Registration successful - complete wallet setup next'
-  });
-});
-
-// POST /api/v2/wallet/store-recovery-hash - Store recovery phrase hash (security feature)
-apiRouter.post('/api/v2/wallet/store-recovery-hash', authenticateToken, (req, res) => {
-  const { recovery_hash, hint } = req.body;
-  const userId = req.user.sub;
-
-  if (!recovery_hash) {
-    return res.status(400).json({
-      error: 'invalid_input',
-      message: 'Recovery hash is required'
-    });
-  }
-
-  // Find user profile
-  const profile = mockDatabase.profiles.get(userId);
-  if (!profile) {
+  if (!existingProfile) {
     return res.status(404).json({
       error: 'not_found',
-      message: 'Profile not found'
+      message: 'Email not found'
     });
   }
 
-  // Store recovery hash with timestamp
-  const updatedProfile = {
-    ...profile,
-    recovery_hash,
-    recovery_hint: hint || null,
-    recovery_hash_stored_at: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+  // Determine account status based on profile data
+  let status = 'registered';
+  if (existingProfile.secured_at) {
+    status = 'secured';
+  }
 
-  mockDatabase.profiles.set(userId, updatedProfile);
-
-  console.log(`💾 Recovery hash stored for user ${userId}`);
+  console.log(`📧 Email lookup for ${email}: status=${status}`);
 
   res.json({
-    success: true,
-    message: 'Recovery hash stored successfully',
-    stored_at: updatedProfile.recovery_hash_stored_at
+    email,
+    status,
+    userId: existingProfile.userId,
+    hasWallet: !!existingProfile.encrypted_mnemonic,
+    message: `Account found with status: ${status}`
   });
 });
 
-// POST /api/v2/wallet/verify-recovery - Verify recovery phrase hash
-apiRouter.post('/api/v2/wallet/verify-recovery', (req, res) => {
-  const { email, recovery_hash } = req.body;
+// POST /secure-account - Complete wallet setup for existing accounts
+apiRouter.post('/secure-account', (req, res) => {
+  const { 
+    email,
+    passphrase,
+    encrypted_mnemonic,
+    salt,
+    nonce,
+    sei_address,
+    sei_public_key,
+    eth_address,
+    eth_public_key
+  } = req.body;
 
-  if (!email || !recovery_hash) {
+  // Validate required fields
+  if (!email) {
     return res.status(400).json({
       error: 'invalid_input',
-      message: 'Email and recovery hash are required'
+      message: 'Email is required'
+    });
+  }
+
+  if (!passphrase) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Passphrase is required'
+    });
+  }
+
+  if (!encrypted_mnemonic || !salt || !nonce) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Encrypted wallet data is required'
+    });
+  }
+
+  if (!sei_address || !eth_address) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Wallet addresses are required'
+    });
+  }
+
+  // Find existing profile
+  const existingProfile = Array.from(mockDatabase.profiles.values())
+    .find(profile => profile.email === email);
+
+  if (!existingProfile) {
+    return res.status(404).json({
+      error: 'not_found',
+      message: 'Account not found'
+    });
+  }
+
+  // Check if already secured
+  if (existingProfile.secured_at) {
+    return res.status(409).json({
+      error: 'conflict',
+      message: 'Account already secured'
+    });
+  }
+
+  // Derive passphrase hash using same algorithm as backend
+  const passphraseSalt = 'x0xmbtbles0x' + passphrase;
+  const iterations = 390000;
+  const derivedKey = crypto.pbkdf2Sync(passphrase, passphraseSalt, iterations, 32, 'sha256');
+  const keyBase64 = derivedKey.toString('base64');
+  const passphraseHash = crypto.createHash('sha256').update(keyBase64).digest('hex');
+
+  // Update profile with wallet security data
+  const updatedProfile = {
+    ...existingProfile,
+    passphrase_hash: passphraseHash,
+    encrypted_wallet_data: {
+      encrypted_mnemonic,
+      salt,
+      nonce,
+      sei_address,
+      eth_address
+    },
+    sei_wallet: {
+      address: sei_address,
+      public_key: sei_public_key || 'sei_pub_' + crypto.randomBytes(16).toString('hex')
+    },
+    eth_wallet: {
+      address: eth_address,
+      public_key: eth_public_key || 'eth_pub_' + crypto.randomBytes(16).toString('hex')
+    },
+    encrypted_mnemonic,
+    salt,
+    nonce,
+    wlw: true, // Now has wallet
+    secured_at: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  mockDatabase.profiles.set(existingProfile.userId, updatedProfile);
+
+  // Update user entry
+  const user = mockDatabase.users.get(existingProfile.userId);
+  if (user) {
+    user.walletAddress = sei_address;
+    user.ethWalletAddress = eth_address;
+    user.hasWallet = true;
+    mockDatabase.users.set(existingProfile.userId, user);
+  }
+
+  // Create offchain profile if it doesn't exist
+  if (!mockDatabase.offchainProfiles.has(existingProfile.userId)) {
+    const offchainProfile = {
+      userId: existingProfile.userId,
+      ethWalletAddress: eth_address,
+      xp: 0,
+      streak: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockDatabase.offchainProfiles.set(existingProfile.userId, offchainProfile);
+  }
+
+  console.log(`🔐 Account secured for ${email} - wallet setup complete`);
+
+  res.json({
+    userId: existingProfile.userId,
+    email,
+    status: 'secured',
+    wallet_addresses: {
+      sei: sei_address,
+      eth: eth_address
+    },
+    starting_xp: 0,
+    message: 'Account successfully secured with wallet'
+  });
+});
+
+// POST /recover - Wallet recovery using passphrase
+apiRouter.post('/recover', (req, res) => {
+  const { email, passphrase } = req.body;
+
+  if (!email) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Email is required'
+    });
+  }
+
+  if (!passphrase) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Passphrase is required'
     });
   }
 
@@ -1222,727 +1374,575 @@ apiRouter.post('/api/v2/wallet/verify-recovery', (req, res) => {
     });
   }
 
-  if (!profile.recovery_hash) {
+  if (!profile.passphrase_hash) {
     return res.status(400).json({
       error: 'invalid_request',
-      message: 'No recovery hash stored for this account'
+      message: 'Account does not have wallet setup'
     });
   }
 
-  // Verify recovery hash
-  if (profile.recovery_hash !== recovery_hash) {
+  // Verify passphrase using same algorithm as secure-account
+  const passphraseSalt = 'x0xmbtbles0x' + passphrase;
+  const iterations = 390000;
+  const derivedKey = crypto.pbkdf2Sync(passphrase, passphraseSalt, iterations, 32, 'sha256');
+  const keyBase64 = derivedKey.toString('base64');
+  const passphraseHash = crypto.createHash('sha256').update(keyBase64).digest('hex');
+
+  if (passphraseHash !== profile.passphrase_hash) {
     return res.status(401).json({
       error: 'unauthorized',
-      message: 'Invalid recovery hash'
+      message: 'Invalid passphrase'
     });
   }
 
-  console.log(`✅ Recovery hash verified for ${email}`);
+  // Generate authentication tokens
+  const accessToken = generateToken({
+    sub: profile.userId,
+    type: 'access',
+    walletAddress: profile.sei_wallet?.address,
+    ethWalletAddress: profile.eth_wallet?.address,
+    currentLessonId: 'lesson-1',
+    currentWordId: 'word-1',
+    nextWordAvailableAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+  });
+
+  const refreshToken = generateRefreshToken(profile.userId);
+
+  console.log(`🔓 Wallet recovery successful for ${email}`);
 
   res.json({
-    success: true,
+    token: accessToken,
+    refreshToken,
+    userId: profile.userId,
     email: profile.email,
-    hint: profile.recovery_hint,
-    message: 'Recovery hash verified successfully'
+    wallet_data: profile.encrypted_wallet_data,
+    message: 'Wallet recovery successful'
   });
 });
 
-// GET /api/v2/admin/security-metrics - Admin security metrics
-apiRouter.get('/api/v2/admin/security-metrics', (req, res) => {
-  // In a real implementation, this would require admin authentication
-  const totalUsers = mockDatabase.users.size;
-  const securedUsers = Array.from(mockDatabase.profiles.values())
-    .filter(p => p.secured_at).length;
-  const recoveryHashUsers = Array.from(mockDatabase.profiles.values())
-    .filter(p => p.recovery_hash).length;
+// POST /auth/refresh - Refresh access token
+apiRouter.post('/auth/refresh', (req, res) => {
+  const { refreshToken } = req.body;
 
-  const metrics = {
-    total_users: totalUsers,
-    secured_users: securedUsers,
-    users_with_recovery_hash: recoveryHashUsers,
-    security_compliance: {
-      encryption_rate: securedUsers > 0 ? 100 : 0, // All secured users have encryption
-      recovery_setup_rate: totalUsers > 0 ? Math.round((recoveryHashUsers / totalUsers) * 100) : 0
-    },
-    timestamp: new Date().toISOString()
-  };
-
-  console.log('📊 Security metrics requested');
-
-  res.json(metrics);
-});
-
-// POST /api/v2/admin/reset-rate-limits - Admin rate limit reset
-apiRouter.post('/api/v2/admin/reset-rate-limits', (req, res) => {
-  const { target } = req.body;
-
-  // Mock rate limit reset
-  console.log(`🔧 Rate limits reset for: ${target || 'all'}`);
-
-  res.json({
-    success: true,
-    message: `Rate limits reset for ${target || 'all services'}`,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// GET /health - Wallet service health check
-apiRouter.get('/wallet/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    service: 'wallet-service',
-    version: '2.1.0',
-    timestamp: new Date().toISOString(),
-    security_features: [
-      'pbkdf2_encryption',
-      'recovery_hash_storage',
-      'rate_limiting',
-      'audit_logging',
-      'input_validation'
-    ],
-    database: {
-      status: 'connected',
-      total_users: mockDatabase.users.size,
-      secured_users: Array.from(mockDatabase.profiles.values()).filter(p => p.secured_at).length
-    }
-  });
-});
-
-// =============================================================================
-// PROFILE SERVICE ENDPOINTS (Basic profile info)
-// =============================================================================
-
-// GET /profile/:userId - Get profile by user ID
-apiRouter.get('/profile/:userId', authenticateToken, (req, res) => {
-  const { userId } = req.params;
-
-  // Only allow users to access their own profile
-  if (req.user.sub !== userId) {
-    return res.status(403).json({
-      error: 'forbidden',
-      message: 'You can only access your own profile'
+  if (!refreshToken) {
+    return res.status(400).json({
+      message: "Refresh token required"
     });
   }
 
-  const profile = mockDatabase.profiles.get(userId);
-  if (!profile) {
+  if (!mockDatabase.refreshTokens.has(refreshToken)) {
+    return res.status(401).json({
+      message: "Invalid or revoked refresh token"
+    });
+  }
+
+  // Find user by refresh token (simplified for mock)
+  const userId = 'mock-user-' + crypto.randomBytes(4).toString('hex');
+  
+  const newAccessToken = generateToken({
+    sub: userId,
+    type: 'access',
+    currentLessonId: 'lesson-1',
+    currentWordId: 'word-1',
+    nextWordAvailableAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+  });
+
+  const newRefreshToken = generateRefreshToken(userId);
+  
+  // Remove old refresh token
+  mockDatabase.refreshTokens.delete(refreshToken);
+
+  res.json({
+    token: newAccessToken,
+    refreshToken: newRefreshToken,
+    userId
+  });
+});
+
+// POST /auth/logout - Logout and invalidate tokens
+apiRouter.post('/auth/logout', authenticateToken, (req, res) => {
+  // In a real implementation, we'd invalidate all refresh tokens for this user
+  res.json({ message: 'Successfully logged out' });
+});
+
+// GET /auth/validate - Validate current token
+apiRouter.get('/auth/validate', authenticateToken, (req, res) => {
+  const userId = req.user.sub;
+  const basicProfile = mockDatabase.profiles.get(userId);
+  const userData = mockDatabase.users.get(userId);
+  
+  res.json({
+    userId: userId,
+    email: basicProfile?.email,
+    name: basicProfile?.name,
+    walletAddress: userData?.seiWalletAddress,
+    ethWalletAddress: userData?.evmWalletAddress
+  });
+});
+
+// POST /auth/revoke - Revoke a specific refresh token
+apiRouter.post('/auth/revoke', authenticateToken, (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing refresh token'
+    });
+  }
+
+  if (!mockDatabase.refreshTokens.has(refreshToken)) {
     return res.status(404).json({
       error: 'not_found',
-      message: 'Profile not found'
+      message: 'Token not found'
     });
   }
 
-  res.json(profile);
+  mockDatabase.refreshTokens.delete(refreshToken);
+  res.json({ message: 'Token revoked' });
 });
 
-// POST /profile - Create new profile
-apiRouter.post('/profile', authenticateToken, (req, res) => {
-  const userId = req.user.sub;
-  const { email, name, initial_language_to_learn } = req.body;
+// =============================================================================
+// WALLET SERVICE ENDPOINTS 🆕
+// =============================================================================
+
+// POST /email-lookup - Check if email exists and get account status
+apiRouter.post('/email-lookup', (req, res) => {
+  const { email } = req.body;
 
   if (!email) {
     return res.status(400).json({
-      error: 'missing_email',
+      error: 'invalid_input',
       message: 'Email is required'
     });
   }
 
-  if (!name) {
-    return res.status(400).json({
-      error: 'missing_name',
-      message: 'Name is required'
-    });
-  }
-
-  if (!initial_language_to_learn) {
-    return res.status(400).json({
-      error: 'missing_language',
-      message: 'Initial language to learn is required'
-    });
-  }
-
-  // Check if profile already exists
-  if (mockDatabase.profiles.has(userId)) {
-    const existingProfile = mockDatabase.profiles.get(userId);
-    return res.status(200).json(existingProfile);
-  }
-
-  const profile = createMockProfile(userId, email, name, initial_language_to_learn);
-  mockDatabase.profiles.set(userId, profile);
-
-  res.status(201).json(profile);
-});
-
-// PATCH /profile/:userId - Update profile data
-apiRouter.patch('/profile/:userId', authenticateToken, (req, res) => {
-  const { userId } = req.params;
-  const { email, name, initial_language_to_learn } = req.body;
-
-  // Only allow users to update their own profile
-  if (req.user.sub !== userId) {
-    return res.status(403).json({
-      error: 'forbidden',
-      message: 'You can only update your own profile'
-    });
-  }
-
-  const profile = mockDatabase.profiles.get(userId);
-  if (!profile) {
-    return res.status(404).json({
-      error: 'not_found',
-      message: 'Profile not found'
-    });
-  }
-
-  if (email !== undefined) profile.email = email;
-  if (name !== undefined) profile.name = name;
-  if (initial_language_to_learn !== undefined) profile.initial_language_to_learn = initial_language_to_learn;
-  profile.updatedAt = new Date().toISOString();
-
-  mockDatabase.profiles.set(userId, profile);
-  res.status(204).send();
-});
-
-// GET /profile/email/:email - Get profile by email (for uniqueness check)
-apiRouter.get('/profile/email/:email', (req, res) => {
-  const { email } = req.params;
-  
-  const profile = Array.from(mockDatabase.profiles.values())
-    .find(p => p.email === email);
-  
-  if (!profile) {
-    return res.status(404).json({ 
-      error: 'not_found', 
-      message: 'Profile not found' 
-    });
-  }
-  
-  res.json(profile);
-});
-
-// =============================================================================
-// OFFCHAIN PROFILE SERVICE ENDPOINTS (XP, streak, wallet data)
-// =============================================================================
-
-// GET /profile/:userId (offchain) - Get offchain profile data
-apiRouter.get('/offchain/profile/:userId', authenticateToken, (req, res) => {
-  const { userId } = req.params;
-
-  // Only allow users to access their own profile
-  if (req.user.sub !== userId) {
-    return res.status(403).json({
-      error: 'forbidden',
-      message: 'You can only access your own profile'
-    });
-  }
-
-  const profile = mockDatabase.offchainProfiles.get(userId);
-  if (!profile) {
-    return res.status(404).json({
-      error: 'not_found',
-      message: 'Profile not found'
-    });
-  }
-
-  res.json(profile);
-});
-
-// POST /offchain/profile - Create/update offchain profile
-apiRouter.post('/offchain/profile', authenticateToken, (req, res) => {
-  const userId = req.user.sub;
-  
-  // Check if profile already exists
-  const existingProfile = mockDatabase.offchainProfiles.get(userId);
-  if (existingProfile) {
-    // Update timestamp and return existing profile
-    existingProfile.updatedAt = new Date().toISOString();
-    mockDatabase.offchainProfiles.set(userId, existingProfile);
-    return res.status(200).json(existingProfile);
-  }
-
-  // Create new offchain profile
-  const profile = createMockOffchainProfile(userId, req.user.ethWalletAddress, false);
-  mockDatabase.offchainProfiles.set(userId, profile);
-
-  res.status(201).json(profile);
-});
-
-// PATCH /offchain/profile/:userId - Update offchain profile data
-apiRouter.patch('/offchain/profile/:userId', authenticateToken, (req, res) => {
-  const { userId } = req.params;
-  const { xp, streak } = req.body;
-
-  // Only allow users to update their own profile
-  if (req.user.sub !== userId) {
-    return res.status(403).json({
-      error: 'forbidden',
-      message: 'You can only update your own profile'
-    });
-  }
-
-  const profile = mockDatabase.offchainProfiles.get(userId);
-  if (!profile) {
-    return res.status(404).json({
-      error: 'not_found',
-      message: 'Profile not found'
-    });
-  }
-
-  if (xp !== undefined) profile.xp = xp;
-  if (streak !== undefined) profile.streak = streak;
-  profile.updatedAt = new Date().toISOString();
-
-  mockDatabase.offchainProfiles.set(userId, profile);
-  res.status(204).send();
-});
-
-// PATCH /points/add - Add XP points to profile
-apiRouter.patch('/points/add', authenticateToken, (req, res) => {
-  const { userId, amount } = req.body;
-
-  if (!amount || amount <= 0) {
-    return res.status(400).json({
-      error: 'invalid_amount',
-      message: 'Amount must be a positive number'
-    });
-  }
-
-  // Only allow users to add points to their own profile
-  const targetUserId = userId || req.user.sub;
-  if (req.user.sub !== targetUserId) {
-    return res.status(403).json({
-      error: 'forbidden',
-      message: 'You can only add points to your own profile'
-    });
-  }
-
-  const profile = mockDatabase.offchainProfiles.get(targetUserId);
-  if (!profile) {
-    return res.status(404).json({
-      error: 'profile_not_found',
-      message: 'Profile not found for the specified user'
-    });
-  }
-
-  profile.xp += amount;
-  profile.updatedAt = new Date().toISOString();
-  mockDatabase.offchainProfiles.set(targetUserId, profile);
-
-  res.status(204).send();
-});
-
-// GET /points/leaderboard - Get XP leaderboard
-apiRouter.get('/points/leaderboard', (req, res) => {
-  const limit = parseInt(req.query.limit) || 10;
-  
-  const leaderboard = Array.from(mockDatabase.offchainProfiles.values())
-    .sort((a, b) => b.xp - a.xp)
-    .slice(0, limit)
-    .map(profile => ({
-      userId: profile.userId,
-      xp: profile.xp,
-      streak: profile.streak
-    }));
-
-  res.json(leaderboard);
-});
-
-// =============================================================================
-// WALLET SERVICE ENDPOINTS
-// =============================================================================
-
-// GET /wallet/email/{email} - Get user profile by email for wallet operations
-apiRouter.get('/wallet/email/:email', (req, res) => {
-  const { email } = req.params;
-
-  // Find user profile by email
-  const userProfile = Array.from(mockDatabase.profiles.values())
-    .find(profile => profile.email === email);
-
-  if (!userProfile) {
-    return res.status(404).json({
-      error: 'profile_not_found',
-      message: 'Profile not found'
-    });
-  }
-
-  // Return wallet-related profile data
-  const walletProfile = {
-    email: userProfile.email,
-    name: userProfile.name,
-    language_to_learn: userProfile.initial_language_to_learn,
-    encrypted_mnemonic: userProfile.encrypted_mnemonic,
-    salt: userProfile.salt,
-    nonce: userProfile.nonce,
-    sei_wallet: userProfile.sei_wallet,
-    eth_wallet: userProfile.eth_wallet,
-    wlw: userProfile.wlw
-  };
-
-  res.json(walletProfile);
-});
-
-// POST /wallet/recover - Authenticate user and return encrypted wallet data
-apiRouter.post('/wallet/recover', (req, res) => {
-  const { email, passphrase } = req.body;
-
-  if (!email || !passphrase) {
-    return res.status(400).json({
-      error: 'invalid_input',
-      message: 'Email and passphrase are required'
-    });
-  }
-
-  // Find user profile by email
-  const userProfile = Array.from(mockDatabase.profiles.values())
-    .find(profile => profile.email === email);
-
-  if (!userProfile) {
-    return res.status(404).json({
-      error: 'user_not_found',
-      message: 'Email not found'
-    });
-  }
-
-  // Check if user needs to setup secure account first
-  if (!userProfile.passphrase_hash) {
-    return res.status(409).json({
-      error: 'setup_required',
-      message: 'User needs to setup secure account first',
-      setup_required: true
-    });
-  }
-
-  // Derive key from provided passphrase (same process as secure-account)
-  const crypto = require('crypto');
-  const salt = 'x0xmbtbles0x' + passphrase;
-  const iterations = 390000;
-  
-  try {
-    // Derive key using PBKDF2
-    const derivedKey = crypto.pbkdf2Sync(passphrase, salt, iterations, 32, 'sha256');
-    const keyBase64 = derivedKey.toString('base64');
-    
-    // Hash the key
-    const providedHash = crypto.createHash('sha256').update(keyBase64).digest('hex');
-    
-    // Verify hash matches stored hash
-    if (providedHash !== userProfile.passphrase_hash) {
-      return res.status(401).json({
-        error: 'invalid_passphrase',
-        message: 'Invalid passphrase'
-      });
-    }
-
-    // Authentication successful - return encrypted wallet data for client-side decryption
-    res.json({
-      success: true,
-      encrypted_wallet_data: userProfile.encrypted_wallet_data,
-      user_id: userProfile.userId
-    });
-  } catch (error) {
-    console.error('Error during wallet recovery:', error);
-    res.status(500).json({
-      error: 'recovery_failed',
-      message: 'Failed to recover wallet'
-    });
-  }
-});
-
-// POST /wallet/register - Register wallet for existing user
-apiRouter.post('/wallet/register', (req, res) => {
-  const { email, passphrase, encrypted_mnemonic, salt, nonce } = req.body;
-
-  if (!email || !passphrase || !encrypted_mnemonic || !salt || !nonce) {
-    return res.status(400).json({
-      error: 'invalid_input',
-      message: 'All fields are required'
-    });
-  }
-
-  // Find existing user profile
+  // Find profile by email
   const existingProfile = Array.from(mockDatabase.profiles.values())
     .find(profile => profile.email === email);
 
   if (!existingProfile) {
     return res.status(404).json({
-      error: 'profile_not_found',
-      message: 'Profile not found for registration'
+      error: 'not_found',
+      message: 'Email not found'
     });
   }
 
-  // Update profile with encrypted mnemonic data
-  existingProfile.encrypted_mnemonic = encrypted_mnemonic;
-  existingProfile.salt = salt;
-  existingProfile.nonce = nonce;
-  existingProfile.updatedAt = new Date().toISOString();
+  // Determine account status based on profile data
+  let status = 'registered';
+  if (existingProfile.secured_at) {
+    status = 'secured';
+  }
 
-  // Update in mock database
-  mockDatabase.profiles.set(existingProfile.userId, existingProfile);
+  console.log(`📧 Email lookup for ${email}: status=${status}`);
 
   res.json({
-    status: 'registered',
-    message: 'Wallet registered successfully'
+    email,
+    status,
+    userId: existingProfile.userId,
+    hasWallet: !!existingProfile.encrypted_mnemonic,
+    message: `Account found with status: ${status}`
   });
 });
 
-// GET /health - Health check for wallet service
-apiRouter.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
+// POST /secure-account - Complete wallet setup for existing accounts
+apiRouter.post('/secure-account', (req, res) => {
+  const { 
+    email,
+    passphrase,
+    encrypted_mnemonic,
+    salt,
+    nonce,
+    sei_address,
+    sei_public_key,
+    eth_address,
+    eth_public_key
+  } = req.body;
 
-// Debug endpoint to verify token format
-apiRouter.get('/auth/debug-token', (req, res) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) {
-    return res.status(400).json({ message: 'No token provided in Authorization header' });
-  }
-  
-  // Basic token structure check
-  const tokenParts = token.split('.');
-  
-  let response = {
-    token_format: tokenParts.length === 3 ? 'JWT format' : 'Non-standard format',
-    token_prefix: token.substring(0, 20) + '...'
-  };
-  
-  // Attempt to parse if it's in JWT format
-  if (tokenParts.length === 3) {
-    try {
-      const header = JSON.parse(atob(tokenParts[0]));
-      response.header = header;
-      
-      const payload = JSON.parse(atob(tokenParts[1]));
-      // Don't show full payload in response for security
-      response.payload = {
-        has_email: !!payload.email,
-        has_address: !!payload.sei_address || !!payload.eth_address,
-        exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'none',
-        iat: payload.iat ? new Date(payload.iat * 1000).toISOString() : 'none'
-      };
-    } catch (e) {
-      response.parse_error = e.message;
-    }
-  }
-  
-  res.json(response);
-});
-
-// =============================================================================
-// LEARNING SERVICE ENDPOINTS
-// =============================================================================
-
-// GET /learning/progress - Get user's learning progress
-apiRouter.get('/learning/progress', (req, res) => {
-  const { userId, minimal } = req.query;
-
-  if (!userId) {
+  // Validate required fields
+  if (!email) {
     return res.status(400).json({
       error: 'invalid_input',
-      message: 'Missing userId parameter'
+      message: 'Email is required'
     });
   }
 
-  let progress = mockDatabase.progress.get(userId);
-  if (!progress) {
-    // Create default progress
-    progress = {
-      userId,
-      currentLessonId: 'lesson-1',
-      currentWordId: 'word-1',
-      nextWordAvailableAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
-      completedLessons: [],
-      completedWords: [],
-      lastActivity: new Date().toISOString(),
+  if (!passphrase) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Passphrase is required'
+    });
+  }
+
+  if (!encrypted_mnemonic || !salt || !nonce) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Encrypted wallet data is required'
+    });
+  }
+
+  if (!sei_address || !eth_address) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Wallet addresses are required'
+    });
+  }
+
+  // Find existing profile
+  const existingProfile = Array.from(mockDatabase.profiles.values())
+    .find(profile => profile.email === email);
+
+  if (!existingProfile) {
+    return res.status(404).json({
+      error: 'not_found',
+      message: 'Account not found'
+    });
+  }
+
+  // Check if already secured
+  if (existingProfile.secured_at) {
+    return res.status(409).json({
+      error: 'conflict',
+      message: 'Account already secured'
+    });
+  }
+
+  // Derive passphrase hash using same algorithm as backend
+  const passphraseSalt = 'x0xmbtbles0x' + passphrase;
+  const iterations = 390000;
+  const derivedKey = crypto.pbkdf2Sync(passphrase, passphraseSalt, iterations, 32, 'sha256');
+  const keyBase64 = derivedKey.toString('base64');
+  const passphraseHash = crypto.createHash('sha256').update(keyBase64).digest('hex');
+
+  // Update profile with wallet security data
+  const updatedProfile = {
+    ...existingProfile,
+    passphrase_hash: passphraseHash,
+    encrypted_wallet_data: {
+      encrypted_mnemonic,
+      salt,
+      nonce,
+      sei_address,
+      eth_address
+    },
+    sei_wallet: {
+      address: sei_address,
+      public_key: sei_public_key || 'sei_pub_' + crypto.randomBytes(16).toString('hex')
+    },
+    eth_wallet: {
+      address: eth_address,
+      public_key: eth_public_key || 'eth_pub_' + crypto.randomBytes(16).toString('hex')
+    },
+    encrypted_mnemonic,
+    salt,
+    nonce,
+    wlw: true, // Now has wallet
+    secured_at: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  mockDatabase.profiles.set(existingProfile.userId, updatedProfile);
+
+  // Update user entry
+  const user = mockDatabase.users.get(existingProfile.userId);
+  if (user) {
+    user.walletAddress = sei_address;
+    user.ethWalletAddress = eth_address;
+    user.hasWallet = true;
+    mockDatabase.users.set(existingProfile.userId, user);
+  }
+
+  // Create offchain profile if it doesn't exist
+  if (!mockDatabase.offchainProfiles.has(existingProfile.userId)) {
+    const offchainProfile = {
+      userId: existingProfile.userId,
+      ethWalletAddress: eth_address,
+      xp: 0,
       streak: 0,
-      level: 1,
-      totalXp: 0
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
-    mockDatabase.progress.set(userId, progress);
+    mockDatabase.offchainProfiles.set(existingProfile.userId, offchainProfile);
   }
 
-  if (minimal === 'true') {
-    res.json({
-      currentLessonId: progress.currentLessonId,
-      currentWordId: progress.currentWordId,
-      nextWordAvailableAt: progress.nextWordAvailableAt
-    });
-  } else {
-    res.json(progress);
-  }
-});
-
-// POST /learning/progress - Update user's learning progress
-apiRouter.post('/learning/progress', (req, res) => {
-  const { userId, currentLessonId, currentWordId, nextWordAvailableAt } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({
-      error: 'invalid_input',
-      message: 'Missing userId'
-    });
-  }
-
-  let progress = mockDatabase.progress.get(userId) || {
-    userId,
-    completedLessons: [],
-    completedWords: [],
-    lastActivity: new Date().toISOString(),
-    streak: 0,
-    level: 1,
-    totalXp: 0
-  };
-
-  if (currentLessonId) progress.currentLessonId = currentLessonId;
-  if (currentWordId) progress.currentWordId = currentWordId;
-  if (nextWordAvailableAt) progress.nextWordAvailableAt = nextWordAvailableAt;
-  
-  progress.lastActivity = new Date().toISOString();
-  mockDatabase.progress.set(userId, progress);
+  console.log(`🔐 Account secured for ${email} - wallet setup complete`);
 
   res.json({
-    message: 'Progress updated successfully',
-    currentLessonId: progress.currentLessonId,
-    currentWordId: progress.currentWordId,
-    nextWordAvailableAt: progress.nextWordAvailableAt
+    userId: existingProfile.userId,
+    email,
+    status: 'secured',
+    wallet_addresses: {
+      sei: sei_address,
+      eth: eth_address
+    },
+    starting_xp: 0,
+    message: 'Account successfully secured with wallet'
   });
 });
 
-// GET /learning/progress/history - Get lesson completion history
-apiRouter.get('/learning/progress/history', (req, res) => {
-  const { userId, limit } = req.query;
+// POST /recover - Wallet recovery using passphrase
+apiRouter.post('/recover', (req, res) => {
+  const { email, passphrase } = req.body;
 
-  if (!userId) {
+  if (!email) {
     return res.status(400).json({
       error: 'invalid_input',
-      message: 'Missing userId parameter'
+      message: 'Email is required'
     });
   }
 
-  const maxLimit = parseInt(limit) || 10;
-  const userCompletions = mockDatabase.completions.get(userId) || [];
-  
-  const completions = userCompletions.slice(0, maxLimit).map(completion => ({
-    userId,
-    lessonId: completion.lessonId,
-    wordId: completion.wordId,
-    date: completion.date,
-    pronunciationScore: completion.pronunciationScore,
-    grammarScore: completion.grammarScore,
-    pass: completion.pass,
-    timestamp: completion.timestamp
-  }));
-
-  res.json({ completions });
-});
-
-// GET /learning/daily - Get vocabulary for current lesson (language-specific)
-apiRouter.get('/learning/daily', (req, res) => {
-  const { userId } = req.query;
-  
-  if (!userId) {
-    // Return default vocabulary if no user specified
-    const defaultVocabulary = [
-      {
-        id: 'default-word-1',
-        term: 'hello',
-        translation: 'a greeting',
-        difficulty: 1,
-        examples: ['Hello, how are you?'],
-        tags: ['greeting', 'common']
-      }
-    ];
-    return res.json(defaultVocabulary);
-  }
-
-  // Get user's language preference
-  const user = mockDatabase.users.get(userId);
-  if (!user || !user.language_to_learn) {
-    // Fallback to English if user not found
-    const vocabulary = [
-      {
-        id: 'en-word-1',
-        term: 'hello',
-        translation: 'a greeting',
-        difficulty: 1,
-        examples: ['Hello, how are you?'],
-        tags: ['greeting', 'common']
-      }
-    ];
-    return res.json(vocabulary);
-  }
-
-  // Find appropriate lesson based on user's language and progress
-  const userLanguage = user.language_to_learn;
-  const userLevel = user.currentLevel || 'A1.1';
-  
-  // Get the user's current lesson or find the first lesson for their language
-  let currentLesson = null;
-  const offchainProfile = mockDatabase.offchainProfiles.get(userId);
-  
-  if (offchainProfile && offchainProfile.completedLessons && offchainProfile.completedLessons.length > 0) {
-    // User has progress, find next lesson
-    const availableLessons = Array.from(mockDatabase.lessons.values())
-      .filter(lesson => lesson.language === userLanguage && lesson.level === userLevel);
-    
-    // Find first incomplete lesson
-    currentLesson = availableLessons.find(lesson => 
-      !offchainProfile.completedLessons.includes(lesson.lesson_id)
-    );
-    
-    // If all lessons completed, return the last lesson
-    if (!currentLesson && availableLessons.length > 0) {
-      currentLesson = availableLessons[availableLessons.length - 1];
-    }
-  } else {
-    // New user, find first lesson for their language
-    currentLesson = Array.from(mockDatabase.lessons.values())
-      .find(lesson => lesson.language === userLanguage && lesson.level === userLevel);
-  }
-
-  if (!currentLesson) {
-    // No lessons found for user's language, return generic vocabulary
-    const fallbackVocabulary = [
-      {
-        id: 'fallback-word-1',
-        term: 'learning',
-        translation: 'the process of acquiring knowledge',
-        difficulty: 1,
-        examples: ['Learning languages is fun!'],
-        tags: ['education', 'common']
-      }
-    ];
-    return res.json(fallbackVocabulary);
-  }
-
-  // Return the vocabulary from the current lesson
-  const vocabulary = currentLesson.new_vocabulary.map(word => ({
-    ...word,
-    lessonId: currentLesson.lesson_id,
-    lessonTitle: currentLesson.title,
-    language: currentLesson.language
-  }));
-
-  console.log(`[DAILY] Serving ${vocabulary.length} ${userLanguage} words for user ${userId} from lesson ${currentLesson.lesson_id}`);
-  res.json(vocabulary);
-});
-
-// POST /learning/daily/complete - Submit daily word completion
-apiRouter.post('/learning/daily/complete', (req, res) => {
-  const { userId, lessonId, wordId, audio, transcript, detailLevel, languageCode } = req.body;
-
-  if (!userId || !lessonId || !wordId) {
+  if (!passphrase) {
     return res.status(400).json({
       error: 'invalid_input',
-      message: 'Missing required fields: userId, lessonId, wordId'
+      message: 'Passphrase is required'
     });
   }
 
-  // Mock realistic pronunciation assessment for Spanish phrases
-  const expectedText = transcript || 'Me gusta aprender idiomas nuevos';
-  const words = expectedText.split(' ');
+  // Find profile by email
+  const profile = Array.from(mockDatabase.profiles.values())
+    .find(p => p.email === email);
+
+  if (!profile) {
+    return res.status(404).json({
+      error: 'not_found',
+      message: 'Account not found'
+    });
+  }
+
+  if (!profile.passphrase_hash) {
+    return res.status(400).json({
+      error: 'invalid_request',
+      message: 'Account does not have wallet setup'
+    });
+  }
+
+  // Verify passphrase using same algorithm as secure-account
+  const passphraseSalt = 'x0xmbtbles0x' + passphrase;
+  const iterations = 390000;
+  const derivedKey = crypto.pbkdf2Sync(passphrase, passphraseSalt, iterations, 32, 'sha256');
+  const keyBase64 = derivedKey.toString('base64');
+  const passphraseHash = crypto.createHash('sha256').update(keyBase64).digest('hex');
+
+  if (passphraseHash !== profile.passphrase_hash) {
+    return res.status(401).json({
+      error: 'unauthorized',
+      message: 'Invalid passphrase'
+    });
+  }
+
+  // Generate authentication tokens
+  const accessToken = generateToken({
+    sub: profile.userId,
+    type: 'access',
+    walletAddress: profile.sei_wallet?.address,
+    ethWalletAddress: profile.eth_wallet?.address,
+    currentLessonId: 'lesson-1',
+    currentWordId: 'word-1',
+    nextWordAvailableAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+  });
+
+  const refreshToken = generateRefreshToken(profile.userId);
+
+  console.log(`🔓 Wallet recovery successful for ${email}`);
+
+  res.json({
+    token: accessToken,
+    refreshToken,
+    userId: profile.userId,
+    email: profile.email,
+    wallet_data: profile.encrypted_wallet_data,
+    message: 'Wallet recovery successful'
+  });
+});
+
+// POST /auth/refresh - Refresh access token
+apiRouter.post('/auth/refresh', (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({
+      message: "Refresh token required"
+    });
+  }
+
+  if (!mockDatabase.refreshTokens.has(refreshToken)) {
+    return res.status(401).json({
+      message: "Invalid or revoked refresh token"
+    });
+  }
+
+  // Find user by refresh token (simplified for mock)
+  const userId = 'mock-user-' + crypto.randomBytes(4).toString('hex');
+  
+  const newAccessToken = generateToken({
+    sub: userId,
+    type: 'access',
+    currentLessonId: 'lesson-1',
+    currentWordId: 'word-1',
+    nextWordAvailableAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+  });
+
+  const newRefreshToken = generateRefreshToken(userId);
+  
+  // Remove old refresh token
+  mockDatabase.refreshTokens.delete(refreshToken);
+
+  res.json({
+    token: newAccessToken,
+    refreshToken: newRefreshToken,
+    userId
+  });
+});
+
+// POST /auth/logout - Logout and invalidate tokens
+apiRouter.post('/auth/logout', authenticateToken, (req, res) => {
+  // In a real implementation, we'd invalidate all refresh tokens for this user
+  res.json({ message: 'Successfully logged out' });
+});
+
+// GET /auth/validate - Validate current token
+apiRouter.get('/auth/validate', authenticateToken, (req, res) => {
+  const userId = req.user.sub;
+  const basicProfile = mockDatabase.profiles.get(userId);
+  const userData = mockDatabase.users.get(userId);
+  
+  res.json({
+    userId: userId,
+    email: basicProfile?.email,
+    name: basicProfile?.name,
+    walletAddress: userData?.seiWalletAddress,
+    ethWalletAddress: userData?.evmWalletAddress
+  });
+});
+
+// POST /auth/revoke - Revoke a specific refresh token
+apiRouter.post('/auth/revoke', authenticateToken, (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing refresh token'
+    });
+  }
+
+  if (!mockDatabase.refreshTokens.has(refreshToken)) {
+    return res.status(404).json({
+      error: 'not_found',
+      message: 'Token not found'
+    });
+  }
+
+  mockDatabase.refreshTokens.delete(refreshToken);
+  res.json({ message: 'Token revoked' });
+});
+
+// =============================================================================
+// WALLET SERVICE ENDPOINTS 🆕
+// =============================================================================
+
+// POST /email-lookup - Check if email exists and get account status
+apiRouter.post('/email-lookup', (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Email is required'
+    });
+  }
+
+  // Find profile by email
+  const existingProfile = Array.from(mockDatabase.profiles.values())
+    .find(profile => profile.email === email);
+
+  if (!existingProfile) {
+    return res.status(404).json({
+      error: 'not_found',
+      message: 'Email not found'
+    });
+  }
+
+  // Determine account status based on profile data
+  let status = 'registered';
+  if (existingProfile.secured_at) {
+    status = 'secured';
+  }
+
+  console.log(`📧 Email lookup for ${email}: status=${status}`);
+
+  res.json({
+    email,
+    status,
+    userId: existingProfile.userId,
+    hasWallet: !!existingProfile.encrypted_mnemonic,
+    message: `Account found with status: ${status}`
+  });
+});
+
+// POST /secure-account - Complete wallet setup for existing accounts
+apiRouter.post('/secure-account', (req, res) => {
+  const { 
+    email,
+    passphrase,
+    encrypted_mnemonic,
+    salt,
+    nonce,
+    sei_address,
+    sei_public_key,
+    eth_address,
+    eth_public_key
+  } = req.body;
+
+  // Validate required fields
+  if (!email) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Email is required'
+    });
+  }
+
+  if (!passphrase) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Passphrase is required'
+    });
+  }
+
+  if (!encrypted_mnemonic || !salt || !nonce) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Encrypted wallet data is required'
+    });
+  }
+
+  if (!sei_address || !eth_address) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Wallet addresses are required'
+    });
+  }
+
+  // Find existing profile
+  const existingProfile = Array.from(mockDatabase.profiles.values())
+    .find(profile => profile.email === email);
+
+  if (!existingProfile) {
+    return res.status(404).json({
+      error: 'not_found',
+      message: 'Account not found'
+    });
+  }
+
+  // Check if already secured
+  if (existingProfile.secured_at) {
+    return res.status(409).json({
+      error: 'conflict',
+      message: 'Account already secured'
+    });
+  }
+
+  // Derive passphrase hash using same algorithm as backend
   
   // Generate realistic word-by-word scores
   const wordDetails = words.map((word, index) => {
