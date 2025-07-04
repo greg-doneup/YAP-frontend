@@ -6,6 +6,7 @@ import { IonicModule } from '@ionic/angular';
 
 import { AiChatPageRoutingModule } from './ai-chat-routing.module';
 import { AiChatPage } from './ai-chat.page';
+import { AiChatSessionService } from '../../services/ai-chat-session.service';
 import { SharedModule } from '../../shared/shared.module';
 import { AdvancedAudioPlayerComponent } from '../../components/advanced-audio-player/advanced-audio-player.component';
 import { AudioQueueComponent } from '../../components/audio-queue/audio-queue.component';
@@ -23,6 +24,9 @@ import { AudioQueueComponent } from '../../components/audio-queue/audio-queue.co
     AiChatPage,
     AdvancedAudioPlayerComponent,
     AudioQueueComponent
+  ],
+  providers: [
+    AiChatSessionService
   ]
 })
 export class AiChatPageModule {}

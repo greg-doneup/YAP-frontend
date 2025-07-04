@@ -286,33 +286,100 @@
             <ion-icon name="chatbubbles" color="primary"></ion-icon>
           </div>
           <div class="chat-info">
-            <h3>Start Conversation</h3>
+            <h3>Voice Chat Practice</h3>
             <p>Practice speaking with AI guidance</p>
           </div>
-          <div class="token-cost">
-            <ion-icon name="diamond" color="warning"></ion-icon>
-            <span>5 tokens/min</span>
+          <div class="voice-progress-badge" [class.completed]="voiceChatStats.hasEarnedDailyToken">
+            <ion-icon [name]="voiceChatStats.hasEarnedDailyToken ? 'checkmark-circle' : 'mic'" 
+                      [color]="voiceChatStats.hasEarnedDailyToken ? 'success' : 'primary'"></ion-icon>
+            <span>{{ voiceChatStats.freeMessagesUsed }}/{{ voiceChatStats.freeMessagesLimit }}</span>
+          </div>
+        </div>
+        
+        <!-- Voice Chat Progress Bar -->
+        <div class="voice-progress-container">
+          <div class="progress-bar">
+            <div class="progress-fill" 
+                 [style.width.%]="(voiceChatStats.freeMessagesUsed / voiceChatStats.freeMessagesLimit) * 100"></div>
+          </div>
+          <div class="progress-text">
+            <span *ngIf="!voiceChatStats.hasEarnedDailyToken">
+              {{ voiceChatStats.freeMessagesLimit - voiceChatStats.freeMessagesUsed }} free messages left today
+            </span>
+            <span *ngIf="voiceChatStats.hasEarnedDailyToken" class="completed-text">
+              ✅ Daily voice practice complete! (+1 token earned)
+            </span>
+          </div>
+        </div>
+
+        <!-- Mega Bonus Progress (if user has paid messages) -->
+        <div *ngIf="voiceChatStats.paidMessagesUsed > 0 && !voiceChatStats.hasEarnedMegaBonus" 
+             class="mega-bonus-progress">
+          <div class="bonus-header">
+            <ion-icon name="gift" color="warning"></ion-icon>
+            <span class="bonus-title">Mega Bonus Progress</span>
+            <span class="bonus-reward">+10 tokens</span>
+          </div>
+          <div class="bonus-progress-bar">
+            <div class="bonus-progress-fill" 
+                 [style.width.%]="(voiceChatStats.megaBonusProgress / voiceChatStats.megaBonusTarget) * 100"></div>
+          </div>
+          <div class="bonus-text">
+            {{ voiceChatStats.megaBonusProgress }}/{{ voiceChatStats.megaBonusTarget }} paid messages 
+            ({{ voiceChatStats.megaBonusTarget - voiceChatStats.megaBonusProgress }} more for bonus!)
+          </div>
+        </div>
+
+        <!-- Mega Bonus Achieved -->
+        <div *ngIf="voiceChatStats.hasEarnedMegaBonus" class="mega-bonus-achieved">
+          <ion-icon name="trophy" color="warning"></ion-icon>
+          <span>🎉 Mega Bonus Earned: +10 tokens!</span>
+        </div>
+
+        <!-- Quiz Readiness Status -->
+        <div class="quiz-status" [class.ready]="voiceChatStats.canAccessQuiz">
+          <div class="quiz-info">
+            <ion-icon [name]="voiceChatStats.canAccessQuiz ? 'library' : 'library-outline'" 
+                      [color]="voiceChatStats.canAccessQuiz ? 'success' : 'medium'"></ion-icon>
+            <span *ngIf="voiceChatStats.canAccessQuiz">
+              Quiz Ready! {{ voiceChatStats.extractedWords }} words from your conversations
+            </span>
+            <span *ngIf="!voiceChatStats.canAccessQuiz">
+              Complete voice practice to unlock quiz with conversation words
+            </span>
           </div>
         </div>
         
         <div class="chat-features">
-          <div class="feature-tag">
+          <div class="feature-tag voice-only">
             <ion-icon name="mic" size="small"></ion-icon>
-            <span>Voice Practice</span>
+            <span>Voice Only</span>
           </div>
           <div class="feature-tag">
             <ion-icon name="analytics" size="small"></ion-icon>
             <span>Real-time Feedback</span>
           </div>
-          <div class="feature-tag">
-            <ion-icon name="school" size="small"></ion-icon>
-            <span>Personalized</span>
+          <div class="feature-tag" *ngIf="voiceChatStats.freeMessagesUsed < voiceChatStats.freeMessagesLimit">
+            <ion-icon name="gift" size="small" color="success"></ion-icon>
+            <span>Free Messages</span>
+          </div>
+          <div class="feature-tag" *ngIf="voiceChatStats.freeMessagesUsed >= voiceChatStats.freeMessagesLimit">
+            <ion-icon name="diamond" size="small" color="warning"></ion-icon>
+            <span>2 tokens/message</span>
           </div>
         </div>
         
-        <ion-button expand="block" fill="outline" color="primary" class="start-chat-btn">
-          <ion-icon name="play" slot="start"></ion-icon>
-          Start AI Chat Practice
+        <ion-button expand="block" 
+                    [fill]="voiceChatStats.freeMessagesUsed < voiceChatStats.freeMessagesLimit ? 'solid' : 'outline'" 
+                    [color]="voiceChatStats.freeMessagesUsed < voiceChatStats.freeMessagesLimit ? 'success' : 'primary'" 
+                    class="start-chat-btn">
+          <ion-icon name="mic" slot="start"></ion-icon>
+          <span *ngIf="voiceChatStats.freeMessagesUsed < voiceChatStats.freeMessagesLimit">
+            Start Free Voice Practice
+          </span>
+          <span *ngIf="voiceChatStats.freeMessagesUsed >= voiceChatStats.freeMessagesLimit">
+            Continue Voice Practice (2 tokens)
+          </span>
         </ion-button>
       </div>
     </div>
