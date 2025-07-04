@@ -1,0 +1,144 @@
+<div class="advanced-audio-player" [class.compact]="compact" [class.loading]="audioState.isLoading">
+  
+  <!-- Loading Indicator -->
+  <div class="loading-overlay" *ngIf="audioState.isLoading">
+    <ion-spinner color="primary"></ion-spinner>
+    <span class="loading-text">Loading audio...</span>
+  </div>
+
+  <!-- Track Info -->
+  <div class="track-info" *ngIf="track && !compact">
+    <div class="track-title">{{ track.title }}</div>
+    <div class="track-type">{{ track.type | titlecase }}</div>
+  </div>
+
+  <!-- Waveform Container -->
+  <div class="waveform-section" *ngIf="showWaveform" [class.compact]="compact">
+    <div #waveformContainer class="waveform-container"></div>
+    
+    <!-- Fallback progress bar if waveform fails -->
+    <div class="fallback-progress" *ngIf="!wavesurfer && audioState.duration > 0">
+      <div class="progress-track" (click)="seek($event)">
+        <div class="progress-fill" [style.width.%]="getProgressPercent()"></div>
+        <div class="progress-thumb" [style.left.%]="getProgressPercent()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Controls -->
+  <div class="main-controls" *ngIf="showControls">
+    
+    <!-- Play/Pause Button -->
+    <ion-button 
+      fill="clear" 
+      size="large"
+      [disabled]="!canPlay"
+      (click)="togglePlayPause()"
+      class="play-button">
+      <ion-icon [name]="getPlayButtonIcon()" slot="icon-only"></ion-icon>
+    </ion-button>
+
+    <!-- Time Display -->
+    <div class="time-display" *ngIf="!compact">
+      <span class="current-time">{{ formatTime(audioState.currentTime) }}</span>
+      <span class="separator">/</span>
+      <span class="total-time">{{ formatTime(audioState.duration) }}</span>
+    </div>
+
+    <!-- Volume Control -->
+    <div class="volume-control" *ngIf="showVolumeControl && !compact">
+      <ion-button 
+        fill="clear" 
+        size="small"
+        (click)="showVolumeSlider = !showVolumeSlider"
+        class="volume-button">
+        <ion-icon [name]="getVolumeIcon()" slot="icon-only"></ion-icon>
+      </ion-button>
+      
+      <!-- Volume Slider -->
+      <div class="volume-slider" [class.visible]="showVolumeSlider">
+        <ion-range
+          min="0"
+          max="100"
+          [value]="audioState.volume * 100"
+          (ionInput)="onVolumeChange($event)"
+          color="primary">
+          <ion-icon name="volume-low" slot="start"></ion-icon>
+          <ion-icon name="volume-high" slot="end"></ion-icon>
+        </ion-range>
+      </div>
+    </div>
+
+    <!-- Speed Control -->
+    <div class="speed-control" *ngIf="showSpeedControl && !compact">
+      <ion-button 
+        fill="clear" 
+        size="small"
+        (click)="showSpeedSlider = !showSpeedSlider"
+        class="speed-button">
+        <span class="speed-text">{{ audioState.playbackRate }}x</span>
+      </ion-button>
+      
+      <!-- Speed Options -->
+      <div class="speed-options" [class.visible]="showSpeedSlider">
+        <ion-button 
+          *ngFor="let speed of playbackSpeeds"
+          fill="clear"
+          size="small"
+          [color]="audioState.playbackRate === speed ? 'primary' : 'medium'"
+          (click)="onSpeedChange(speed)"
+          class="speed-option">
+          {{ speed }}x
+        </ion-button>
+      </div>
+    </div>
+
+    <!-- Stop Button -->
+    <ion-button 
+      fill="clear" 
+      size="small"
+      [disabled]="!isCurrentTrack || !audioState.isPlaying"
+      (click)="stop()"
+      class="stop-button"
+      *ngIf="!compact">
+      <ion-icon name="stop" slot="icon-only"></ion-icon>
+    </ion-button>
+  </div>
+
+  <!-- Error Display -->
+  <div class="error-message" *ngIf="audioState.error">
+    <ion-icon name="warning" color="danger"></ion-icon>
+    <span>{{ audioState.error }}</span>
+    <ion-button fill="clear" size="small" (click)="playTrack()">
+      <ion-icon name="refresh" slot="icon-only"></ion-icon>
+    </ion-button>
+  </div>
+
+  <!-- Compact Mode Controls -->
+  <div class="compact-controls" *ngIf="compact && showControls">
+    <ion-button 
+      fill="clear" 
+      size="small"
+      [disabled]="!canPlay"
+      (click)="togglePlayPause()">
+      <ion-icon [name]="getPlayButtonIcon()" slot="icon-only"></ion-icon>
+    </ion-button>
+    
+    <div class="compact-info">
+      <div class="track-title-compact">{{ track?.title }}</div>
+      <div class="time-compact">
+        {{ formatTime(audioState.currentTime) }} / {{ formatTime(audioState.duration) }}
+      </div>
+    </div>
+
+    <!-- Volume button for mobile -->
+    <ion-button 
+      fill="clear" 
+      size="small"
+      (click)="toggleMute()"
+      *ngIf="showVolumeControl">
+      <ion-icon [name]="getVolumeIcon()" slot="icon-only"></ion-icon>
+    </ion-button>
+  </div>
+
+</div>

@@ -1,0 +1,139 @@
+.daily-tracker {
+  background: linear-gradient(135deg, rgba(26, 54, 93, 0.95), rgba(37, 74, 128, 0.95));
+  border-radius: 16px;
+  padding: 20px;
+  margin: 16px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.tracker-section {
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+
+  ion-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.section-info {
+  flex: 1;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: white;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 2px 0 0 0;
+}
+
+.progress-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.level-progress .progress-fill {
+  background: linear-gradient(90deg, var(--ion-color-primary), var(--ion-color-primary-shade));
+}
+
+.goal-progress .progress-fill {
+  background: linear-gradient(90deg, var(--ion-color-success), var(--ion-color-success-shade));
+}
+
+.tracker-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+
+  .tracker-section {
+    flex: 1;
+    margin-bottom: 0;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(5px);
+  }
+}
+
+.streak-message {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 4px 0 0 0;
+  font-style: italic;
+}
+
+.level-section {
+  background: transparent;
+  border: none;
+}
+
+.streak-section {
+  .section-header ion-icon {
+    color: var(--ion-color-danger);
+  }
+}
+
+.goal-section {
+  .section-header ion-icon {
+    color: var(--ion-color-success);
+  }
+}
+
+.points-section {
+  background: transparent;
+  border: none;
+  
+  .section-header ion-icon {
+    color: var(--ion-color-warning);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .tracker-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .daily-tracker {
+    padding: 16px;
+  }
+  
+  .section-title {
+    font-size: 16px;
+  }
+  
+  .section-subtitle {
+    font-size: 13px;
+  }
+}

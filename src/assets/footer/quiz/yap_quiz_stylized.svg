@@ -1,0 +1,25 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- Drop shadow filter -->
+  <defs>
+    <linearGradient id="quizGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4372c4"/>
+      <stop offset="100%" stop-color="#5a8ad6"/>
+    </linearGradient>
+    <filter id="dropShadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Stylized quiz/test document -->
+  <path d="M7 3 C5.89543 3 5 3.89543 5 5 L5 19 C5 20.1046 5.89543 21 7 21 L17 21 C18.1046 21 19 20.1046 19 19 L19 5 C19 3.89543 18.1046 3 17 3 L7 3 Z"
+        fill="url(#quizGradient)" stroke-width="0.5" stroke="#3060a8" stroke-linecap="round" stroke-linejoin="round" filter="url(#dropShadow)"/>
+  <!-- Quiz question lines -->
+  <rect x="8" y="7" width="8" height="1" rx="0.5" fill="#8cd81b"/>
+  <rect x="8" y="9.5" width="6" height="1" rx="0.5" fill="#8cd81b"/>
+  <!-- Multiple choice options -->
+  <circle cx="8.5" cy="13" r="0.8" fill="#8cd81b"/>
+  <rect x="10" y="12.5" width="5" height="1" rx="0.5" fill="#ffffff" opacity="0.7"/>
+  <circle cx="8.5" cy="15.5" r="0.8" fill="#ffffff" opacity="0.5"/>
+  <rect x="10" y="15" width="4" height="1" rx="0.5" fill="#ffffff" opacity="0.7"/>
+  <circle cx="8.5" cy="18" r="0.8" fill="#ffffff" opacity="0.5"/>
+  <rect x="10" y="17.5" width="3" height="1" rx="0.5" fill="#ffffff" opacity="0.7"/>
+</svg>

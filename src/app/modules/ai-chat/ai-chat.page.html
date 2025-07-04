@@ -1,0 +1,384 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-button (click)="exitChat()">
+        <ion-icon name="arrow-back" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>AI Conversation Practice</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" class="token-indicator">
+        <ion-icon name="diamond" color="warning" slot="start"></ion-icon>
+        <span>Used: {{ sessionTokensUsed }}</span>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ai-chat-content">
+  <!-- Connection Status -->
+  <div class="connection-status" [class.connected]="isConnected" [class.disconnected]="!isConnected">
+    <ion-icon [name]="isConnected ? 'wifi' : 'wifi-off'"></ion-icon>
+    <span>{{ isConnected ? 'Connected' : 'Connecting...' }}</span>
+  </div>
+
+  <!-- Chat Messages Container -->
+  <div #chatContainer class="chat-container">
+    <div class="messages-list">
+      <div 
+        *ngFor="let message of messages" 
+        class="message-wrapper"
+        [class.user-message]="message.isUser"
+        [class.ai-message]="!message.isUser">
+        
+        <div class="message-bubble">
+          <!-- Text Content -->
+          <div class="message-content" *ngIf="!message.isAudio" style="color: inherit !important;">
+            {{ message.content }}
+            
+            <!-- Enhanced Translation for AI messages -->
+            <div class="translation-container" *ngIf="!message.isUser && message.translation">
+              <!-- Persistent Translation Display -->
+              <div class="persistent-translation">
+                <div class="translation-text">
+                  <ion-icon name="globe-outline" size="small" color="medium"></ion-icon>
+                  <span>{{ message.translation }}</span>
+                </div>
+              </div>
+              
+              <!-- Advanced Translation Options (Optional) -->
+              <div class="translation-actions" *ngIf="message.showTranslation">
+                <ion-button 
+                  fill="clear" 
+                  size="small" 
+                  (click)="toggleSideBySide(message);">
+                  <ion-icon 
+                    [name]="message.showSideBySide ? 'layers' : 'duplicate'" 
+                    slot="start" 
+                    size="small">
+                  </ion-icon>
+                  {{ message.showSideBySide ? 'Stacked' : 'Side-by-Side' }}
+                </ion-button>
+              </div>
+              
+              <!-- Side-by-Side View -->
+              <div class="side-by-side-view" *ngIf="message.showSideBySide && message.showTranslation">
+                <div class="language-column spanish-column">
+                  <div class="language-header">
+                    <ion-icon name="flag" color="danger"></ion-icon>
+                    <span>Spanish</span>
+                  </div>
+                  <div class="language-text">{{ message.content }}</div>
+                </div>
+                <div class="language-divider"></div>
+                <div class="language-column english-column">
+                  <div class="language-header">
+                    <ion-icon name="flag" color="primary"></ion-icon>
+                    <span>English</span>
+                  </div>
+                  <div class="language-text">{{ message.translation }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Audio Content -->
+          <div class="message-content audio-message" *ngIf="message.isAudio && message.audioTrack">
+            <app-advanced-audio-player
+              [track]="message.audioTrack"
+              [compact]="true"
+              [showWaveform]="true"
+              [showVolumeControl]="false"
+              [showSpeedControl]="false"
+              (trackEnded)="onAudioTrackEnded($event)"
+              (playbackError)="onAudioError($event)">
+            </app-advanced-audio-player>
+            
+            <!-- Show recognized text for audio messages -->
+            <div class="recognized-text" *ngIf="message.content !== 'Voice message'">
+              <ion-icon name="chatbubble-ellipses" size="small"></ion-icon>
+              <span>{{ message.content }}</span>
+            </div>
+          </div>
+          
+          <!-- Loading audio indicator -->
+          <div class="message-content audio-loading" *ngIf="message.isGeneratingAudio">
+            <div class="audio-loading-content">
+              <ion-spinner color="primary" name="dots"></ion-spinner>
+              <span>Generating audio...</span>
+            </div>
+          </div>
+          
+          <!-- Pronunciation Assessment for user audio messages -->
+          <div class="pronunciation-assessment" *ngIf="message.isUser && message.pronunciation">
+            <div class="assessment-header">
+              <ion-icon name="mic" size="small"></ion-icon>
+              <span>Pronunciation Score</span>
+            </div>
+            <div class="assessment-scores">
+              <div class="overall-score" [class]="getPronunciationScoreClass(message.pronunciation.overallScore)">
+                {{ message.pronunciation.overallScore }}/100
+              </div>
+              <div class="detailed-scores">
+                <div class="score-item">
+                  <span>Accuracy:</span>
+                  <span [class]="getPronunciationScoreClass(message.pronunciation.accuracyScore)">{{ message.pronunciation.accuracyScore }}</span>
+                </div>
+                <div class="score-item">
+                  <span>Fluency:</span>
+                  <span [class]="getPronunciationScoreClass(message.pronunciation.fluencyScore)">{{ message.pronunciation.fluencyScore }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="assessment-feedback" *ngIf="message.pronunciation.feedback">
+              {{ message.pronunciation.feedback }}
+            </div>
+          </div>
+          
+          <!-- Message Actions -->
+          <div class="message-actions" *ngIf="!message.isUser">
+            <!-- TTS Button -->
+            <ion-button fill="clear" size="small" (click)="playMessageTTS(message)" [disabled]="message.isGeneratingAudio">
+              <ion-spinner *ngIf="message.isGeneratingAudio" name="dots" size="small"></ion-spinner>
+              <ion-icon *ngIf="!message.isGeneratingAudio" name="volume-high" size="small"></ion-icon>
+            </ion-button>
+          </div>
+          
+          <!-- Message Timestamp -->
+          <div class="message-timestamp">
+            {{ message.timestamp | date:'HH:mm' }}
+          </div>
+        </div>
+        
+        <!-- Avatar -->
+        <div class="message-avatar" *ngIf="!message.isUser">
+          <ion-icon name="chatbubbles" color="primary"></ion-icon>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Processing Indicator -->
+  <div class="processing-indicator" *ngIf="isProcessing">
+    <div class="typing-dots">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    <span class="processing-text">AI is thinking...</span>
+  </div>
+  
+  <!-- Pronunciation Assessment Indicator -->
+  <div class="assessment-indicator" *ngIf="isAssessingPronunciation">
+    <div class="assessment-animation">
+      <ion-spinner color="primary" name="lines"></ion-spinner>
+    </div>
+    <span class="assessment-text">Assessing pronunciation...</span>
+  </div>
+</ion-content>
+
+<!-- Chat Input Footer -->
+<ion-footer class="chat-footer">
+  <!-- Suggested Responses Section -->
+  <div class="suggested-responses-section">
+    <div class="suggestions-header">
+      <ion-icon name="bulb" color="warning"></ion-icon>
+      <span>Try responding with:</span>
+    </div>
+    <div class="suggestions-container">
+      <div class="suggestion-item" 
+           *ngFor="let response of getFallbackSuggestions().slice(0, 2)" 
+           [class.difficulty-easy]="response.difficulty === 'easy'"
+           [class.selected-for-practice]="selectedResponseForPractice?.id === response.id"
+           (click)="selectSuggestedResponse(response)">
+        
+        <div class="suggestion-content">
+          <div class="suggestion-spanish">{{ response.spanish }}</div>
+          <div class="suggestion-english">{{ response.english }}</div>
+        </div>
+        
+        <div class="suggestion-actions">
+          <ion-button fill="clear" size="small" (click)="playSuggestedResponseAudio(response); $event.stopPropagation()">
+            <ion-icon name="volume-high" slot="icon-only"></ion-icon>
+          </ion-button>
+          <div class="difficulty-badge" [attr.data-difficulty]="response.difficulty">
+            {{ response.difficulty }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-container">
+    <!-- Voice Recording Section (Primary) -->
+    <div class="voice-input-section" [class.active]="isRecording">
+      <div class="recording-status" *ngIf="isRecording">
+        <div class="recording-animation">
+          <div class="pulse"></div>
+        </div>
+        <span>Recording... Release to send</span>
+      </div>
+      
+      <div class="voice-instructions" *ngIf="!isRecording">
+        <p *ngIf="selectedResponseForPractice">Practice: "{{ selectedResponseForPractice.spanish }}"</p>
+        <p *ngIf="!selectedResponseForPractice">Tap a response above to practice</p>
+      </div>
+      
+      <ion-button 
+        (mousedown)="toggleRecording()"
+        (mouseup)="toggleRecording()"
+        (touchstart)="toggleRecording()"
+        (touchend)="toggleRecording()"
+        fill="solid"
+        color="primary"
+        class="mic-button"
+        [class.recording]="isRecording"
+        [disabled]="!isConnected || isProcessing">
+        <ion-icon name="mic" slot="icon-only"></ion-icon>
+      </ion-button>
+    </div>
+  </div>
+
+  <!-- Chat Features Info -->
+  <div class="chat-info">
+    <div class="info-tags">
+      <span class="info-tag">
+        <ion-icon name="diamond" size="small"></ion-icon>
+        1 token per message
+      </span>
+      <span class="info-tag">
+        <ion-icon name="mic" size="small"></ion-icon>
+        Voice supported
+      </span>
+    </div>
+  </div>
+</ion-footer>
+
+<!-- Learning Features Modal -->
+<ion-modal #learningModal [isOpen]="showLearningModal" (willDismiss)="closeLearningModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Learning Features</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeLearningModal()">
+            <ion-icon name="close"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    
+    <ion-content class="learning-modal-content">
+      <div class="modal-sections" *ngIf="selectedMessageForLearning">
+        
+        <!-- Original Message Section -->
+        <div class="modal-section">
+          <div class="section-header">
+            <ion-icon name="chatbubbles" color="primary"></ion-icon>
+            <h3>AI Message</h3>
+          </div>
+          <div class="original-message">
+            <p class="spanish-text">{{ selectedMessageForLearning.content }}</p>
+            <div class="message-actions-modal">
+              <ion-button fill="outline" size="small" (click)="playMessageTTS(selectedMessageForLearning)">
+                <ion-icon name="volume-high" slot="start"></ion-icon>
+                Listen
+              </ion-button>
+              <ion-button fill="outline" size="small" (click)="repeatMessageTTS(selectedMessageForLearning)">
+                <ion-icon name="refresh" slot="start"></ion-icon>
+                Repeat
+              </ion-button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Translation Section -->
+        <div class="modal-section" *ngIf="selectedMessageForLearning.translation">
+          <div class="section-header">
+            <ion-icon name="language" color="secondary"></ion-icon>
+            <h3>Translation</h3>
+          </div>
+          <div class="translation-content">
+            <p class="english-text">{{ selectedMessageForLearning.translation }}</p>
+          </div>
+        </div>
+
+        <!-- Suggested Responses Section -->
+        <div class="modal-section" *ngIf="selectedMessageForLearning.suggestedResponses && selectedMessageForLearning.suggestedResponses.length > 0">
+          <div class="section-header">
+            <ion-icon name="bulb" color="warning"></ion-icon>
+            <h3>Try Responding With</h3>
+          </div>
+          <div class="suggestions-grid">
+            <div class="suggestion-card" 
+                 *ngFor="let response of selectedMessageForLearning.suggestedResponses" 
+                 [class.difficulty-easy]="response.difficulty === 'easy'"
+                 [class.difficulty-medium]="response.difficulty === 'medium'"
+                 [class.difficulty-hard]="response.difficulty === 'hard'">
+              
+              <div class="suggestion-header">
+                <div class="difficulty-indicator" [attr.data-difficulty]="response.difficulty">
+                  {{ response.difficulty }}
+                </div>
+              </div>
+              
+              <div class="suggestion-texts">
+                <p class="spanish-response">{{ response.spanish }}</p>
+                <p class="english-response">{{ response.english }}</p>
+              </div>
+              
+              <div class="suggestion-card-actions">
+                <ion-button fill="clear" size="small" (click)="playSuggestedResponseAudio(response)">
+                  <ion-icon name="volume-high" slot="icon-only"></ion-icon>
+                </ion-button>
+                <ion-button fill="solid" size="small" (click)="useSuggestedResponseFromModal(response)">
+                  <ion-icon name="send" slot="start"></ion-icon>
+                  Use This
+                </ion-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Practice Section -->
+        <div class="modal-section">
+          <div class="section-header">
+            <ion-icon name="mic" color="success"></ion-icon>
+            <h3>Practice Speaking</h3>
+          </div>
+          <div class="practice-content">
+            <p class="practice-instruction">Try repeating the AI's message or use one of the suggested responses:</p>
+            <div class="practice-controls">
+              <ion-button 
+                fill="solid" 
+                color="success" 
+                size="large"
+                (click)="startPracticeRecording()"
+                [disabled]="isPracticeRecording">
+                <ion-icon name="mic" slot="start"></ion-icon>
+                {{ isPracticeRecording ? 'Recording...' : 'Start Recording' }}
+              </ion-button>
+              <ion-button 
+                fill="outline" 
+                size="large"
+                (click)="stopPracticeRecording()"
+                [disabled]="!isPracticeRecording">
+                <ion-icon name="stop" slot="start"></ion-icon>
+                Stop & Assess
+              </ion-button>
+            </div>
+            
+            <!-- Practice Recording Status -->
+            <div class="recording-status-modal" *ngIf="isPracticeRecording">
+              <div class="recording-visualization">
+                <div class="pulse-animation"></div>
+              </div>
+              <p>Speak clearly and naturally...</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>

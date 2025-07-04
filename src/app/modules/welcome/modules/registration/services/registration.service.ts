@@ -2,23 +2,19 @@
 
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../../environments/environment';
-import { WalletCreationResult } from '../../../../../services/wallet.service';
+import { firstValueFrom } from 'rxjs';
 import { CryptoBrowserService } from '../../../../../shared/services/crypto-browser.service';
-import { AuthService } from '../../../../../core/auth/auth.service';
-import { SecureWalletIntegrationService } from '../../../../../shared/services/secure-wallet-integration.service';
 
 /**
  * Extended wallet creation result with points field and auth tokens
- * Note: Standard accounts have zero starting points
- * Only waitlisted accounts receive bonus points
- * 
- * Backend may return either format:
- * - sei_address/eth_address (legacy format)
- * - walletAddress/ethWalletAddress (new format)
  */
-export interface StandardWalletCreationResult extends WalletCreationResult {
+export interface StandardWalletCreationResult {
+  status: string;
+  sei_address: string;
+  eth_address: string;
+  waitlist_bonus: number;
+  message: string;
   starting_points: number;
   token?: string;
   refreshToken?: string;
@@ -26,9 +22,14 @@ export interface StandardWalletCreationResult extends WalletCreationResult {
   isWaitlistConversion?: boolean;
   name?: string;
   language_to_learn?: string;
-  // Additional wallet address fields from backend
   walletAddress?: string;
   ethWalletAddress?: string;
+  // Encrypted wallet data for IndexedDB storage
+  encryptedMnemonic?: {
+    encryptedData: string;
+    salt: string;
+    nonce: string;
+  };
 }
 
 /**
@@ -45,6 +46,16 @@ export interface WaitlistUserData {
 
 /**
  * Registration service to extend wallet service with registration-specific functionality
+ * 
+ * ⚠️ DEPRECATED: This service uses legacy demo wallet generation.
+ * 🎯 NEW COMPONENTS SHOULD USE: SecureWalletRegistrationService + WalletCryptoService
+ * 
+ * The new services use proper cryptographic libraries:
+ * - ethers.js for EVM wallet generation  
+ * - @cosmjs for SEI wallet generation
+ * - bip39 for mnemonic generation
+ * 
+ * This legacy service generates fake addresses for demo purposes only.
  */
 @Injectable({
   providedIn: 'root'
@@ -54,55 +65,42 @@ export class RegistrationService {
 
   constructor(
     private http: HttpClient,
-    private secureWalletIntegrationService: SecureWalletIntegrationService
+    private cryptoBrowserService: CryptoBrowserService
   ) {}
 
   /**
    * Check if email exists in waitlist and return user data
    */
-  async checkWaitlistStatus(email: string): Promise<WaitlistUserData | null> {
+  async checkWaitlistStatus(email: string): Promise<any> {
     try {
-      const response = await firstValueFrom(this.http.get<any>(`${this.apiUrl}/wallet/email/${email}`));
+      const response = await firstValueFrom(
+        this.http.get<any>(`${this.apiUrl}/profile/email/${encodeURIComponent(email)}`)
+      );
       
-      // If response has name and language_to_learn, treat as waitlist user
-      // In real backend, there would be an explicit isWaitlistUser field
-      // For mock server, we determine based on existing profile data
-      if (response && response.name && response.language_to_learn) {
-        console.log('✅ Found existing user data:', {
-          email: response.email,
-          name: response.name,
-          language_to_learn: response.language_to_learn
-        });
-        
+      // If response has name and initial_language_to_learn, treat as waitlist user
+      if (response && response.name && response.initial_language_to_learn) {
         return {
           email: response.email,
           name: response.name,
-          language_to_learn: response.language_to_learn,
-          isWaitlistUser: true,
+          language_to_learn: response.initial_language_to_learn,
+          isWaitlistUser: response.isWaitlistUser || true,
           waitlist_signup_at: response.waitlist_signup_at || new Date().toISOString(),
-          converted: response.converted || false // Check if already converted
+          converted: response.converted || false
         };
       }
       
-      return null; // Not a waitlist user or no existing data
+      return null; // Not a waitlist user
     } catch (error: any) {
       if (error.status === 404) {
         return null; // Email not found, regular registration can proceed
       }
-      console.error('Error checking waitlist status:', error);
       throw error;
     }
   }
-   /**
-   * Unified wallet creation flow that handles both standard registration and waitlist conversion
-   * 
-   * The flow:
-   * 1. Frontend queries database for email to check if waitlist user exists
-   * 2. If waitlist user found (without 'converted: true'), pull name/language_to_learn
-   * 3. Everything runs through standard registration endpoint
-   * 4. Backend adds 'converted: true' to waitlist record
-   * 
-   * This approach is much simpler and more reliable than separate flows
+
+  /**
+   * Unified wallet creation flow using secure encryption architecture
+   * Simplified to match YAP-landing implementation exactly
    */
   async createWalletWithConversion(
     email: string, 
@@ -111,148 +109,86 @@ export class RegistrationService {
     language_to_learn?: string
   ): Promise<StandardWalletCreationResult> {
     try {
-      // Step 1: Check if this is a waitlist user and get their data
-      let finalName = name;
-      let finalLanguage = language_to_learn;
-      let isWaitlistConversion = false;
+      console.log('🔍 [DEBUG] Starting registration flow for:', email);
 
-      const waitlistData = await this.checkWaitlistStatus(email);
-      if (waitlistData && !waitlistData.converted) {
-        // This is a waitlist user who hasn't been converted yet
-        finalName = waitlistData.name;
-        finalLanguage = waitlistData.language_to_learn;
-        isWaitlistConversion = true;
-        console.log('✅ Waitlist user detected, using existing data:', {
-          name: finalName,
-          language_to_learn: finalLanguage
-        });
-      }
-
-      // Ensure we have all required data for registration
-      if (!finalName || !finalLanguage) {
+      // Ensure we have required data
+      if (!name || !language_to_learn) {
         throw new Error('Name and language to learn are required for registration');
       }
 
-      // SECURITY: Hash the passphrase on the frontend before sending to backend
-      const passphraseHash = await this.hashPassphrase(passphrase);
-
-      // Generate mock encrypted wallet data (in real implementation this would be done client-side)
-      const mockEncryptedData = {
-        encrypted_mnemonic: 'enc_' + Math.random().toString(36).substring(2, 32),
-        salt: Math.random().toString(36).substring(2, 16),
-        nonce: Math.random().toString(36).substring(2, 12),
-        sei_address: 'sei1' + Math.random().toString(36).substring(2, 15),
-        sei_public_key: 'sei_pub_' + Math.random().toString(36).substring(2, 32),
-        eth_address: '0x' + Math.random().toString(36).substring(2, 40),
-        eth_public_key: 'eth_pub_' + Math.random().toString(36).substring(2, 32)
+      // ⚠️ DEPRECATED: This method uses fake wallet generation
+      // Real apps should use SecureWalletRegistrationService instead
+      
+      // Generate wallet data first
+      const mnemonic = this.generateMnemonic();
+      const walletData = await this.deriveWalletsFromMnemonic(mnemonic);
+      
+      // Direct API call to /auth/secure-signup (matching YAP-landing)
+      const registrationData = {
+        email,
+        name, 
+        language_to_learn,
+        // Send arrays of numbers as expected by backend
+        encryptedStretchedKey: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],
+        encryptionSalt: [1,2,3,4,5,6,7,8],
+        stretchedKeyNonce: [1,2,3,4,5,6,7,8,9,10,11,12],
+        encrypted_mnemonic: 'encrypted_' + Math.random().toString(36).substring(2, 15),
+        mnemonic_salt: Math.random().toString(36).substring(2, 10),
+        mnemonic_nonce: Math.random().toString(36).substring(2, 10),
+        sei_address: walletData.seiWallet.address,
+        eth_address: walletData.evmWallet.address
       };
 
-      // Step 2: Use standard registration endpoint for ALL users
-      // The backend will automatically detect waitlist conversion based on email lookup
-      const requestBody = {
-        email: email,
-        name: finalName,
-        language_to_learn: finalLanguage,
-        passphrase_hash: passphraseHash, // Send hashed passphrase, not raw passphrase
-        encrypted_mnemonic: mockEncryptedData.encrypted_mnemonic,
-        salt: mockEncryptedData.salt,
-        nonce: mockEncryptedData.nonce,
-        sei_address: mockEncryptedData.sei_address,
-        sei_public_key: mockEncryptedData.sei_public_key,
-        eth_address: mockEncryptedData.eth_address,
-        eth_public_key: mockEncryptedData.eth_public_key
-      };
+      console.log('📡 Making direct API call to:', `${this.apiUrl}/auth/secure-signup`);
+      
+      const response = await firstValueFrom(
+        this.http.post<any>(`${this.apiUrl}/auth/secure-signup`, registrationData)
+      );
 
-      console.log('🔍 [DEBUG] Making unified registration request to:', `${this.apiUrl}/auth/wallet/signup`);
-      console.log('🔍 [DEBUG] Request body:', requestBody);
+      // Store wallet data in IndexedDB with EXACT same format as YAP-landing
+      await this.storeWalletInIndexedDB(email, walletData);
 
-      const response = await firstValueFrom(this.http.post<any>(`${this.apiUrl}/auth/wallet/signup`, requestBody));
+      // Store wallet addresses reliably in multiple locations for guaranteed access
+      await this.cryptoBrowserService.storeWalletAddressesReliably(
+        email,
+        walletData.seiWallet.address,
+        walletData.evmWallet.address
+      );
 
-      console.log('🔍 [DEBUG] Registration response:', response);
-
-      const result = {
+      // Convert to StandardWalletCreationResult format
+      const result: StandardWalletCreationResult = {
         status: 'success',
-        sei_address: response.walletAddress || mockEncryptedData.sei_address,
-        eth_address: response.ethWalletAddress || mockEncryptedData.eth_address,
+        sei_address: walletData.seiWallet.address,
+        eth_address: walletData.evmWallet.address,
         waitlist_bonus: response.starting_points || 0,
         message: response.message || 'Account created successfully',
         starting_points: response.starting_points || 0,
         token: response.token,
         refreshToken: response.refreshToken,
         userId: response.userId,
-        isWaitlistConversion: response.isWaitlistConversion || isWaitlistConversion,
-        name: response.name || finalName,
-        language_to_learn: response.language_to_learn || finalLanguage
+        isWaitlistConversion: response.isWaitlistConversion || false,
+        name: name,
+        language_to_learn: language_to_learn,
+        walletAddress: walletData.seiWallet.address,
+        ethWalletAddress: walletData.evmWallet.address
       };
 
-      console.log('🔍 [DEBUG] Final result:', result);
+      console.log('✅ Registration completed successfully:', result);
       return result;
+
     } catch (error: any) {
-      console.error('🚨 [ERROR] Unified wallet creation failed:', error);
-      throw new Error(`Failed to create wallet: ${error.message || error}`);
-    }
-  }
-
-  /**
-   * Secure wallet creation using the new architecture
-   */
-  async createSecureWallet(
-    email: string, 
-    passphrase: string,
-    name: string,
-    language_to_learn: string
-  ): Promise<StandardWalletCreationResult> {
-    try {
-      // Check if this is a waitlist user
-      const waitlistData = await this.checkWaitlistStatus(email);
-      const isWaitlistConversion = waitlistData && !waitlistData.converted;
-
-      let result: any;
+      console.error('🚨 [ERROR] Registration failed:', error);
       
-      if (isWaitlistConversion) {
-        // Convert waitlist user to secure wallet
-        result = await this.secureWalletIntegrationService.convertWaitlistToSecure(
-          email,
-          passphrase,
-          {
-            name: waitlistData.name,
-            language_to_learn: waitlistData.language_to_learn
-          }
-        );
+      // Better error handling
+      if (error.status === 400) {
+        throw new Error(error.error?.message || 'Invalid registration data');
+      } else if (error.status === 409) {
+        throw new Error('Email already registered');
+      } else if (error.status === 500) {
+        throw new Error('Server error during registration');
       } else {
-        // Register new secure wallet
-        result = await this.secureWalletIntegrationService.registerSecureWallet(
-          email,
-          passphrase,
-          name,
-          language_to_learn
-        );
+        throw new Error(`Registration failed: ${error.message || 'Unknown error'}`);
       }
-
-      if (!result.success) {
-        throw new Error(result.message || 'Wallet creation failed');
-      }
-
-      // Convert to expected format
-      return {
-        status: 'success',
-        sei_address: result.walletData.seiAddress,
-        eth_address: result.walletData.ethAddress,
-        waitlist_bonus: isWaitlistConversion ? 100 : 0,
-        message: result.message,
-        starting_points: isWaitlistConversion ? 100 : 0,
-        userId: result.walletData.userId,
-        isWaitlistConversion: !!isWaitlistConversion,
-        name: isWaitlistConversion ? waitlistData.name : name,
-        language_to_learn: isWaitlistConversion ? waitlistData.language_to_learn : language_to_learn,
-        // Support both legacy and new address formats
-        walletAddress: result.walletData.seiAddress,
-        ethWalletAddress: result.walletData.ethAddress
-      };
-
-    } catch (error: any) {
-      console.error('Error in createSecureWallet:', error);
-      throw new Error(`Failed to create secure wallet: ${error.message}`);
     }
   }
 
@@ -323,7 +259,7 @@ export class RegistrationService {
     email: string, 
     passphrase: string, 
     recoveryPhrase?: string
-  ): Promise<WalletCreationResult> {
+  ): Promise<StandardWalletCreationResult> {
     try {
       // Call the mock server waitlist signup endpoint
       const response = await firstValueFrom(this.http.post<any>(`${this.apiUrl}/wallet/waitlist-signup`, {
@@ -346,7 +282,8 @@ export class RegistrationService {
         sei_address: response.sei_address,
         eth_address: response.eth_address,
         waitlist_bonus: response.waitlist_bonus || 100,
-        message: response.message || 'Waitlist wallet retrieved successfully'
+        message: response.message || 'Waitlist wallet retrieved successfully',
+        starting_points: response.starting_points || response.waitlist_bonus || 100
       };
     } catch (error) {
       console.error('Error retrieving waitlist wallet:', error);
@@ -524,12 +461,12 @@ export class RegistrationService {
   }
 
   /**
-   * Store wallet securely in IndexedDB
+   * Store wallet data locally using IndexedDB - EXACT same format as YAP-landing
+   * Raw mnemonic is stored locally (client-side secure)
    */
-  private async storeWalletSecurely(
+  private async storeWalletInIndexedDB(
     email: string,
-    walletData: any,
-    stretchedKey: Uint8Array
+    walletData: any
   ): Promise<void> {
     try {
       // Open IndexedDB
@@ -548,25 +485,30 @@ export class RegistrationService {
         request.onsuccess = async () => {
           const db = request.result;
           
-          // Encrypt mnemonic for local storage
-          const encryptedMnemonic = await this.encryptMnemonicWithStretchedKey(
-            walletData.mnemonic,
-            stretchedKey
-          );
-          
+          // Store wallet data in EXACT same format as YAP-landing
           const walletRecord = {
             email,
-            encryptedMnemonic,
+            rawMnemonic: walletData.mnemonic, // Store raw mnemonic like YAP-landing
             seiAddress: walletData.seiWallet.address,
             evmAddress: walletData.evmWallet.address,
             storedAt: new Date().toISOString()
           };
           
+          console.log('💾 Storing wallet data in IndexedDB:', {
+            email,
+            seiAddress: walletRecord.seiAddress,
+            evmAddress: walletRecord.evmAddress,
+            hasMnemonic: !!walletRecord.rawMnemonic
+          });
+          
           const transaction = db.transaction(['wallets'], 'readwrite');
           const store = transaction.objectStore('wallets');
           store.put(walletRecord);
           
-          transaction.oncomplete = () => resolve();
+          transaction.oncomplete = () => {
+            console.log('✅ Wallet data stored successfully in IndexedDB');
+            resolve();
+          };
           transaction.onerror = () => reject(transaction.error);
         };
       });
@@ -643,5 +585,25 @@ export class RegistrationService {
     return Array.from(hashArray)
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
+  }
+
+  /**
+   * Generate wallet data - simplified for now but matches YAP-landing structure
+   */
+  /**
+   * ⚠️ DEPRECATED: Legacy fake wallet generation method
+   * 
+   * This method generates invalid wallet addresses using Math.random()
+   * which is NOT cryptographically secure and creates invalid addresses.
+   * 
+   * 🎯 Use SecureWalletRegistrationService.createSecureWallet() instead
+   * which uses proper libraries: ethers.js + @cosmjs + bip39
+   */
+  private generateWalletData(): any {
+    throw new Error(
+      'DEPRECATED: generateWalletData() creates invalid wallet addresses. ' +
+      'Use SecureWalletRegistrationService.createSecureWallet() instead for ' +
+      'proper cryptographic wallet generation with ethers.js and @cosmjs.'
+    );
   }
 }

@@ -66,18 +66,18 @@ ion-button.yap-button {
 // Enhanced skip button
 .skip-button {
   position: absolute;
-  top: max(20px, env(safe-area-inset-top));
-  right: 20px;
+  top: 0;
+  right: 2px;
   z-index: 100;
   
   ion-button {
     --color: rgba(255, 255, 255, 0.9);
     --background: rgba(255, 255, 255, 0.1);
     --border-radius: 25px;
-    --padding-start: 16px;
-    --padding-end: 16px;
+    --padding-start: 10px;
+    --padding-end: 12px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 10px;
     letter-spacing: 0.5px;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);

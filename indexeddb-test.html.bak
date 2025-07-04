@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YAP Frontend - Registration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            color: #333;
+            background: white;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            min-height: 100px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 YAP Frontend Registration Test</h1>
+    <p>This test simulates the registration process and checks IndexedDB storage.</p>
+    
+    <form id="registrationForm">
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" value="test@example.com" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" id="name" value="Test User" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="passphrase">Secure Passphrase:</label>
+            <input type="password" id="passphrase" value="test123456789" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="language">Language to Learn:</label>
+            <select id="language" required>
+                <option value="spanish">Spanish</option>
+                <option value="french">French</option>
+                <option value="german">German</option>
+                <option value="japanese">Japanese</option>
+                <option value="italian">Italian</option>
+            </select>
+        </div>
+        
+        <button type="submit">🚀 Test Registration</button>
+        <button type="button" id="checkIndexedDB">🔍 Check IndexedDB</button>
+        <button type="button" id="clearData">🗑️ Clear Test Data</button>
+    </form>
+    
+    <div id="result" class="result info">
+        <h3>Test Results:</h3>
+        <p>Click "Test Registration" to simulate the YAP-frontend registration process and verify IndexedDB wallet storage.</p>
+    </div>
+
+    <script>
+        // Mock the crypto.subtle API for testing
+        if (!window.crypto || !window.crypto.subtle) {
+            console.warn('crypto.subtle not available, creating mock');
+            window.crypto = window.crypto || {};
+            window.crypto.subtle = {
+                importKey: () => Promise.resolve({}),
+                deriveBits: () => Promise.resolve(new ArrayBuffer(32)),
+                digest: () => Promise.resolve(new ArrayBuffer(32)),
+                encrypt: () => Promise.resolve({ ciphertext: new ArrayBuffer(32), nonce: new ArrayBuffer(12) }),
+                decrypt: () => Promise.resolve(new ArrayBuffer(32))
+            };
+        }
+
+        // Mock registration flow
+        async function testRegistration() {
+            const form = document.getElementById('registrationForm');
+            const resultDiv = document.getElementById('result');
+            
+            const formData = {
+                email: document.getElementById('email').value,
+                name: document.getElementById('name').value,
+                passphrase: document.getElementById('passphrase').value,
+                language: document.getElementById('language').value
+            };
+            
+            try {
+                resultDiv.className = 'result info';
+                resultDiv.innerHTML = '<h3>Testing Registration Process...</h3><p>Step 1: Creating mock wallet data...</p>';
+                
+                // Simulate wallet creation
+                const mockWalletResult = {
+                    status: 'success',
+                    sei_address: 'sei1mock' + Math.random().toString(36).substring(2, 15),
+                    eth_address: '0x' + Math.random().toString(36).substring(2, 40),
+                    waitlist_bonus: 0,
+                    message: 'Test wallet created successfully',
+                    starting_points: 1000,
+                    token: 'mock-jwt-token-' + Math.random().toString(36).substring(2, 15),
+                    refreshToken: 'mock-refresh-token',
+                    userId: 'user_' + Math.random().toString(36).substring(2, 15),
+                    walletAddress: 'sei1mock' + Math.random().toString(36).substring(2, 15),
+                    ethWalletAddress: '0x' + Math.random().toString(36).substring(2, 40),
+                    encryptedMnemonic: {
+                        encryptedData: 'encrypted_mnemonic_' + Math.random().toString(36).substring(2, 32),
+                        salt: 'salt_' + Math.random().toString(36).substring(2, 16),
+                        nonce: 'nonce_' + Math.random().toString(36).substring(2, 12)
+                    }
+                };
+                
+                resultDiv.innerHTML += '<p>Step 2: Storing wallet data in IndexedDB...</p>';
+                
+                // Test IndexedDB storage
+                const success = await storeWalletDataInIndexedDB(mockWalletResult, formData.email, mockWalletResult.userId);
+                
+                if (success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML += '<p>✅ Wallet data stored successfully in IndexedDB!</p>';
+                    resultDiv.innerHTML += '<h4>Stored Data:</h4>';
+                    resultDiv.innerHTML += '<pre>' + JSON.stringify(mockWalletResult, null, 2) + '</pre>';
+                } else {
+                    throw new Error('Failed to store wallet data in IndexedDB');
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<h3>❌ Registration Test Failed</h3>';
+                resultDiv.innerHTML += '<p><strong>Error:</strong> ' + error.message + '</p>';
+                resultDiv.innerHTML += '<pre>' + error.stack + '</pre>';
+            }
+        }
+        
+        // IndexedDB wallet storage implementation (simplified version)
+        async function storeWalletDataInIndexedDB(walletResult, email, userId) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('YAPWalletDB', 1);
+                
+                request.onerror = () => {
+                    console.error('Failed to open IndexedDB');
+                    reject(new Error('Failed to open IndexedDB: ' + request.error));
+                };
+                
+                request.onsuccess = () => {
+                    const db = request.result;
+                    const transaction = db.transaction(['wallets'], 'readwrite');
+                    const store = transaction.objectStore('wallets');
+                    
+                    const walletData = {
+                        userId: userId,
+                        rawMnemonic: walletResult.encryptedMnemonic?.encryptedData || 'encrypted_mnemonic_placeholder',
+                        salt: walletResult.encryptedMnemonic?.salt || 'salt_placeholder',
+                        nonce: walletResult.encryptedMnemonic?.nonce || 'nonce_placeholder',
+                        seiWalletAddress: walletResult.walletAddress || walletResult.sei_address,
+                        evmWalletAddress: walletResult.ethWalletAddress || walletResult.eth_address,
+                        createdAt: new Date(),
+                        lastAccessed: new Date()
+                    };
+                    
+                    const putRequest = store.put(walletData);
+                    
+                    putRequest.onsuccess = () => {
+                        console.log('✅ Wallet data stored successfully');
+                        resolve(true);
+                    };
+                    
+                    putRequest.onerror = () => {
+                        console.error('❌ Failed to store wallet data');
+                        reject(new Error('Failed to store wallet data: ' + putRequest.error));
+                    };
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    
+                    if (!db.objectStoreNames.contains('wallets')) {
+                        const store = db.createObjectStore('wallets', { keyPath: 'userId' });
+                        store.createIndex('createdAt', 'createdAt', { unique: false });
+                        store.createIndex('lastAccessed', 'lastAccessed', { unique: false });
+                    }
+                };
+            });
+        }
+        
+        // Check IndexedDB contents
+        async function checkIndexedDB() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                resultDiv.className = 'result info';
+                resultDiv.innerHTML = '<h3>🔍 Checking IndexedDB Contents...</h3>';
+                
+                const request = indexedDB.open('YAPWalletDB', 1);
+                
+                request.onsuccess = () => {
+                    const db = request.result;
+                    const transaction = db.transaction(['wallets'], 'readonly');
+                    const store = transaction.objectStore('wallets');
+                    const getAllRequest = store.getAll();
+                    
+                    getAllRequest.onsuccess = () => {
+                        const wallets = getAllRequest.result;
+                        
+                        if (wallets.length === 0) {
+                            resultDiv.innerHTML += '<p>No wallet data found in IndexedDB.</p>';
+                        } else {
+                            resultDiv.className = 'result success';
+                            resultDiv.innerHTML += '<p>Found ' + wallets.length + ' wallet(s) in IndexedDB:</p>';
+                            resultDiv.innerHTML += '<pre>' + JSON.stringify(wallets, null, 2) + '</pre>';
+                        }
+                    };
+                    
+                    getAllRequest.onerror = () => {
+                        throw new Error('Failed to retrieve wallet data: ' + getAllRequest.error);
+                    };
+                };
+                
+                request.onerror = () => {
+                    throw new Error('Failed to open IndexedDB: ' + request.error);
+                };
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<h3>❌ IndexedDB Check Failed</h3>';
+                resultDiv.innerHTML += '<p><strong>Error:</strong> ' + error.message + '</p>';
+            }
+        }
+        
+        // Clear test data
+        async function clearTestData() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                resultDiv.className = 'result info';
+                resultDiv.innerHTML = '<h3>🗑️ Clearing Test Data...</h3>';
+                
+                const request = indexedDB.open('YAPWalletDB', 1);
+                
+                request.onsuccess = () => {
+                    const db = request.result;
+                    const transaction = db.transaction(['wallets'], 'readwrite');
+                    const store = transaction.objectStore('wallets');
+                    const clearRequest = store.clear();
+                    
+                    clearRequest.onsuccess = () => {
+                        // Also clear localStorage
+                        localStorage.removeItem('currentUser');
+                        localStorage.removeItem('user_authenticated');
+                        localStorage.removeItem('user_wallet');
+                        
+                        resultDiv.className = 'result success';
+                        resultDiv.innerHTML += '<p>✅ Test data cleared successfully!</p>';
+                        resultDiv.innerHTML += '<p>IndexedDB and localStorage have been cleaned.</p>';
+                    };
+                    
+                    clearRequest.onerror = () => {
+                        throw new Error('Failed to clear wallet data: ' + clearRequest.error);
+                    };
+                };
+                
+                request.onerror = () => {
+                    throw new Error('Failed to open IndexedDB: ' + request.error);
+                };
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<h3>❌ Clear Data Failed</h3>';
+                resultDiv.innerHTML += '<p><strong>Error:</strong> ' + error.message + '</p>';
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('registrationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            testRegistration();
+        });
+        
+        document.getElementById('checkIndexedDB').addEventListener('click', checkIndexedDB);
+        document.getElementById('clearData').addEventListener('click', clearTestData);
+        
+        // Initial IndexedDB check
+        window.addEventListener('load', () => {
+            setTimeout(checkIndexedDB, 1000);
+        });
+    </script>
+</body>
+</html>

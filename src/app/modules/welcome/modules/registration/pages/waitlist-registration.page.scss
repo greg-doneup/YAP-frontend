@@ -131,17 +131,57 @@ h1 {
   }
   
   ion-label {
-    font-weight: 500;
-    color: var(--yap-body-text-on-dark);
+    font-weight: 600;
+    color: #1a1a1a !important;
     font-size: 1rem;
     margin-bottom: 0.5rem;
   }
   
   ion-input, ion-textarea {
-    --placeholder-color: var(--ion-color-medium);
-    --color: var(--yap-body-text-on-dark);
-    --placeholder-opacity: 0.7;
+    --placeholder-color: #666666 !important;
+    --color: #1a1a1a !important;
+    color: #1a1a1a !important;
+    --placeholder-opacity: 0.8 !important;
     font-size: 0.95rem;
+    
+    // Additional comprehensive input text visibility fixes
+    ion-item {
+      ion-input,
+      ion-textarea {
+        --color: #1a1a1a !important;
+        color: #1a1a1a !important;
+        
+        // Target the actual input/textarea elements
+        input,
+        textarea {
+          color: #1a1a1a !important;
+          -webkit-text-fill-color: #1a1a1a !important;
+        }
+        
+        // Target Ionic's native wrappers
+        .native-input,
+        .native-textarea {
+          color: #1a1a1a !important;
+          -webkit-text-fill-color: #1a1a1a !important;
+        }
+        
+        // Target inner input wrapper
+        .input-wrapper input,
+        .textarea-wrapper textarea {
+          color: #1a1a1a !important;
+          -webkit-text-fill-color: #1a1a1a !important;
+        }
+      }
+    }
+    
+    // Global override for all form inputs in registration
+    input,
+    textarea,
+    ion-input input,
+    ion-textarea textarea {
+      color: #1a1a1a !important;
+      -webkit-text-fill-color: #1a1a1a !important;
+    }
   }
   
   .error-message {
@@ -349,5 +389,47 @@ h1 {
         line-height: 1.3;
       }
     }
+  }
+}
+
+/* Global input text visibility fix - most aggressive override */
+.waitlist-registration-content {
+  // Target all possible input elements
+  ion-item ion-input,
+  ion-item ion-textarea,
+  .custom-input ion-input,
+  .custom-input ion-textarea {
+    --color: #1a1a1a !important;
+    color: #1a1a1a !important;
+    
+    // Target all nested input elements
+    * {
+      color: #1a1a1a !important;
+      -webkit-text-fill-color: #1a1a1a !important;
+    }
+  }
+  
+  // Override any theme-based input styling
+  ion-input,
+  ion-textarea {
+    --color: #1a1a1a !important;
+    color: #1a1a1a !important;
+    
+    input,
+    textarea {
+      color: #1a1a1a !important;
+      -webkit-text-fill-color: #1a1a1a !important;
+      text-shadow: none !important;
+    }
+  }
+  
+  // Force all text inputs to be dark
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    background-color: rgba(255, 255, 255, 0.9) !important;
   }
 }

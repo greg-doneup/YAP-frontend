@@ -1,14 +1,19 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { WalletService } from '../../../shared/services/wallet.service';
+import { TokenService } from '../../../services/token.service';
 import { AuthService } from '../../../core/auth/auth.service';
-import { ToastController } from '@ionic/angular';
+import { ToastController, ModalController } from '@ionic/angular';
 import * as moment from 'moment-timezone';
 import { LessonService, Lesson } from '../../../shared/services/lesson.service';
 import { UserProgressService, UserProgress, LevelHistoryEntry } from '../../../shared/services/user-progress.service';
 import { LeaderboardService } from '../../../core/leaderboard/leaderboard.service';
 import { ApiService } from '../../../core/api-service.service';
+import { DailyAllowanceService, DailyAllowance, LessonAccess } from '../../../services/daily-allowance.service';
+import { DismissedCardsService } from '../../../shared/services/dismissed-cards.service';
+import { DailyTrackerData } from '../../../shared/components/daily-tracker/daily-tracker.component';
 import { Subscription } from 'rxjs';
+
 
 @Component({
   selector: 'app-dashboard',
@@ -26,10 +31,22 @@ export class DashboardPage implements OnInit, OnDestroy {
   showAdvancedSections = false; // Initially hide advanced sections for new users
   
   // Dashboard UI properties
-  selectedDay: string = '';
   userLevel = 'A1 - Beginner';
   activeTab = 'progress'; // Default active tab
-  weekdays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  // Dismissible cards
+  showWelcomeCard = true;
+  showProgressCard = true;
+  
+  // Daily tracker data
+  dailyTrackerData: DailyTrackerData = {
+    level: 'A1 - Beginner',
+    levelProgress: 0,
+    streak: 0,
+    lessonsToday: 0,
+    dailyGoal: 5,
+    pointsEarned: 0
+  };
   
   // Lesson properties
   todaysLessons: Lesson[] = [];
@@ -37,6 +54,10 @@ export class DashboardPage implements OnInit, OnDestroy {
   
   // User progress
   userProgress: UserProgress | null = null;
+  
+  // Daily allowances
+  dailyAllowances: DailyAllowance[] = [];
+  currentLessonAccess: LessonAccess | null = null;
   
   // Subscriptions
   private subscriptions: Subscription[] = [];
@@ -104,16 +125,23 @@ export class DashboardPage implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private walletService: WalletService,
+    private tokenService: TokenService,
     private authService: AuthService,
     private toastCtrl: ToastController,
+    private modalController: ModalController,
     private lessonService: LessonService,
     private userProgressService: UserProgressService,
     private leaderboardService: LeaderboardService,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private dailyAllowanceService: DailyAllowanceService,
+    private dismissedCardsService: DismissedCardsService
   ) { 
     if (this.isDevMode) {
       this.setupDevTools();
     }
+    
+    // Initialize dismissed cards state
+    this.initializeDismissedCardsState();
   }
   
   /**
@@ -142,9 +170,6 @@ export class DashboardPage implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    // Set the current day based on user's timezone
-    this.setCurrentDayByTimezone();
-    
     // Subscribe to user progress updates
     const progressSub = this.userProgressService.userProgress$.subscribe(progress => {
       if (progress) {
@@ -174,6 +199,9 @@ export class DashboardPage implements OnInit, OnDestroy {
         this.isNewUser = progress.lessonsCompleted === 0;
         this.showNewUserGuide = this.isNewUser;
         this.showAdvancedSections = !this.isNewUser;
+        
+        // Update daily tracker data
+        this.updateDailyTrackerData();
       }
     });
     this.subscriptions.push(progressSub);
@@ -181,10 +209,8 @@ export class DashboardPage implements OnInit, OnDestroy {
     // Subscribe to lessons updates
     const lessonsSub = this.lessonService.todaysLessons$.subscribe(lessons => {
       this.todaysLessons = lessons;
-      
-      // Update today's goal progress based on lessons
-      const completedLessons = lessons.filter(lesson => lesson.progress === 100).length;
-      this.todaysGoal.progress = completedLessons;
+      // Update daily tracker data (will use allowance data, not lesson count)
+      this.updateDailyTrackerData();
     });
     this.subscriptions.push(lessonsSub);
     
@@ -194,10 +220,24 @@ export class DashboardPage implements OnInit, OnDestroy {
     });
     this.subscriptions.push(nextLessonSub);
     
+    // Subscribe to daily allowances
+    const allowancesSub = this.dailyAllowanceService.dailyAllowances$.subscribe(allowances => {
+      this.dailyAllowances = allowances;
+      // Update daily tracker when allowances change
+      this.updateDailyTrackerData();
+    });
+    this.subscriptions.push(allowancesSub);
+    
+    // Get current lesson access status
+    const lessonAccessSub = this.dailyAllowanceService.canAccessLesson().subscribe(access => {
+      this.currentLessonAccess = access;
+    });
+    this.subscriptions.push(lessonAccessSub);
+    
     await this.loadUserData();
     
-    // Load lessons for the current day
-    this.lessonService.loadLessonsForDay(this.selectedDay).subscribe();
+    // Load lessons for today
+    this.lessonService.loadLessonsForDay('today').subscribe();
     
     // Set active tab based on current route
     const currentPath = this.router.url.split('/').pop();
@@ -218,14 +258,53 @@ export class DashboardPage implements OnInit, OnDestroy {
   }
   
   /**
-   * Sets the current day based on user's timezone
+   * Initialize the state of dismissible cards
    */
-  setCurrentDayByTimezone() {
-    // Get the current day based on the user's local timezone
-    const currentDayIndex = moment().local().day();
-    this.selectedDay = this.weekdays[currentDayIndex];
+  initializeDismissedCardsState(): void {
+    this.showWelcomeCard = !this.dismissedCardsService.isCardDismissed('welcome-card');
+    this.showProgressCard = !this.dismissedCardsService.isCardDismissed('progress-card');
+  }
+  
+  /**
+   * Dismiss a card with the specified persistence
+   */
+  dismissCard(cardId: string, isPersistent: boolean = false): void {
+    this.dismissedCardsService.dismissCard(cardId, isPersistent);
     
-    console.log('Current day in user timezone:', this.selectedDay);
+    // Update local state
+    switch (cardId) {
+      case 'welcome-card':
+        this.showWelcomeCard = false;
+        break;
+      case 'progress-card':
+        this.showProgressCard = false;
+        break;
+    }
+  }
+  
+  /**
+   * Update daily tracker data based on user progress and allowances
+   */
+  updateDailyTrackerData(): void {
+    if (this.userProgress) {
+      // Get lessons used today from allowances
+      const lessonAllowance = this.dailyAllowances.find(a => a.featureName === 'Daily Lessons');
+      const lessonsUsedToday = lessonAllowance ? lessonAllowance.used : 0;
+      const dailyGoal = lessonAllowance ? lessonAllowance.dailyLimit : 5;
+      
+      this.dailyTrackerData = {
+        level: this.userLevel,
+        levelProgress: this.getLevelProgress(),
+        streak: this.userProgress.daysStreak,
+        lessonsToday: lessonsUsedToday,
+        dailyGoal: dailyGoal,
+        pointsEarned: this.earnings.changeAmount
+      };
+      
+      // Also update the todaysGoal to keep it in sync
+      this.todaysGoal.progress = lessonsUsedToday;
+      this.todaysGoal.total = dailyGoal;
+    }
   }
 
   async loadUserData() {
@@ -363,19 +442,19 @@ export class DashboardPage implements OnInit, OnDestroy {
   }  navigateToHome() {
     this.showLevelDropdown = false; // Close dropdown
     this.activeTab = 'home';
-    this.router.navigate(['/home']);
+    // Stay on dashboard for home
   }
   
-  navigateToLearn() {
+  navigateToAiChat() {
     this.showLevelDropdown = false; // Close dropdown
-    this.activeTab = 'learn';
-    this.router.navigate(['/practice']);
+    this.activeTab = 'ai-chat';
+    this.openAiChat(); // Use existing AI chat logic
   }
   
-  navigateToProgress() {
+  navigateToQuiz() {
     this.showLevelDropdown = false; // Close dropdown
-    this.activeTab = 'progress';
-    this.router.navigate(['/progress']);
+    this.activeTab = 'quiz';
+    this.router.navigate(['/quiz']);
   }
   
   navigateToProfile() {
@@ -385,20 +464,103 @@ export class DashboardPage implements OnInit, OnDestroy {
   }
   
   /**
-   * Select a specific day and load relevant data
-   * @param day The day to select (Sun, Mon, Tue, etc.)
+   * Open AI Chat with allowance and token verification
    */
-  selectDay(day: string) {
-    this.selectedDay = day;
+  async openAiChat() {
+    try {
+      // First check if user has free allowances
+      const allowanceCheck = await this.tokenService.canUseFeature('ai-chat').toPromise();
+      
+      if (allowanceCheck?.canUse && (allowanceCheck.allowanceRemaining || 0) > 0) {
+        // User has free allowances, can proceed
+        this.router.navigate(['/ai-chat']);
+        return;
+      }
+
+      // No free allowances, check token balance
+      const tokenBalance = await this.tokenService.getTokenBalance().toPromise();
+      
+      if (!tokenBalance || tokenBalance.balance < 5) {
+        // Show token spending modal or insufficient balance warning
+        const toast = await this.toastCtrl.create({
+          message: 'No free AI chat messages remaining today and insufficient tokens. You need at least 5 tokens, or wait for your daily allowance to reset.',
+          duration: 4000,
+          color: 'warning',
+          position: 'top'
+        });
+        await toast.present();
+        return;
+      }
+      
+      // Navigate to AI chat page
+      this.router.navigate(['/ai-chat']);
+    } catch (error) {
+      console.error('Error opening AI chat:', error);
+      const toast = await this.toastCtrl.create({
+        message: 'Unable to start AI chat. Please try again.',
+        duration: 3000,
+        color: 'danger',
+        position: 'top'
+      });
+      await toast.present();
+    }
+  }
+  
+  /**
+   * Check if user has AI chat time remaining
+   */
+  hasAIChatTimeRemaining(): boolean {
+    const chatAllowance = this.dailyAllowances.find(a => a.featureName === 'AI Chat');
+    return chatAllowance ? chatAllowance.remaining > 0 : false;
+  }
+
+  /**
+   * Get remaining AI chat time
+   */
+  getAIChatTimeRemaining(): number {
+    const chatAllowance = this.dailyAllowances.find(a => a.featureName === 'AI Chat');
+    return chatAllowance ? chatAllowance.remaining : 0;
+  }
+
+  /**
+   * Start AI chat session
+   */
+  async startAIChat() {
+    if (!this.hasAIChatTimeRemaining()) {
+      const toast = await this.toastCtrl.create({
+        message: 'Daily AI chat limit reached. Purchase more time with YAP tokens!',
+        duration: 3000,
+        color: 'warning'
+      });
+      await toast.present();
+      return;
+    }
+
+    // TODO: Navigate to AI chat interface
+    console.log('Starting AI chat session...');
     
-    // Load lessons for the selected day
-    this.lessonService.loadLessonsForDay(day).subscribe(lessons => {
-      console.log(`Loaded ${lessons.length} lessons for ${day}`);
+    const toast = await this.toastCtrl.create({
+      message: 'AI Chat feature coming soon!',
+      duration: 2000,
+      color: 'success'
     });
+    
+    await toast.present();
   }
 
   // Lesson interactions
-  startLesson(lesson: Lesson) {
+  async startLesson(lesson: Lesson) {
+    // Check lesson access first
+    if (!this.currentLessonAccess?.canAccessLesson) {
+      await this.showLessonAccessDialog();
+      return;
+    }
+    
+    // Use a lesson allowance if available
+    if (this.currentLessonAccess.allowanceRemaining > 0) {
+      this.dailyAllowanceService.useLessonAllowance();
+    }
+    
     // For development only - option to mark lesson as completed with a long press
     if (this.isDevMode) {
       const element = document.querySelector('.lesson-card[data-id="' + lesson.id + '"]');
@@ -421,6 +583,54 @@ export class DashboardPage implements OnInit, OnDestroy {
     });
   }
   
+  /**
+   * Show dialog when lesson access is restricted
+   */
+  async showLessonAccessDialog() {
+    const alert = await this.toastCtrl.create({
+      header: 'Daily Limit Reached',
+      message: 'You have used your 5 free lessons today. Purchase unlimited access or wait until tomorrow.',
+      buttons: [
+        {
+          text: 'Wait Until Tomorrow',
+          role: 'cancel'
+        },
+        {
+          text: '3 YAP (Today)',
+          handler: () => {
+            this.purchaseUnlimitedLessons('day');
+          }
+        },
+        {
+          text: '20 YAP (Week)',
+          handler: () => {
+            this.purchaseUnlimitedLessons('week');
+          }
+        }
+      ]
+    });
+    
+    await alert.present();
+  }
+  
+  /**
+   * Purchase unlimited lesson access
+   */
+  async purchaseUnlimitedLessons(duration: 'day' | 'week' | 'month') {
+    const cost = duration === 'day' ? 3 : duration === 'week' ? 20 : 75;
+    
+    // TODO: Integrate with actual token spending
+    console.log(`Purchasing unlimited lessons for ${duration} at cost of ${cost} YAP tokens`);
+    
+    const toast = await this.toastCtrl.create({
+      message: `Token spending for unlimited lessons coming soon! (${cost} YAP for ${duration})`,
+      duration: 3000,
+      color: 'warning'
+    });
+    
+    await toast.present();
+  }
+  
   // Development helper - mark lesson as completed
   async markLessonAsCompleted(lesson: Lesson) {
     lesson.progress = 100;
@@ -437,7 +647,7 @@ export class DashboardPage implements OnInit, OnDestroy {
       }).then(toast => toast.present());
       
       // Refresh data
-      this.lessonService.loadLessonsForDay(this.selectedDay).subscribe();
+      this.lessonService.loadLessonsForDay('today').subscribe();
     });
   }
   
@@ -458,31 +668,6 @@ export class DashboardPage implements OnInit, OnDestroy {
   goToPronunciationPractice() {
     this.showLevelDropdown = false; // Ensure dropdown is closed
     this.router.navigate(['/practice']);
-  }
-  
-  // Listen feature
-  async startListening() {
-    // Add listen-active class for animation
-    const listenButton = document.querySelector('.listen-button');
-    if (listenButton) {
-      listenButton.classList.add('listen-active');
-    }
-    
-    // Display the toast message
-    const toast = await this.toastCtrl.create({
-      message: 'Listening feature coming soon!',
-      duration: 2000,
-      position: 'middle',
-      color: 'primary'
-    });
-    await toast.present();
-    
-    // Remove the active class after 2 seconds
-    setTimeout(() => {
-      if (listenButton) {
-        listenButton.classList.remove('listen-active');
-      }
-    }, 2000);
   }
 
   /**
@@ -544,11 +729,18 @@ export class DashboardPage implements OnInit, OnDestroy {
   }
   
   /**
-   * Selects a specific CEFR level
+   * Attempts to select a specific CEFR level (with progression validation)
    * @param level The selected level object
    */
   selectLevel(level: any, event: Event) {
     event.stopPropagation(); // Prevent event bubbling
+    
+    // Check if level is unlocked
+    if (!this.isLevelUnlocked(level.level)) {
+      this.showLevelUnlockDialog(level);
+      return;
+    }
+    
     this.userLevel = level.title;
     
     // Use the proper closing method to ensure the backdrop is also removed
@@ -568,12 +760,76 @@ export class DashboardPage implements OnInit, OnDestroy {
       
       // Update the lesson service and load lessons for this level
       this.lessonService.setCurrentLevel(level.level);
-      this.lessonService.loadLessonsForDay(this.selectedDay).subscribe(lessons => {
+      this.lessonService.loadLessonsForDay('today').subscribe(lessons => {
         console.log(`Loaded ${lessons.length} lessons for level ${level.level}`);
         // Hide loading state after lessons are loaded
         this.isLoading = false;
       });
     });
+  }
+  
+  /**
+   * Check if a CEFR level is unlocked for the user
+   */
+  isLevelUnlocked(level: string): boolean {
+    const progress = this.userProgressService.getCurrentProgressValue();
+    if (!progress) return level === 'A1.1'; // Only A1.1 unlocked for new users
+    
+    const levels = [
+      'A1.1', 'A1.2', 'A1.3', 
+      'A2.1', 'A2.2', 'A2.3',
+      'B1.1', 'B1.2', 'B1.3',
+      'B2.1', 'B2.2', 'B2.3',
+      'C1.1', 'C1.2', 'C1.3',
+      'C2.1', 'C2.2', 'C2.3'
+    ];
+    
+    const currentIndex = levels.indexOf(progress.ceferLevel);
+    const targetIndex = levels.indexOf(level);
+    
+    // Can only access current level or previous completed levels
+    return targetIndex <= currentIndex;
+  }
+
+  /**
+   * Show dialog for unlocking a level with tokens
+   */
+  async showLevelUnlockDialog(level: any) {
+    const alert = await this.toastCtrl.create({
+      header: 'Level Locked',
+      message: `Complete ${this.userLevel} lessons to unlock ${level.title}, or spend 5 YAP tokens to skip ahead.`,
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        },
+        {
+          text: 'Spend 5 YAP',
+          handler: () => {
+            this.purchaseLevelUnlock(level);
+          }
+        }
+      ]
+    });
+    
+    await alert.present();
+  }
+
+  /**
+   * Purchase level unlock with tokens
+   */
+  async purchaseLevelUnlock(level: any) {
+    // TODO: Integrate with token service when ready
+    console.log(`Attempting to unlock ${level.level} with 5 YAP tokens`);
+    
+    // For now, show a toast
+    const toast = await this.toastCtrl.create({
+      message: 'Token spending feature coming soon!',
+      duration: 2000,
+      color: 'warning'
+    });
+    
+    await toast.present();
   }
   
   /**
@@ -710,5 +966,45 @@ export class DashboardPage implements OnInit, OnDestroy {
     );
     
     return levelHistory ? Math.round(levelHistory.percentComplete) : 0;
+  }
+
+  /**
+   * Get appropriate icon for lesson type
+   */
+  getLessonTypeIcon(type: string): string {
+    switch (type) {
+      case 'practice':
+      case 'conversation':
+        return 'chatbubbles';
+      case 'quiz':
+        return 'help-circle';
+      case 'pronunciation':
+        return 'mic';
+      case 'flashcard':
+      case 'review':
+        return 'library';
+      default:
+        return 'book';
+    }
+  }
+
+  /**
+   * Get user-friendly label for lesson type
+   */
+  getLessonTypeLabel(type: string): string {
+    switch (type) {
+      case 'practice':
+        return 'AI Conversation';
+      case 'conversation':
+        return 'AI Chat';
+      case 'quiz':
+        return 'Quiz';
+      case 'pronunciation':
+        return 'Pronunciation';
+      case 'flashcard':
+        return 'Review';
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
+    }
   }
 }

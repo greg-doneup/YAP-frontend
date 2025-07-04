@@ -1,0 +1,19 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- Drop shadow filter -->
+  <defs>
+    <linearGradient id="aiChatGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4372c4"/>
+      <stop offset="100%" stop-color="#5a8ad6"/>
+    </linearGradient>
+    <filter id="dropShadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Stylized chat bubble -->
+  <path d="M20 3 L4 3 C2.89543 3 2 3.89543 2 5 L2 15 C2 16.1046 2.89543 17 4 17 L6 17 L6 20 C6 20.5523 6.44772 21 7 21 C7.27614 21 7.5 20.8861 7.6 20.7 L11 17 L20 17 C21.1046 17 22 16.1046 22 15 L22 5 C22 3.89543 21.1046 3 20 3 Z"
+        fill="url(#aiChatGradient)" stroke-width="0.5" stroke="#3060a8" stroke-linecap="round" stroke-linejoin="round" filter="url(#dropShadow)"/>
+  <!-- AI indicator dots -->
+  <circle cx="8" cy="10" r="1.2" fill="#8cd81b"/>
+  <circle cx="12" cy="10" r="1.2" fill="#8cd81b"/>
+  <circle cx="16" cy="10" r="1.2" fill="#8cd81b"/>
+</svg>

@@ -49,7 +49,7 @@ export class WalletService {
    */
   async checkUserExists(email: string): Promise<boolean> {
     try {
-      const response = await firstValueFrom(this.http.get<UserProfile>(`${this.baseUrl}/wallet/email/${email}`));
+      const response = await firstValueFrom(this.http.get<UserProfile>(`${this.baseUrl}/profile/email/${email}`));
       return !!response;
     } catch (error: any) {
       if (error.status === 404) {
@@ -68,7 +68,7 @@ export class WalletService {
     nonce: string;
   } | null> {
     try {
-      const response = await firstValueFrom(this.http.get<UserProfile>(`${this.baseUrl}/wallet/email/${email}`));
+      const response = await firstValueFrom(this.http.get<UserProfile>(`${this.baseUrl}/profile/email/${email}`));
       
       if (response && response.encrypted_mnemonic && response.salt && response.nonce) {
         return {
@@ -207,7 +207,7 @@ export class WalletService {
    */
   async getUserProfile(email: string): Promise<UserProfile | null> {
     try {
-      const response = await firstValueFrom(this.http.get<UserProfile>(`${this.baseUrl}/wallet/email/${email}`));
+      const response = await firstValueFrom(this.http.get<UserProfile>(`${this.baseUrl}/profile/email/${email}`));
       return response!;
     } catch (error: any) {
       if (error.status === 404) {

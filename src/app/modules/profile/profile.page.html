@@ -80,10 +80,20 @@
 
     <!-- Wallet Section -->
     <div class="wallet-section">
-      <h2 class="section-title">
-        <ion-icon name="wallet" color="primary"></ion-icon>
-        Wallets
-      </h2>
+      <div class="section-header">
+        <h2 class="section-title">
+          <ion-icon name="wallet" color="primary"></ion-icon>
+          Wallets
+        </h2>
+        <ion-button 
+          fill="outline" 
+          size="small" 
+          class="wallet-manage-btn"
+          (click)="openWalletManagement()">
+          <ion-icon name="settings" slot="start"></ion-icon>
+          Manage Wallet
+        </ion-button>
+      </div>
       
       <!-- SEI Wallet -->
       <div class="wallet-card sei-wallet">

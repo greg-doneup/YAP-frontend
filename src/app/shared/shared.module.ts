@@ -9,6 +9,13 @@ import { ClipboardModule } from '@angular/cdk/clipboard';
 //dynamic components
 import { PronunciationFeedbackComponent } from './pronunciation-feedback/pronunciation-feedback.component';
 import { SplashScreenComponent } from './splash-screen/splash-screen.component';
+import { DailyTrackerComponent } from './components/daily-tracker/daily-tracker.component';
+
+//wallet and token components
+import { WalletBalanceWidgetComponent } from '../components/wallet-balance-widget.component';
+import { TokenSpendingModalComponent } from '../components/token-spending-modal.component';
+import { AiChatComponent } from '../components/ai-chat.component';
+import { WalletManagementComponent } from '../components/wallet-management.component';
 
 //tools modules
 import { FontAwesomeLibraryModule } from './font-awesome-library/font-awesome-library.module';
@@ -23,7 +30,12 @@ import { MaterialModule } from './material/material.module';
 @NgModule({
     declarations: [
        PronunciationFeedbackComponent,
-       SplashScreenComponent
+       SplashScreenComponent,
+       DailyTrackerComponent,
+       WalletBalanceWidgetComponent,
+       TokenSpendingModalComponent,
+       AiChatComponent,
+       WalletManagementComponent
     ],
     imports: [
         CommonModule,
@@ -43,7 +55,12 @@ import { MaterialModule } from './material/material.module';
         MaterialModule,
         ClipboardModule,
         PronunciationFeedbackComponent,
-        SplashScreenComponent
+        SplashScreenComponent,
+        DailyTrackerComponent,
+        WalletBalanceWidgetComponent,
+        TokenSpendingModalComponent,
+        AiChatComponent,
+        WalletManagementComponent
     ],
     schemas: [NO_ERRORS_SCHEMA, CUSTOM_ELEMENTS_SCHEMA]
 })

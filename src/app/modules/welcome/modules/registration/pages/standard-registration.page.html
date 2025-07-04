@@ -105,6 +105,36 @@
         </ion-item>
       </div>
 
+      <!-- Native Language Selection - conditional based on waitlist status -->
+      <div class="form-group" *ngIf="!isWaitlistUser">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Your Native Language</ion-label>
+          <ion-select
+            [(ngModel)]="selectedNativeLanguage"
+            name="nativeLanguage"
+            placeholder="Select your native language"
+            required
+            [disabled]="isLoading">
+            <ion-select-option value="english">English</ion-select-option>
+            <ion-select-option value="spanish">Spanish</ion-select-option>
+            <ion-select-option value="french">French</ion-select-option>
+            <ion-select-option value="german">German</ion-select-option>
+            <ion-select-option value="italian">Italian</ion-select-option>
+            <ion-select-option value="portuguese">Portuguese</ion-select-option>
+            <ion-select-option value="chinese">Chinese</ion-select-option>
+            <ion-select-option value="japanese">Japanese</ion-select-option>
+            <ion-select-option value="korean">Korean</ion-select-option>
+            <ion-select-option value="arabic">Arabic</ion-select-option>
+            <ion-select-option value="hindi">Hindi</ion-select-option>
+            <ion-select-option value="russian">Russian</ion-select-option>
+          </ion-select>
+        </ion-item>
+        <p class="help-text">
+          <ion-icon name="information-circle"></ion-icon>
+          This helps us provide better translations and explanations.
+        </p>
+      </div>
+
       <!-- Pre-filled Language for Waitlist Users -->
       <div class="form-group" *ngIf="isWaitlistUser">
         <ion-item lines="none" class="custom-input readonly-field">
@@ -117,6 +147,36 @@
           </ion-input>
           <ion-icon name="checkmark-circle" slot="end" color="success"></ion-icon>
         </ion-item>
+      </div>
+
+      <!-- Native Language Selection for Waitlist Users -->
+      <div class="form-group" *ngIf="isWaitlistUser">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Your Native Language</ion-label>
+          <ion-select
+            [(ngModel)]="selectedNativeLanguage"
+            name="nativeLanguage"
+            placeholder="Select your native language"
+            required
+            [disabled]="isLoading">
+            <ion-select-option value="english">English</ion-select-option>
+            <ion-select-option value="spanish">Spanish</ion-select-option>
+            <ion-select-option value="french">French</ion-select-option>
+            <ion-select-option value="german">German</ion-select-option>
+            <ion-select-option value="italian">Italian</ion-select-option>
+            <ion-select-option value="portuguese">Portuguese</ion-select-option>
+            <ion-select-option value="chinese">Chinese</ion-select-option>
+            <ion-select-option value="japanese">Japanese</ion-select-option>
+            <ion-select-option value="korean">Korean</ion-select-option>
+            <ion-select-option value="arabic">Arabic</ion-select-option>
+            <ion-select-option value="hindi">Hindi</ion-select-option>
+            <ion-select-option value="russian">Russian</ion-select-option>
+          </ion-select>
+        </ion-item>
+        <p class="help-text">
+          <ion-icon name="information-circle"></ion-icon>
+          This helps us provide better translations and explanations.
+        </p>
       </div>
 
       <div class="form-group">

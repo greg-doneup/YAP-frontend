@@ -6,7 +6,9 @@ import { StandardWalletCreationResult } from './registration.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../../../core/auth/auth.service';
 import { TokenService } from '../../../../../core/token/token.service';
+import { WalletStorageService, WalletStorageData } from '../../../../../services/wallet-storage.service';
 import { environment } from '../../../../../../environments/environment';
+import { WalletAuthService } from '../../../../../core/auth/wallet-auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,7 +17,9 @@ export class RegistrationAuthService {
   constructor(
     private router: Router,
     private authService: AuthService,
-    private tokenService: TokenService
+    private tokenService: TokenService,
+    private walletStorageService: WalletStorageService,
+    private walletAuthService: WalletAuthService
   ) {}
   
   /**
@@ -44,7 +48,8 @@ export class RegistrationAuthService {
           id: result.userId || `user_${Math.random().toString(36).substring(2, 15)}`,
           email: email,
           walletAddress: result.walletAddress || result.sei_address,
-          ethWalletAddress: result.ethWalletAddress || result.eth_address
+          ethWalletAddress: result.ethWalletAddress || result.eth_address,
+          createdAt: new Date().toISOString() // Add creation timestamp for new user detection
         };
         
         localStorage.setItem('currentUser', JSON.stringify(user));
@@ -55,6 +60,16 @@ export class RegistrationAuthService {
         }));
         
         console.log('Stored user with wallet addresses:', user);
+        
+        // Store wallet data securely in IndexedDB
+        await this.storeWalletInIndexedDB(result, email, user.id);
+        
+        // 🚀 NEW: Complete wallet-first authentication
+        await this.walletAuthService.completeWalletAuth(
+          email,
+          result.walletAddress || result.sei_address,
+          result.ethWalletAddress || result.eth_address
+        );
         
         // Force refresh the AuthService to load the wallet addresses
         this.authService.loadUserFromStorage();
@@ -82,7 +97,8 @@ export class RegistrationAuthService {
           id: authResponse.userId || `user_${Math.random().toString(36).substring(2, 15)}`,
           email: email,
           walletAddress: result.walletAddress || result.sei_address,
-          ethWalletAddress: result.ethWalletAddress || result.eth_address
+          ethWalletAddress: result.ethWalletAddress || result.eth_address,
+          createdAt: new Date().toISOString() // Add creation timestamp for new user detection
         };
         
         localStorage.setItem('currentUser', JSON.stringify(user));
@@ -93,6 +109,9 @@ export class RegistrationAuthService {
         }));
         
         console.log('Stored user with wallet addresses (backend auth):', user);
+        
+        // Store wallet data securely in IndexedDB
+        await this.storeWalletInIndexedDB(result, email, user.id);
         
         // Force refresh the AuthService to load the wallet addresses
         this.authService.loadUserFromStorage();
@@ -107,6 +126,131 @@ export class RegistrationAuthService {
       // Fallback to mock authentication
       this.completeMockAuthentication(result, email);
     }
+  }
+
+  /**
+   * Store wallet data securely in IndexedDB - CRITICAL FOR TRANSACTION SIGNING
+   * This method ensures the encrypted mnemonic is properly stored for wallet functionality
+   */
+  private async storeWalletInIndexedDB(result: StandardWalletCreationResult, email: string, userId: string): Promise<void> {
+    try {
+      console.log('🔍 [DEBUG] Storing wallet data in IndexedDB for user:', userId);
+      console.log('🔍 [DEBUG] Result data:', {
+        walletAddress: result.walletAddress,
+        sei_address: result.sei_address,
+        ethWalletAddress: result.ethWalletAddress,
+        eth_address: result.eth_address,
+        hasEncryptedMnemonic: !!result.encryptedMnemonic,
+        encryptedMnemonic: result.encryptedMnemonic
+      });
+      
+      // CRITICAL: Validate that we have encrypted mnemonic data
+      if (!result.encryptedMnemonic || !result.encryptedMnemonic.encryptedData) {
+        console.error('❌ CRITICAL ERROR: No encrypted mnemonic data available - wallet will not be functional!');
+        console.error('❌ Registration result:', result);
+        throw new Error('Missing encrypted mnemonic - wallet cannot sign transactions without this data!');
+      }
+      
+      console.log('✅ Encrypted mnemonic data validated - proceeding with secure storage');
+      
+      // Store wallet data in the SECURE IndexedDB format that the wallet management component expects
+      await this.storeSecureWalletData(result, email);
+      
+      // Store public addresses in localStorage for quick access (non-sensitive data)
+      localStorage.setItem('wallet_addresses', JSON.stringify({
+        sei_address: result.walletAddress || result.sei_address,
+        eth_address: result.ethWalletAddress || result.eth_address,
+        stored_at: new Date().toISOString(),
+        user_email: email
+      }));
+      
+      console.log('✅ Wallet data stored securely - mnemonic in IndexedDB, addresses in localStorage');
+      
+    } catch (error) {
+      console.error('❌ CRITICAL ERROR storing wallet data in IndexedDB:', error);
+      console.error('❌ This will prevent the wallet from being functional for transaction signing!');
+      // Re-throw error because wallet storage is critical for functionality
+      throw new Error(`Failed to store wallet data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Store wallet data in secure IndexedDB format with proper encryption
+   * This is the primary method for storing wallet data that can be retrieved for transaction signing
+   */
+  private async storeSecureWalletData(result: StandardWalletCreationResult, email: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('YAP-SecureWallets', 1);
+      
+      request.onerror = () => {
+        console.error('❌ Failed to open YAP-SecureWallets database:', request.error);
+        reject(new Error('Failed to open secure wallet database'));
+      };
+      
+      request.onsuccess = () => {
+        const db = request.result;
+        console.log('✅ YAP-SecureWallets database opened successfully');
+        
+        // Create the wallet record with all necessary data for transaction signing
+        const walletRecord = {
+          email: email,
+          seiAddress: result.walletAddress || result.sei_address,
+          evmAddress: result.ethWalletAddress || result.eth_address,
+          // Store encrypted mnemonic data for transaction signing
+          encryptedMnemonic: result.encryptedMnemonic?.encryptedData || '',
+          mnemonicSalt: result.encryptedMnemonic?.salt || '',
+          mnemonicNonce: result.encryptedMnemonic?.nonce || '',
+          createdAt: new Date().toISOString(),
+          lastAccessed: new Date().toISOString(),
+          version: '2.0' // Track the storage format version
+        };
+        
+        console.log('💾 Storing wallet record:', {
+          email: walletRecord.email,
+          seiAddress: walletRecord.seiAddress,
+          evmAddress: walletRecord.evmAddress,
+          hasEncryptedMnemonic: !!walletRecord.encryptedMnemonic,
+          mnemonicLength: walletRecord.encryptedMnemonic.length,
+          version: walletRecord.version
+        });
+        
+        const transaction = db.transaction(['wallets'], 'readwrite');
+        const store = transaction.objectStore('wallets');
+        const putRequest = store.put(walletRecord);
+        
+        putRequest.onsuccess = () => {
+          console.log('✅ Secure wallet data stored successfully in IndexedDB');
+          resolve();
+        };
+        
+        putRequest.onerror = () => {
+          console.error('❌ Failed to store secure wallet data:', putRequest.error);
+          reject(new Error('Failed to store wallet data in IndexedDB'));
+        };
+      };
+      
+      request.onupgradeneeded = (event) => {
+        console.log('🔄 Upgrading YAP-SecureWallets database schema');
+        const db = (event.target as IDBOpenDBRequest).result;
+        
+        // Create wallets store if it doesn't exist
+        if (!db.objectStoreNames.contains('wallets')) {
+          const store = db.createObjectStore('wallets', { keyPath: 'email' });
+          store.createIndex('seiAddress', 'seiAddress', { unique: false });
+          store.createIndex('evmAddress', 'evmAddress', { unique: false });
+          store.createIndex('createdAt', 'createdAt', { unique: false });
+          console.log('✅ Created wallets store with proper indexes');
+        }
+        
+        // Create legacy stores for backward compatibility if needed
+        if (!db.objectStoreNames.contains('walletMetadata')) {
+          db.createObjectStore('walletMetadata');
+        }
+        if (!db.objectStoreNames.contains('encryptedWallets')) {
+          db.createObjectStore('encryptedWallets');
+        }
+      };
+    });
   }
 
   /**
@@ -135,13 +279,19 @@ export class RegistrationAuthService {
       id: mockUserId,
       email: email,
       walletAddress: result.walletAddress || result.sei_address,
-      ethWalletAddress: result.ethWalletAddress || result.eth_address
+      ethWalletAddress: result.ethWalletAddress || result.eth_address,
+      createdAt: new Date().toISOString() // Add creation timestamp for new user detection
     };
     
     // Store user in localStorage and update the AuthService
     localStorage.setItem('currentUser', JSON.stringify(user));
     
     console.log('Mock authentication completed with wallet addresses:', user);
+    
+    // Store wallet data securely in IndexedDB (mock version)
+    this.storeWalletInIndexedDB(result, email, mockUserId).catch(error => {
+      console.warn('Failed to store wallet data in IndexedDB during mock auth:', error);
+    });
     
     // Force refresh the AuthService by calling loadUserFromStorage
     this.authService.loadUserFromStorage();
@@ -189,7 +339,5 @@ export class RegistrationAuthService {
     const signature = btoa('mocksignature');
     
     return `${header}.${payload}.${signature}`;
-    // In production, this would be obtained from the backend
-    return `mock-auth-token-${Math.random().toString(36).substring(2, 15)}`;
   }
 }

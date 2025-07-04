@@ -1,11 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { ToastController, AlertController } from '@ionic/angular';
+import { ToastController, AlertController, ModalController } from '@ionic/angular';
 import { AuthService } from '../../core/auth/auth.service';
+import { WalletAuthService } from '../../core/auth/wallet-auth.service';
 import { ProfileService } from '../../core/profile/profile.service';
 import { WalletService } from '../../services/wallet.service';
 import { LeaderboardService } from '../../core/leaderboard/leaderboard.service';
 import { CryptoBrowserService } from '../../shared/services/crypto-browser.service';
+import { WalletManagementComponent } from '../../components/wallet-management.component';
+import { TokenService } from '../../services/token.service';
 import { firstValueFrom } from 'rxjs';
 
 interface ProfileData {
@@ -62,10 +65,13 @@ export class ProfilePage implements OnInit {
     private toastController: ToastController,
     private alertController: AlertController,
     private authService: AuthService,
+    private walletAuthService: WalletAuthService,
     private profileService: ProfileService,
     private walletService: WalletService,
     private leaderboardService: LeaderboardService,
-    private cryptoService: CryptoBrowserService
+    private cryptoService: CryptoBrowserService,
+    private modalController: ModalController,
+    private tokenService: TokenService
   ) { }
 
   ngOnInit() {
@@ -73,21 +79,62 @@ export class ProfilePage implements OnInit {
   }
 
   async loadProfileData() {
-    console.log('=== LOADING PROFILE DATA ===');
+    console.log('=== LOADING PROFILE DATA (WALLET-FIRST) ===');
     
     try {
       this.isLoading = true;
 
-      // Get current user
-      const currentUser = this.authService.currentUserValue;
-      console.log('Current user from AuthService:', currentUser);
+      // 🚀 CRITICAL: Wait for wallet authentication to fully initialize
+      console.log('🔄 Ensuring wallet authentication is fully initialized...');
+      await this.walletAuthService.refreshWalletAuth();
+      console.log('✅ Wallet authentication initialization completed');
+
+      // 🚀 NEW: Primary check - wallet-based authentication
+      const walletUser = this.walletAuthService.currentWalletUser;
+      console.log('Current wallet user from WalletAuthService:', walletUser);
       
+      let currentUser;
+      
+      if (walletUser && walletUser.isAuthenticated) {
+        console.log('✅ Using wallet-first authentication');
+        // Convert wallet user to legacy format for compatibility
+        currentUser = this.walletAuthService.toLegacyUser();
+        console.log('Converted wallet user to legacy format:', currentUser);
+      } else {
+        // Fallback: Get current user with fallback to localStorage (legacy method)
+        currentUser = this.authService.currentUserValue;
+        console.log('Current user from AuthService (legacy):', currentUser);
+        
+        // If AuthService doesn't have user, try localStorage fallback (same as AuthGuard)
+        if (!currentUser) {
+          console.log('No current user from AuthService, checking localStorage fallback...');
+          const isUserAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+          const userStr = localStorage.getItem('currentUser');
+          const userWallet = localStorage.getItem('user_wallet');
+          
+          if (isUserAuthenticated && userStr) {
+            try {
+              currentUser = JSON.parse(userStr);
+              console.log('Recovered user from localStorage:', currentUser);
+              // Reload AuthService state
+              this.authService.loadUserFromStorage();
+              // Also try to refresh wallet auth
+              this.walletAuthService.refreshWalletAuth();
+            } catch (error) {
+              console.error('Failed to parse user from localStorage:', error);
+            }
+          }
+        }
+      }
+      
+      // If still no user after all checks, redirect to welcome
       if (!currentUser) {
-        console.log('No current user, redirecting to welcome');
+        console.log('❌ No current user found after wallet-first and legacy checks, redirecting to welcome');
         this.router.navigate(['/welcome']);
         return;
       }
 
+      console.log('✅ Authentication successful, proceeding with profile load for user:', currentUser.email);
       this.profileData.user = currentUser;
 
       // Check wallet addresses from current user
@@ -299,6 +346,40 @@ export class ProfilePage implements OnInit {
         console.error('Error copying to clipboard:', error);
         this.showToast('Failed to copy address', 'danger');
       }
+    }
+  }
+
+  /**
+   * Open the wallet management modal
+   */
+  async openWalletManagement() {
+    const modal = await this.modalController.create({
+      component: WalletManagementComponent,
+      cssClass: 'wallet-management-modal',
+      backdropDismiss: true
+    });
+
+    await modal.present();
+
+    // Trigger a refresh of wallet data when modal is opened
+    // This is especially important for newly registered users
+    try {
+      const component = (modal as any).component;
+      if (component && component.refreshWalletInfo) {
+        // Add a small delay to allow IndexedDB operations to complete
+        setTimeout(() => {
+          component.refreshWalletInfo();
+        }, 500);
+      }
+    } catch (error) {
+      console.log('Could not access modal component for refresh, modal will use initial load');
+    }
+
+    const { data } = await modal.onWillDismiss();
+    if (data?.refreshNeeded) {
+      // Refresh token data and reload profile data
+      this.tokenService.refreshAllData();
+      this.loadProfileData();
     }
   }
 

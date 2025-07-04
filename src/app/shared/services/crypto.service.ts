@@ -55,7 +55,7 @@ export class CryptoService {
 
   private async openDB(): Promise<any> {
     return new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('YAPSecureWallet', 1);
+      const request = indexedDB.open('YAP-SecureWallets', 1);
       
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);

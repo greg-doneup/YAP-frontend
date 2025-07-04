@@ -4,6 +4,7 @@ import { PronunciationService, AudioRecording } from '../../core/pronunciation/p
 import { DetailedPronunciationResult } from '../../core/pronunciation/pronunciation.model';
 import { WalletService } from '../../core/wallet/wallet.service';
 import { LearningService, VocabItem } from '../../core/learning/learning.service';
+import { BlockchainService } from '../../services/blockchain.service';
 import { Observable, Subscription, of, throwError } from 'rxjs';
 import { catchError, finalize, switchMap, tap, map } from 'rxjs/operators';
 import { AlertController, LoadingController } from '@ionic/angular';
@@ -65,6 +66,7 @@ export class PracticePage implements OnInit, OnDestroy {
     private pronunciationService: PronunciationService,
     private walletService: WalletService,
     private learningService: LearningService,
+    private blockchainService: BlockchainService,
     private alertController: AlertController,
     private loadingController: LoadingController
   ) { }
@@ -129,6 +131,9 @@ export class PracticePage implements OnInit, OnDestroy {
     
     // Request microphone permissions
     this.requestMicrophonePermissions();
+    
+    // Initialize blockchain connection for lesson completion tracking
+    this.initializeBlockchainConnection();
   }
   
   /**
@@ -615,19 +620,164 @@ export class PracticePage implements OnInit, OnDestroy {
   /**
    * Continue to next phrase
    */
-  continueToNext() {
+  async continueToNext() {
     if (this.currentPhraseNumber < this.totalPhrasesInLesson) {
       this.currentPhraseNumber++;
       this.loadNext();
     } else {
-      // Lesson complete - navigate back or to next lesson
-      this.showAlert('Lesson Complete!', 'Great job! You\'ve completed this lesson.');
-      // Could navigate to lesson complete screen or next lesson
+      // Lesson complete - record completion on blockchain
+      await this.handleLessonCompletion();
     }
     
     this.flowState = 'initial';
     this.pronunciationResult = null;
     this.recordingBlob = null;
+  }
+
+  /**
+   * Handle lesson completion with blockchain transaction
+   */
+  private async handleLessonCompletion() {
+    const loading = await this.loadingController.create({
+      message: 'Recording lesson completion...',
+      spinner: 'crescent'
+    });
+    await loading.present();
+
+    try {
+      // Get user wallet address
+      const walletAddress = this.walletService.getWalletAddress();
+      if (!walletAddress) {
+        throw new Error('Wallet not connected');
+      }
+
+      // Calculate lesson score based on pronunciation results
+      const lessonScore = this.calculateLessonScore();
+      
+      // Record lesson completion on blockchain
+      const result = await this.blockchainService.recordLessonCompletion(
+        walletAddress,
+        this.getCurrentLessonId(),
+        this.getCurrentDifficulty(),
+        lessonScore
+      );
+
+      if (result.success) {
+        // Show success message with reward info
+        const message = result.reward > 0 
+          ? `Great job! You've completed this lesson and earned ${result.reward} YAP tokens!`
+          : 'Great job! You\'ve completed this lesson.';
+        
+        await this.showAlert('Lesson Complete!', message);
+
+        // Optionally trigger daily completion if this is the first lesson of the day
+        await this.checkAndRecordDailyCompletion(walletAddress);
+      } else {
+        // Show completion message even if blockchain transaction failed
+        await this.showAlert('Lesson Complete!', 'Great job! You\'ve completed this lesson. (Blockchain recording failed - please check your connection)');
+      }
+
+    } catch (error) {
+      console.error('Error handling lesson completion:', error);
+      await this.showAlert('Lesson Complete!', 'Great job! You\'ve completed this lesson. (Unable to record on blockchain - please check your wallet connection)');
+    } finally {
+      await loading.dismiss();
+    }
+  }
+
+  /**
+   * Calculate lesson score based on pronunciation results
+   */
+  private calculateLessonScore(): number {
+    if (!this.pronunciationResult) {
+      return 70; // Default score if no pronunciation data
+    }
+
+    // Extract score from pronunciation result
+    const overallScore = this.pronunciationResult.overall_score || 
+                        this.pronunciationResult.overallScore || 
+                        this.pronunciationResult.score || 70;
+    
+    return Math.round(overallScore);
+  }
+
+  /**
+   * Get current lesson ID based on level and lesson number
+   */
+  private getCurrentLessonId(): number {
+    // Create a numeric lesson ID based on level and lesson number
+    const levelMultiplier = this.getLevelMultiplier(this.currentLessonLevel);
+    return levelMultiplier * 100 + this.currentLessonNumber;
+  }
+
+  /**
+   * Get difficulty level as number
+   */
+  private getCurrentDifficulty(): number {
+    // Map CEFR levels to difficulty numbers
+    const difficultyMap: { [key: string]: number } = {
+      'A1.1': 1, 'A1.2': 1, 'A1': 1,
+      'A2.1': 2, 'A2.2': 2, 'A2': 2,
+      'B1.1': 3, 'B1.2': 3, 'B1': 3,
+      'B2.1': 4, 'B2.2': 4, 'B2': 4,
+      'C1.1': 5, 'C1.2': 5, 'C1': 5,
+      'C2': 6
+    };
+    
+    return difficultyMap[this.currentLessonLevel] || 1;
+  }
+
+  /**
+   * Get level multiplier for lesson ID calculation
+   */
+  private getLevelMultiplier(level: string): number {
+    const levelMap: { [key: string]: number } = {
+      'A1.1': 1, 'A1.2': 2, 'A1': 1,
+      'A2.1': 3, 'A2.2': 4, 'A2': 3,
+      'B1.1': 5, 'B1.2': 6, 'B1': 5,
+      'B2.1': 7, 'B2.2': 8, 'B2': 7,
+      'C1.1': 9, 'C1.2': 10, 'C1': 9,
+      'C2': 11
+    };
+    
+    return levelMap[level] || 1;
+  }
+
+  /**
+   * Check if this is the first lesson today and record daily completion
+   */
+  private async checkAndRecordDailyCompletion(userAddress: string) {
+    try {
+      // Get user rewards info to check last lesson date
+      const rewardsInfo = await this.blockchainService.getUserRewards(userAddress);
+      
+      if (!rewardsInfo) {
+        console.log('No rewards info available, skipping daily completion check');
+        return;
+      }
+
+      const today = new Date();
+      const lastLessonDate = rewardsInfo.lastLessonDate;
+      
+      // Check if this is the first lesson today
+      const isDifferentDay = !lastLessonDate || 
+        today.toDateString() !== lastLessonDate.toDateString();
+      
+      if (isDifferentDay) {
+        // Record daily completion for additional rewards
+        const dailyResult = await this.blockchainService.recordDailyCompletion(userAddress);
+        
+        if (dailyResult.success && dailyResult.reward > 0) {
+          // Show additional daily bonus message
+          setTimeout(() => {
+            this.showAlert('Daily Bonus!', `You earned an additional ${dailyResult.reward} YAP tokens for your first lesson today!`);
+          }, 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking daily completion:', error);
+      // Don't show error for daily completion as it's a bonus feature
+    }
   }
 
   /**
@@ -851,5 +1001,24 @@ export class PracticePage implements OnInit, OnDestroy {
    */
   skipLesson() {
     this.showAlert('Skip Lesson', 'Are you sure you want to skip this lesson?');
+  }
+
+  /**
+   * Initialize blockchain connection for lesson completion tracking
+   */
+  private async initializeBlockchainConnection() {
+    try {
+      const walletAddress = this.walletService.getWalletAddress();
+      if (walletAddress) {
+        // Try to connect to blockchain with user's wallet
+        await this.blockchainService.connectWallet();
+        console.log('Blockchain connection initialized for practice');
+      } else {
+        console.log('No wallet address found, blockchain features will be limited');
+      }
+    } catch (error) {
+      console.warn('Failed to initialize blockchain connection:', error);
+      // Continue without blockchain features
+    }
   }
 }

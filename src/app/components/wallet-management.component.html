@@ -1,0 +1,209 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Wallet Management</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="close()">
+        <ion-icon name="close"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <!-- Wallet Overview -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>
+        <ion-icon name="wallet" class="wallet-icon"></ion-icon>
+        Wallet Overview
+      </ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <div class="wallet-info">
+        <!-- SEI Wallet -->
+        <div class="info-row">
+          <span class="label">SEI Address:</span>
+          <div class="address-container">
+            <span class="address">{{ walletAddress || 'Not available' }}</span>
+            <ion-button fill="clear" size="small" (click)="copyAddress('sei')" *ngIf="walletAddress">
+              <ion-icon name="copy"></ion-icon>
+            </ion-button>
+          </div>
+        </div>
+        
+        <!-- EVM Wallet -->
+        <div class="info-row">
+          <span class="label">EVM Address:</span>
+          <div class="address-container">
+            <span class="address">{{ ethWalletAddress || 'Not available' }}</span>
+            <ion-button fill="clear" size="small" (click)="copyAddress('evm')" *ngIf="ethWalletAddress">
+              <ion-icon name="copy"></ion-icon>
+            </ion-button>
+          </div>
+        </div>
+        
+        <div class="info-row">
+          <span class="label">Balance:</span>
+          <div class="balance-container">
+            <span class="balance">{{ (balance || 0) | number:'1.2-2' }} YAP</span>
+            <ion-button fill="clear" size="small" (click)="refreshBalance()" [disabled]="isLoading">
+              <ion-icon name="refresh" [class.spin]="isLoading"></ion-icon>
+            </ion-button>
+          </div>
+        </div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Troubleshooting Section -->
+  <ion-card *ngIf="(!walletAddress || !ethWalletAddress)">
+    <ion-card-header>
+      <ion-card-title>
+        <ion-icon name="build" class="troubleshoot-icon"></ion-icon>
+        Troubleshooting
+      </ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <div class="troubleshoot-info">
+        <p class="troubleshoot-description">
+          If your wallet addresses show as "Not available", you may have invalid or incomplete wallet data. 
+          This can happen if registration was interrupted or test data was stored.
+        </p>
+        
+        <ion-button 
+          expand="block" 
+          fill="outline" 
+          color="warning"
+          (click)="clearInvalidWalletData()">
+          <ion-icon name="refresh" slot="start"></ion-icon>
+          Clear Invalid Data & Re-register
+        </ion-button>
+        
+        <ion-note class="troubleshoot-note">
+          This will clear stored wallet data. You'll need to complete registration again to generate new addresses.
+        </ion-note>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Security Section -->
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>
+        <ion-icon name="shield-checkmark" class="security-icon"></ion-icon>
+        Security & Recovery
+      </ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <!-- Recovery Phrase -->
+      <div class="security-section">
+        <h3>Recovery Phrase</h3>
+        <p class="security-description">
+          Your recovery phrase is the master key to your wallet. Keep it safe and private.
+        </p>
+        
+        <div class="security-actions">
+          <ion-button 
+            expand="block" 
+            fill="outline" 
+            color="warning"
+            (click)="showMnemonicWarning()"
+            *ngIf="!showMnemonic">
+            <ion-icon name="eye" slot="start"></ion-icon>
+            Reveal Recovery Phrase
+          </ion-button>
+          
+          <ion-button 
+            expand="block" 
+            fill="solid" 
+            color="danger"
+            (click)="hideMnemonic()"
+            *ngIf="showMnemonic">
+            <ion-icon name="eye-off" slot="start"></ion-icon>
+            Hide Recovery Phrase
+          </ion-button>
+        </div>
+
+        <!-- Mnemonic Display -->
+        <div class="mnemonic-container" *ngIf="showMnemonic && mnemonic">
+          <ion-card color="warning">
+            <ion-card-content>
+              <div class="mnemonic-grid">
+                <div 
+                  class="mnemonic-word" 
+                  *ngFor="let word of mnemonic.split(' '); let i = index">
+                  <span class="word-number">{{ i + 1 }}</span>
+                  <span class="word">{{ word }}</span>
+                </div>
+              </div>
+              <div class="mnemonic-actions">
+                <ion-button fill="clear" (click)="copyMnemonic()">
+                  <ion-icon name="copy" slot="start"></ion-icon>
+                  Copy Phrase
+                </ion-button>
+              </div>
+            </ion-card-content>
+          </ion-card>
+        </div>
+      </div>
+
+      <!-- Export Options -->
+      <div class="security-section">
+        <h3>Export Options</h3>
+        <p class="security-description">
+          Export your wallet information for backup purposes.
+        </p>
+        
+        <div class="export-actions">
+          <ion-button 
+            expand="block" 
+            fill="outline" 
+            color="secondary"
+            (click)="exportWallet()">
+            <ion-icon name="download" slot="start"></ion-icon>
+            Export Wallet
+          </ion-button>
+        </div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Security Tips -->
+  <ion-card color="light">
+    <ion-card-header>
+      <ion-card-title>
+        <ion-icon name="information-circle" class="info-icon"></ion-icon>
+        Security Tips
+      </ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-list lines="none">
+        <ion-item>
+          <ion-icon name="shield" slot="start" color="success"></ion-icon>
+          <ion-label class="ion-text-wrap">
+            <h3>Never share your recovery phrase</h3>
+            <p>YAP support will never ask for your recovery phrase.</p>
+          </ion-label>
+        </ion-item>
+        
+        <ion-item>
+          <ion-icon name="lock-closed" slot="start" color="success"></ion-icon>
+          <ion-label class="ion-text-wrap">
+            <h3>Store securely offline</h3>
+            <p>Write down your recovery phrase and store it in a secure location.</p>
+          </ion-label>
+        </ion-item>
+        
+        <ion-item>
+          <ion-icon name="warning" slot="start" color="warning"></ion-icon>
+          <ion-label class="ion-text-wrap">
+            <h3>Your wallet, your responsibility</h3>
+            <p>YAP cannot recover lost recovery phrases or reset passwords.</p>
+          </ion-label>
+        </ion-item>
+      </ion-list>
+    </ion-card-content>
+  </ion-card>
+
+  <div class="bottom-spacing"></div>
+</ion-content>

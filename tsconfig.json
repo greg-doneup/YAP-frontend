@@ -21,7 +21,6 @@
     "paths": {
       "@auth/*": ["app/core/auth/*"],
       "@marketplace/*": ["app/core/marketplace/*"],
-	    "@gsap/*": ["app/core/gsap/*"],
       "@tools/*": ["app/core/tools/*"],
 	    "@resolvers/*": ["app/core/resolvers/*"],
 	    "@guards/*": ["app/core/guards/*"],

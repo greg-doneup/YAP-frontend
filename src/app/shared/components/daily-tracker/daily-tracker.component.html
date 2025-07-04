@@ -1,0 +1,55 @@
+<div class="daily-tracker">
+  <!-- Level Progress -->
+  <div class="tracker-section level-section">
+    <div class="section-header">
+      <ion-icon name="school" color="primary"></ion-icon>
+      <div class="section-info">
+        <h3 class="section-title">{{ trackerData.level }}</h3>
+        <p class="section-subtitle">{{ trackerData.levelProgress }}% to next level</p>
+      </div>
+    </div>
+    <div class="progress-bar level-progress">
+      <div class="progress-fill" [style.width.%]="trackerData.levelProgress"></div>
+    </div>
+  </div>
+
+  <!-- Streak & Daily Goal -->
+  <div class="tracker-row">
+    <!-- Streak Section -->
+    <div class="tracker-section streak-section">
+      <div class="section-header">
+        <ion-icon name="flame" color="danger"></ion-icon>
+        <div class="section-info">
+          <h3 class="section-title">{{ trackerData.streak }}</h3>
+          <p class="section-subtitle">Day streak</p>
+        </div>
+      </div>
+      <p class="streak-message">{{ getStreakMessage() }}</p>
+    </div>
+
+    <!-- Daily Goal Section -->
+    <div class="tracker-section goal-section">
+      <div class="section-header">
+        <ion-icon name="checkmark-circle" color="success"></ion-icon>
+        <div class="section-info">
+          <h3 class="section-title">{{ trackerData.lessonsToday }}/{{ trackerData.dailyGoal }}</h3>
+          <p class="section-subtitle">Daily goal</p>
+        </div>
+      </div>
+      <div class="progress-bar goal-progress">
+        <div class="progress-fill" [style.width.%]="getGoalProgress()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Points Earned Today -->
+  <div class="tracker-section points-section">
+    <div class="section-header">
+      <ion-icon name="diamond" color="warning"></ion-icon>
+      <div class="section-info">
+        <h3 class="section-title">{{ trackerData.pointsEarned }}</h3>
+        <p class="section-subtitle">Points earned today</p>
+      </div>
+    </div>
+  </div>
+</div>

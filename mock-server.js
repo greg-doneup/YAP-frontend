@@ -2668,6 +2668,203 @@ apiRouter.get('/metrics/healthz', (req, res) => {
 });
 
 // =============================================================================
+// DAILY ALLOWANCES AND TOKEN SPENDING
+// =============================================================================
+
+// In-memory storage for user allowances (resets daily)
+const userAllowances = new Map();
+const userTokenSpending = new Map();
+
+// Initialize or get user allowances
+function getUserAllowances(userId) {
+  const today = new Date().toDateString();
+  const userKey = `${userId}-${today}`;
+  
+  if (!userAllowances.has(userKey)) {
+    userAllowances.set(userKey, {
+      'ai-chat': { featureId: 'ai-chat', featureName: 'AI Chat', dailyLimit: 3, used: 0 },
+      'pronunciation_assessment': { featureId: 'pronunciation_assessment', featureName: 'Pronunciation Assessment', dailyLimit: 2, used: 0 }
+    });
+  }
+  
+  return userAllowances.get(userKey);
+}
+
+// GET /allowances/daily - Get daily allowances for all features
+apiRouter.get('/allowances/daily', authenticateToken, (req, res) => {
+  const userId = req.user?.id || 'default-user';
+  const allowances = getUserAllowances(userId);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  
+  const allowanceList = Object.values(allowances).map(allowance => ({
+    featureId: allowance.featureId,
+    featureName: allowance.featureName,
+    dailyLimit: allowance.dailyLimit,
+    used: allowance.used,
+    remaining: Math.max(0, allowance.dailyLimit - allowance.used),
+    resetsAt: tomorrow.toISOString()
+  }));
+  
+  console.log(`[ALLOWANCES] Daily allowances requested for user: ${userId}`);
+  res.json({ allowances: allowanceList });
+});
+
+// POST /allowances/check - Check if user can use a feature
+apiRouter.post('/allowances/check', authenticateToken, (req, res) => {
+  const { featureId, quantity = 1 } = req.body;
+  const userId = req.user?.id || 'default-user';
+  const allowances = getUserAllowances(userId);
+  
+  if (!featureId) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing featureId'
+    });
+  }
+  
+  const allowance = allowances[featureId];
+  if (!allowance) {
+    // Feature not found, assume no free allowance - check tokens
+    return res.json({
+      canUse: false,
+      reason: 'no_allowance',
+      allowanceRemaining: 0
+    });
+  }
+  
+  const remaining = allowance.dailyLimit - allowance.used;
+  const canUse = remaining >= quantity;
+  
+  console.log(`[ALLOWANCES] Check feature ${featureId} for user ${userId}: ${canUse ? 'allowed' : 'denied'} (${remaining} remaining)`);
+  
+  res.json({
+    canUse,
+    reason: canUse ? 'allowance_available' : 'allowance_exhausted',
+    allowanceRemaining: Math.max(0, remaining)
+  });
+});
+
+// POST /allowances/use - Use daily allowance for a feature
+apiRouter.post('/allowances/use', authenticateToken, (req, res) => {
+  const { featureId, quantity = 1 } = req.body;
+  const userId = req.user?.id || 'default-user';
+  const allowances = getUserAllowances(userId);
+  
+  if (!featureId) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing featureId'
+    });
+  }
+  
+  const allowance = allowances[featureId];
+  if (!allowance) {
+    return res.status(400).json({
+      error: 'feature_not_found',
+      message: 'Feature does not have daily allowances'
+    });
+  }
+  
+  const remaining = allowance.dailyLimit - allowance.used;
+  if (remaining < quantity) {
+    return res.status(400).json({
+      error: 'insufficient_allowance',
+      message: `Not enough daily allowance remaining. Need ${quantity}, have ${remaining}`
+    });
+  }
+  
+  // Use the allowance
+  allowance.used += quantity;
+  const newRemaining = allowance.dailyLimit - allowance.used;
+  
+  console.log(`[ALLOWANCES] Used ${quantity} allowance for ${featureId}, user ${userId}. Remaining: ${newRemaining}`);
+  
+  res.json({
+    success: true,
+    used: quantity,
+    remaining: newRemaining,
+    totalUsed: allowance.used,
+    dailyLimit: allowance.dailyLimit
+  });
+});
+
+// POST /tokens/validate-spending - Validate token spending (fallback when allowances exhausted)
+apiRouter.post('/tokens/validate-spending', authenticateToken, (req, res) => {
+  const { featureId, amount } = req.body;
+  const userId = req.user?.id || 'default-user';
+  
+  if (!featureId || !amount) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing featureId or amount'
+    });
+  }
+  
+  // Mock token balance (in real app, this would check actual balance)
+  const mockBalance = 50; // User has 50 tokens
+  
+  const canSpend = mockBalance >= amount;
+  
+  console.log(`[TOKENS] Validate spending ${amount} tokens for ${featureId}, user ${userId}: ${canSpend ? 'approved' : 'insufficient'}`);
+  
+  res.json({
+    canSpend,
+    currentBalance: mockBalance,
+    reason: canSpend ? 'sufficient_balance' : 'insufficient_balance'
+  });
+});
+
+// POST /tokens/spend - Spend tokens for a feature
+apiRouter.post('/tokens/spend', authenticateToken, (req, res) => {
+  const { featureId, amount, action, metadata } = req.body;
+  const userId = req.user?.id || 'default-user';
+  
+  if (!featureId || !amount) {
+    return res.status(400).json({
+      error: 'invalid_input',
+      message: 'Missing featureId or amount'
+    });
+  }
+  
+  // Mock token spending (in real app, this would deduct from actual balance)
+  const mockBalance = 50;
+  if (mockBalance < amount) {
+    return res.status(400).json({
+      error: 'insufficient_tokens',
+      message: 'Not enough tokens for this transaction'
+    });
+  }
+  
+  const newBalance = mockBalance - amount;
+  const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Track spending
+  if (!userTokenSpending.has(userId)) {
+    userTokenSpending.set(userId, []);
+  }
+  userTokenSpending.get(userId).push({
+    transactionId,
+    featureId,
+    amount,
+    action,
+    metadata,
+    timestamp: new Date().toISOString()
+  });
+  
+  console.log(`[TOKENS] Spent ${amount} tokens for ${featureId}, user ${userId}. New balance: ${newBalance}`);
+  
+  res.json({
+    success: true,
+    transactionId,
+    newBalance,
+    tokensSpent: amount
+  });
+});
+
+// =============================================================================
 // MOUNT ROUTES
 // =============================================================================
 

@@ -4,6 +4,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { generateMnemonic, validateMnemonic, mnemonicToSeedSync } from 'bip39';
 import { ethers } from 'ethers';
 import * as CryptoJS from 'crypto-js';
+import { environment } from '../../environments/environment';
 
 export interface WalletCreationResult {
   status: string;
@@ -23,7 +24,7 @@ export interface EncryptedMnemonic {
   providedIn: 'root'
 })
 export class WalletService {
-  private apiUrl = 'http://localhost:8000'; // Update with your API URL
+  private apiUrl = environment.apiUrl; // Use environment configuration
 
   constructor(private http: HttpClient) {}
 

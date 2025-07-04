@@ -1,0 +1,322 @@
+// Force dark theme with maximum contrast for wallet management modal
+:host {
+  --background: #000000 !important;
+  --color: #ffffff !important;
+}
+
+ion-content {
+  --background: #000000 !important;
+  --color: #ffffff !important;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+// Modal overlay and backdrop
+ion-modal {
+  --background: #000000 !important;
+  --color: #ffffff !important;
+}
+
+// Ensure header has proper contrast
+ion-header {
+  --background: #000000 !important;
+  --color: #ffffff !important;
+  background-color: #000000 !important;
+  
+  ion-toolbar {
+    --background: #000000 !important;
+    --color: #ffffff !important;
+    background-color: #000000 !important;
+    
+    ion-title {
+      color: #ffffff !important;
+      font-weight: 600;
+    }
+    
+    ion-button {
+      --color: #ffffff !important;
+      color: #ffffff !important;
+    }
+  }
+}
+
+ion-card {
+  --background: #000000 !important;
+  --color: #ffffff !important;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+  
+  ion-card-header {
+    background: #000000 !important;
+    background-color: #000000 !important;
+    
+    ion-card-title {
+      color: #ffffff !important;
+      font-weight: 600;
+    }
+    
+    ion-card-subtitle {
+      color: #cccccc !important;
+    }
+  }
+  
+  ion-card-content {
+    color: #ffffff !important;
+    background: #000000 !important;
+    background-color: #000000 !important;
+    
+    * {
+      color: #ffffff !important;
+    }
+    
+    p, span, div, h1, h2, h3, h4, h5, h6 {
+      color: #ffffff !important;
+    }
+  }
+}
+
+// Ensure buttons have proper styling
+ion-button {
+  --color: #ffffff;
+  
+  &[fill="outline"] {
+    --border-color: rgba(255, 255, 255, 0.3);
+    --color: #ffffff;
+  }
+  
+  &[color="primary"] {
+    --background: var(--ion-color-primary);
+    --color: #333333;
+  }
+  
+  &[color="danger"] {
+    --background: var(--ion-color-danger);
+    --color: #ffffff;
+  }
+}
+
+// Global overrides to ensure ALL text is visible
+.wallet-icon {
+  color: var(--ion-color-primary) !important;
+}
+
+.security-icon {
+  color: var(--ion-color-warning) !important;
+}
+
+.info-icon {
+  color: var(--ion-color-medium) !important;
+}
+
+// Force ALL text elements to be white
+* {
+  color: #ffffff !important;
+}
+
+h1, h2, h3, h4, h5, h6, p, span, div, ion-label, ion-text {
+  color: #ffffff !important;
+}
+
+// Specific overrides for wallet management text
+.wallet-info .info-row .label {
+  color: #ffffff !important;
+}
+
+.wallet-info .info-row .address,
+.wallet-info .info-row .balance {
+  color: #ffffff !important;
+}
+
+// Ensure mnemonic words are visible
+.mnemonic-word {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  
+  .word-number {
+    color: #cccccc !important;
+  }
+  
+  .word {
+    color: #ffffff !important;
+  }
+}
+
+// Ensure security descriptions are visible
+.security-description {
+  color: #ffffff !important;
+}
+
+.wallet-info {
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    .label {
+      font-weight: 600;
+      color: #cccccc !important; // Ensure visibility
+      flex-shrink: 0;
+      margin-right: 16px;
+    }
+    
+    .address-container,
+    .balance-container {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      justify-content: flex-end;
+      
+      .address,
+      .balance {
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+        word-break: break-all;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #ffffff !important; // Ensure visibility
+      }
+      
+      .balance {
+        font-weight: 600;
+        color: var(--ion-color-success);
+      }
+      
+      ion-button {
+        margin-left: 8px;
+        --padding-start: 8px;
+        --padding-end: 8px;
+      }
+    }
+  }
+}
+
+.security-section {
+  margin-bottom: 32px;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+  
+  h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--ion-color-primary);
+  }
+  
+  .security-description {
+    margin: 0 0 16px 0;
+    color: #cccccc !important;
+    font-size: 0.9em;
+    line-height: 1.4;
+  }
+}
+
+.security-actions,
+.export-actions {
+  margin-top: 16px;
+  
+  ion-button {
+    margin-bottom: 8px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.mnemonic-container {
+  margin-top: 16px;
+  
+  .mnemonic-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+    
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    
+    .mnemonic-word {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      
+      .word-number {
+        display: inline-block;
+        min-width: 24px;
+        font-size: 0.8em;
+        color: #cccccc !important;
+        margin-right: 8px;
+      }
+      
+      .word {
+        font-weight: 500;
+        flex: 1;
+        color: #ffffff !important;
+      }
+    }
+  }
+  
+  .mnemonic-actions {
+    display: flex;
+    justify-content: center;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+ion-list ion-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  --background: #2a2a2a;
+  --color: #ffffff;
+  
+  ion-icon {
+    margin-right: 16px;
+    color: #ffffff;
+  }
+  
+  ion-label {
+    color: #ffffff !important;
+    
+    h3 {
+      margin: 0 0 4px 0;
+      font-size: 0.95em;
+      font-weight: 600;
+      color: #ffffff !important;
+    }
+    
+    p {
+      margin: 0;
+      font-size: 0.85em;
+      opacity: 0.8;
+      color: #cccccc !important;
+    }
+  }
+}
+
+.bottom-spacing {
+  height: 32px;
+}

@@ -22,9 +22,6 @@ import { VoiceService } from './voice/voice.service';
 import { WalletService } from './wallet/wallet.service';
 import { GrammarService } from './grammar/grammar.service';
 
-// tools
-import { GsapService } from './gsap/gsap.service';
-
 @NgModule({
   imports: [
     CommonModule,
@@ -49,9 +46,6 @@ import { GsapService } from './gsap/gsap.service';
     SettingsService,
     VoiceService,
     WalletService,
-    
-    // Tools
-    GsapService,
   ],
   exports: [
     CommonModule
@@ -80,10 +74,7 @@ export class CoreModule {
 				RewardService,
 				SettingsService,
 				VoiceService,
-				WalletService,
-				
-				// Tools
-				GsapService
+				WalletService
 			]
 		}
 	}

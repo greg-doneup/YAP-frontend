@@ -60,9 +60,9 @@ export class UserProgressService {
     // More levels would be defined here
   };
 
-  // Mock data for development
-  private mockUserProgress: UserProgress = {
-    userId: '123',
+  // Default progress for new users
+  private defaultUserProgress: UserProgress = {
+    userId: '',
     ceferLevel: 'A1.1',
     lessonsCompleted: 0,
     totalLessons: 5,
@@ -105,29 +105,32 @@ export class UserProgressService {
   }
 
   /**
-   * Load user progress from API or use mock data for development
+   * Load user progress from API
    */
   loadUserProgress(): Observable<UserProgress> {
     const userId = this.authService.currentUserValue?.id;
     
     if (!userId) {
       console.error('Cannot load user progress: User ID is not available');
-      return of(this.mockUserProgress); // Return observable for consistent API
+      const defaultProgress = { ...this.defaultUserProgress };
+      this.userProgressSubject.next(defaultProgress);
+      return of(defaultProgress);
     }
     
-    // In a real app with API:
-    // return this.apiService.get<UserProgress>(`progress/${userId}`).pipe(
-    //   tap(progress => this.userProgressSubject.next(progress)),
-    //   catchError(error => {
-    //     console.error('Error loading user progress:', error);
-    //     return of(this.mockUserProgress);
-    //   })
-    // );
-    
-    // For now, use mock data
-    this.mockUserProgress.userId = userId;
-    this.userProgressSubject.next(this.mockUserProgress);
-    return of(this.mockUserProgress);
+    // Make API call to get user progress
+    return this.apiService.get<UserProgress>(`api/user-progress/${userId}`).pipe(
+      tap(progress => {
+        progress.userId = userId;
+        this.userProgressSubject.next(progress);
+      }),
+      catchError(error => {
+        console.error('Error loading user progress:', error);
+        // For new users or API errors, return default progress
+        const defaultProgress = { ...this.defaultUserProgress, userId };
+        this.userProgressSubject.next(defaultProgress);
+        return of(defaultProgress);
+      })
+    );
   }
 
   /**
@@ -153,31 +156,37 @@ export class UserProgressService {
     
     if (!progress) {
       console.error('Cannot update level: No user progress available');
-      return of(this.mockUserProgress);
+      const defaultProgress = { ...this.defaultUserProgress };
+      return of(defaultProgress);
     }
     
-    // In a real app with API:
-    // return this.apiService.put<UserProgress>(`progress/${progress.userId}/level`, { level }).pipe(
-    //   tap(updatedProgress => this.userProgressSubject.next(updatedProgress))
-    // );
-    
-    // For now, update mock data
-    this.mockUserProgress.ceferLevel = level;
-    
-    // Add to level history if not already there
-    const existingLevelEntry = this.mockUserProgress.levelHistory.find(entry => entry.level === level);
-    if (!existingLevelEntry) {
-      this.mockUserProgress.levelHistory.push({
-        level,
-        startDate: new Date(),
-        percentComplete: 0,
-        lessonsCompleted: 0,
-        wordsLearned: 0
-      });
-    }
-    
-    this.userProgressSubject.next({ ...this.mockUserProgress });
-    return of(this.mockUserProgress);
+    // Make API call to update user level
+    return this.apiService.put<UserProgress>(`api/user-progress/${progress.userId}/level`, { level }).pipe(
+      tap(updatedProgress => {
+        this.userProgressSubject.next(updatedProgress);
+      }),
+      catchError(error => {
+        console.error('Error updating user level:', error);
+        // Fall back to local update if API fails
+        const updatedProgress = { ...progress };
+        updatedProgress.ceferLevel = level;
+        
+        // Add to level history if not already there
+        const existingLevelEntry = updatedProgress.levelHistory.find((entry: LevelHistoryEntry) => entry.level === level);
+        if (!existingLevelEntry) {
+          updatedProgress.levelHistory.push({
+            level,
+            startDate: new Date(),
+            percentComplete: 0,
+            lessonsCompleted: 0,
+            wordsLearned: 0
+          });
+        }
+        
+        this.userProgressSubject.next(updatedProgress);
+        return of(updatedProgress);
+      })
+    );
   }
 
   /**
@@ -188,74 +197,81 @@ export class UserProgressService {
     
     if (!progress) {
       console.error('Cannot record lesson completion: No user progress available');
-      return of(this.mockUserProgress);
+      const defaultProgress = { ...this.defaultUserProgress };
+      return of(defaultProgress);
     }
     
-    // In a real app with API:
-    // return this.apiService.post<UserProgress>(`progress/${progress.userId}/lessons`, { 
-    //   lessonId, 
-    //   wordsLearned 
-    // }).pipe(
-    //   tap(updatedProgress => this.userProgressSubject.next(updatedProgress))
-    // );
-    
-    // For now, update mock data
-    this.mockUserProgress.lessonsCompleted += 1;
-    this.mockUserProgress.wordsLearned += wordsLearned;
-    this.mockUserProgress.lastActive = new Date();
-    
-    // Update level history
-    const currentLevelEntry = this.mockUserProgress.levelHistory.find(
-      entry => entry.level === this.mockUserProgress.ceferLevel
-    );
-    
-    // Initialize lessonsCompleted property if it doesn't exist
-    if (currentLevelEntry && currentLevelEntry.lessonsCompleted === undefined) {
-      currentLevelEntry.lessonsCompleted = 0;
-      currentLevelEntry.wordsLearned = 0;
-    }
-    
-    if (currentLevelEntry) {
-      const levelReqs = this.levelCompletionRequirements[this.mockUserProgress.ceferLevel];
-      if (levelReqs) {
-        // Increment lessons completed for this level
-        currentLevelEntry.lessonsCompleted = (currentLevelEntry.lessonsCompleted || 0) + 1;
-        currentLevelEntry.wordsLearned = (currentLevelEntry.wordsLearned || 0) + wordsLearned;
+    // Make API call to record lesson completion
+    return this.apiService.post<UserProgress>(`api/user-progress/${progress.userId}/lessons`, { 
+      lessonId, 
+      wordsLearned 
+    }).pipe(
+      tap(updatedProgress => {
+        this.userProgressSubject.next(updatedProgress);
+      }),
+      catchError(error => {
+        console.error('Error recording lesson completion:', error);
+        // Fall back to local update if API fails
+        const updatedProgress = { ...progress };
         
-        // Calculate percentage based on level-specific lessons completed
-        const percentComplete = Math.min(100, 
-          (currentLevelEntry.lessonsCompleted / levelReqs.requiredLessons) * 100);
-        currentLevelEntry.percentComplete = percentComplete;
+        updatedProgress.lessonsCompleted += 1;
+        updatedProgress.wordsLearned += wordsLearned;
+        updatedProgress.lastActive = new Date();
         
-        // Check if level is complete
-        if (percentComplete >= 100) {
-          currentLevelEntry.completionDate = new Date();
-          // In a real app, you might trigger a level-up here
+        // Update level history
+        const currentLevelEntry = updatedProgress.levelHistory.find(
+          (entry: LevelHistoryEntry) => entry.level === updatedProgress.ceferLevel
+        );
+        
+        // Initialize lessonsCompleted property if it doesn't exist
+        if (currentLevelEntry && currentLevelEntry.lessonsCompleted === undefined) {
+          currentLevelEntry.lessonsCompleted = 0;
+          currentLevelEntry.wordsLearned = 0;
         }
-      }
-    }
-    
-    // Update streak logic
-    const today = new Date().toISOString().split('T')[0];
-    const lastActiveDate = this.mockUserProgress.lastActive.toISOString().split('T')[0];
-    
-    if (today !== lastActiveDate) {
-      // User completed a lesson on a new day
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      
-      if (lastActiveDate === yesterdayStr) {
-        // Consecutive day, increase streak
-        this.mockUserProgress.daysStreak += 1;
-      } else {
-        // Streak broken, restart
-        this.mockUserProgress.daysStreak = 1;
-      }
-    }
-    
-    this.userProgressSubject.next({ ...this.mockUserProgress });
-    return of(this.mockUserProgress);
+        
+        if (currentLevelEntry) {
+          const levelReqs = this.levelCompletionRequirements[updatedProgress.ceferLevel];
+          if (levelReqs) {
+            // Increment lessons completed for this level
+            currentLevelEntry.lessonsCompleted = (currentLevelEntry.lessonsCompleted || 0) + 1;
+            currentLevelEntry.wordsLearned = (currentLevelEntry.wordsLearned || 0) + wordsLearned;
+            
+            // Calculate percentage based on level-specific lessons completed
+            const percentComplete = Math.min(100, 
+              (currentLevelEntry.lessonsCompleted / levelReqs.requiredLessons) * 100);
+            currentLevelEntry.percentComplete = percentComplete;
+            
+            // Check if level is complete
+            if (percentComplete >= 100) {
+              currentLevelEntry.completionDate = new Date();
+              // In a real app, you might trigger a level-up here
+            }
+          }
+        }
+        
+        // Update streak logic
+        const today = new Date().toISOString().split('T')[0];
+        const lastActiveDate = updatedProgress.lastActive.toISOString().split('T')[0];
+        
+        if (today !== lastActiveDate) {
+          // User completed a lesson on a new day
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split('T')[0];
+          
+          if (lastActiveDate === yesterdayStr) {
+            // Consecutive day, increase streak
+            updatedProgress.daysStreak += 1;
+          } else {
+            // Streak broken, restart
+            updatedProgress.daysStreak = 1;
+          }
+        }
+        
+        this.userProgressSubject.next(updatedProgress);
+        return of(updatedProgress);
+      })
+    );
   }
 
   /**

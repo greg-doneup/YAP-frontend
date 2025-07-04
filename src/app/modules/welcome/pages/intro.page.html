@@ -306,7 +306,7 @@
               <div class="pulsing-glow"></div>
             </div>
             
-            <!-- Get Started button -->
+            <!-- Get Started button for new users -->
             <ion-button 
               expand="block"
               class="yap-button get-started-button" 
@@ -315,14 +315,24 @@
               <span>{{ slide.buttonText }}</span>
             </ion-button>
             
-            <!-- I already have an account button -->
+            <!-- Waitlist users without wallet -->
             <ion-button 
               expand="block"
-              class="yap-button account-button" 
+              class="yap-button waitlist-button" 
               fill="outline"
-              (click)="loginExisting()">
-              <ion-icon name="person-outline" slot="start"></ion-icon>
+              (click)="joinFromWaitlist()">
+              <ion-icon name="people-outline" slot="start"></ion-icon>
               <span>{{ slide.secondButtonText }}</span>
+            </ion-button>
+            
+            <!-- Existing wallet users (third user flow) -->
+            <ion-button 
+              expand="block"
+              class="yap-button wallet-recovery-button" 
+              fill="clear"
+              (click)="recoverWallet()">
+              <ion-icon name="wallet-outline" slot="start"></ion-icon>
+              <span>{{ slide.thirdButtonText }}</span>
             </ion-button>
           </ng-container>
         </div>

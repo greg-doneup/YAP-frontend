@@ -23,178 +23,14 @@
       </div>
     </div>
     
-    <!-- Level Indicator Section -->
-    <div class="level-indicator-card" [class.dropdown-active]="showLevelDropdown" (click)="toggleLevelDropdown($event)">
-      <div class="level-content">
-        <div class="level-icon">
-          <ion-icon name="trending-up"></ion-icon>
-        </div>
-        <h2 class="level-title">{{ userLevel || 'A1 - Beginner' }}</h2>
-        <ion-icon [name]="showLevelDropdown ? 'chevron-up' : 'chevron-down'" class="dropdown-icon"></ion-icon>
+    <!-- Welcome Card - Dismissible (Persistent) -->
+    <div *ngIf="showWelcomeCard" class="dismissible-card welcome-card">
+      <div class="dismiss-button" (click)="dismissCard('welcome-card', true)">
+        <ion-icon name="close"></ion-icon>
       </div>
-      
-      <!-- Level Dropdown -->
-      <div class="level-dropdown" *ngIf="showLevelDropdown">
-        <div class="level-category">
-          <h3 class="category-title">Beginner</h3>
-          <div class="level-item" *ngFor="let level of ceferLevels | slice:0:3" 
-               [class.active]="userLevel === level.title"
-               (click)="selectLevel(level, $event)">
-            <div class="level-badge">{{ level.level }}</div>
-            <div class="level-info">
-              <h4 class="level-name">{{ level.title }}</h4>
-              <p class="level-desc">{{ level.description }}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="level-category">
-          <h3 class="category-title">Elementary</h3>
-          <div class="level-item" *ngFor="let level of ceferLevels | slice:3:6" 
-               [class.active]="userLevel === level.title"
-               (click)="selectLevel(level, $event)">
-            <div class="level-badge">{{ level.level }}</div>
-            <div class="level-info">
-              <h4 class="level-name">{{ level.title }}</h4>
-              <p class="level-desc">{{ level.description }}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="level-category">
-          <h3 class="category-title">Intermediate</h3>
-          <div class="level-item" *ngFor="let level of ceferLevels | slice:6:9" 
-               [class.active]="userLevel === level.title"
-               (click)="selectLevel(level, $event)">
-            <div class="level-badge">{{ level.level }}</div>
-            <div class="level-info">
-              <h4 class="level-name">{{ level.title }}</h4>
-              <p class="level-desc">{{ level.description }}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="level-category">
-          <h3 class="category-title">Upper Intermediate</h3>
-          <div class="level-item" *ngFor="let level of ceferLevels | slice:9:12" 
-               [class.active]="userLevel === level.title"
-               (click)="selectLevel(level, $event)">
-            <div class="level-badge">{{ level.level }}</div>
-            <div class="level-info">
-              <h4 class="level-name">{{ level.title }}</h4>
-              <p class="level-desc">{{ level.description }}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="level-category">
-          <h3 class="category-title">Advanced</h3>
-          <div class="level-item" *ngFor="let level of ceferLevels | slice:12:15" 
-               [class.active]="userLevel === level.title"
-               (click)="selectLevel(level, $event)">
-            <div class="level-badge">{{ level.level }}</div>
-            <div class="level-info">
-              <h4 class="level-name">{{ level.title }}</h4>
-              <p class="level-desc">{{ level.description }}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="level-category">
-          <h3 class="category-title">Proficient</h3>
-          <div class="level-item" *ngFor="let level of ceferLevels | slice:15:18" 
-               [class.active]="userLevel === level.title"
-               (click)="selectLevel(level, $event)">
-            <div class="level-badge">{{ level.level }}</div>
-            <div class="level-info">
-              <h4 class="level-name">{{ level.title }}</h4>
-              <p class="level-desc">{{ level.description }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Day Selector -->
-    <div class="day-selector">
-      <div class="day-item" [class.active]="selectedDay === 'Sun'" (click)="selectDay('Sun')">
-        <div class="day-circle"></div>
-        <span>Sun</span>
-      </div>
-      <div class="day-item" [class.active]="selectedDay === 'Mon'" (click)="selectDay('Mon')">
-        <div class="day-circle"></div>
-        <span>Mon</span>
-      </div>
-      <div class="day-item" [class.active]="selectedDay === 'Tue'" (click)="selectDay('Tue')">
-        <div class="day-circle"></div>
-        <span>Tue</span>
-      </div>
-      <div class="day-item" [class.active]="selectedDay === 'Wed'" (click)="selectDay('Wed')">
-        <div class="day-circle"></div>
-        <span>Wed</span>
-      </div>
-      <div class="day-item" [class.active]="selectedDay === 'Thu'" (click)="selectDay('Thu')">
-        <div class="day-circle"></div>
-        <span>Thu</span>
-      </div>
-      <div class="day-item" [class.active]="selectedDay === 'Fri'" (click)="selectDay('Fri')">
-        <div class="day-circle"></div>
-        <span>Fri</span>
-      </div>
-      <div class="day-item" [class.active]="selectedDay === 'Sat'" (click)="selectDay('Sat')">
-        <div class="day-circle"></div>
-        <span>Sat</span>
-      </div>
-    </div>
-    
-    <!-- Lessons Section -->
-    <div class="lessons-section">
-      <div class="lessons-header">
-        <h2 class="section-title" *ngIf="selectedDay">{{ selectedDay }}'s Lessons</h2>
-        <h2 class="section-title" *ngIf="!selectedDay">Today's Lessons</h2>
-      </div>
-      
-      <!-- Lesson Cards - Dynamic -->
-      <div *ngIf="todaysLessons.length === 0" class="no-lessons-message">
-        <p>No lessons available for {{ selectedDay }}</p>
-        <ion-button expand="block" fill="outline" color="light" (click)="continueLearning()">
-          <span class="button-text">View all lessons</span>
-        </ion-button>
-      </div>
-      
-      <div *ngFor="let lesson of todaysLessons" class="lesson-card" [attr.data-id]="lesson.id" (click)="startLesson(lesson)">
-        <div class="lesson-media">
-          <img [src]="lesson.imageUrl || 'assets/images/card-banner/yap_composed_banner.jpg'" [alt]="lesson.title + ' Thumbnail'" class="lesson-thumbnail">
-          <div class="lesson-type-icon" [ngClass]="lesson.type">
-            <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
-          </div>
-          <div *ngIf="lesson.isNextLevel" class="next-level-badge">Next Level</div>
-        </div>
-        <div class="lesson-details">
-          <h3 class="lesson-title">{{ lesson.title }}</h3>
-          <div class="lesson-badge" [ngClass]="lesson.type + '-badge'">
-            <ion-icon [name]="lesson.type === 'practice' ? 'bulb' : (lesson.type === 'quiz' ? 'help' : 'flash')"></ion-icon>
-            <span>{{ lesson.type | titlecase }}</span>
-          </div>
-          <div class="lesson-progress">
-            <div class="progress-bar">
-              <div class="progress-fill" [style.width.%]="lesson.progress"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <button *ngIf="nextLesson" class="next-up-button" (click)="goToNextLesson()">
-        <span class="next-up-label">NEXT UP</span>
-        <span class="next-up-title">{{ nextLesson.title }}</span>
-      </button>
-    </div>
-
-    <!-- New User Welcome Message -->
-    <div *ngIf="isNewUser" class="welcome-card">
       <div class="welcome-content">
         <h2>Welcome to YAP!</h2>
-        <p>Congratulations on creating your account! You're now ready to start your language learning journey and earn points with every lesson you complete.</p>
+        <p>Start your CEFR-based language learning journey and earn points with every lesson you complete.</p>
         <div class="welcome-info">
           <div class="welcome-item">
             <ion-icon name="flame" color="light"></ion-icon>
@@ -213,6 +49,165 @@
           (click)="continueLearning()">
           <span class="button-text">Start learning now</span>
         </ion-button>
+      </div>
+    </div>
+
+    <!-- Daily Tracker -->
+    <app-daily-tracker [trackerData]="dailyTrackerData"></app-daily-tracker>
+    
+    <!-- Level Indicator Section -->
+    <div class="level-indicator-card" [class.dropdown-active]="showLevelDropdown" (click)="toggleLevelDropdown($event)">
+      <div class="level-content">
+        <div class="level-icon">
+          <ion-icon name="trending-up"></ion-icon>
+        </div>
+        <h2 class="level-title">{{ userLevel || 'A1 - Beginner' }}</h2>
+        <ion-icon [name]="showLevelDropdown ? 'chevron-up' : 'chevron-down'" class="dropdown-icon"></ion-icon>
+      </div>
+      
+      <!-- Level Dropdown -->
+      <div class="level-dropdown" *ngIf="showLevelDropdown">
+        <div class="level-category">
+          <h3 class="category-title">Beginner</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:0:3" 
+               [class.active]="userLevel === level.title"
+               [class.locked]="!isLevelUnlocked(level.level)"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">
+              {{ level.level }}
+              <ion-icon *ngIf="!isLevelUnlocked(level.level)" name="lock-closed" class="lock-icon"></ion-icon>
+            </div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+              <div *ngIf="!isLevelUnlocked(level.level)" class="unlock-cost">5 YAP to unlock</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="level-category">
+          <h3 class="category-title">Elementary</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:3:6" 
+               [class.active]="userLevel === level.title"
+               [class.locked]="!isLevelUnlocked(level.level)"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">
+              {{ level.level }}
+              <ion-icon *ngIf="!isLevelUnlocked(level.level)" name="lock-closed" class="lock-icon"></ion-icon>
+            </div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+              <div *ngIf="!isLevelUnlocked(level.level)" class="unlock-cost">5 YAP to unlock</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="level-category">
+          <h3 class="category-title">Intermediate</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:6:9" 
+               [class.active]="userLevel === level.title"
+               [class.locked]="!isLevelUnlocked(level.level)"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">
+              {{ level.level }}
+              <ion-icon *ngIf="!isLevelUnlocked(level.level)" name="lock-closed" class="lock-icon"></ion-icon>
+            </div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+              <div *ngIf="!isLevelUnlocked(level.level)" class="unlock-cost">5 YAP to unlock</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="level-category">
+          <h3 class="category-title">Upper Intermediate</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:9:12" 
+               [class.active]="userLevel === level.title"
+               [class.locked]="!isLevelUnlocked(level.level)"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">
+              {{ level.level }}
+              <ion-icon *ngIf="!isLevelUnlocked(level.level)" name="lock-closed" class="lock-icon"></ion-icon>
+            </div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+              <div *ngIf="!isLevelUnlocked(level.level)" class="unlock-cost">5 YAP to unlock</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="level-category">
+          <h3 class="category-title">Advanced</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:12:15" 
+               [class.active]="userLevel === level.title"
+               [class.locked]="!isLevelUnlocked(level.level)"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">
+              {{ level.level }}
+              <ion-icon *ngIf="!isLevelUnlocked(level.level)" name="lock-closed" class="lock-icon"></ion-icon>
+            </div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+              <div *ngIf="!isLevelUnlocked(level.level)" class="unlock-cost">5 YAP to unlock</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="level-category">
+          <h3 class="category-title">Proficient</h3>
+          <div class="level-item" *ngFor="let level of ceferLevels | slice:15:18" 
+               [class.active]="userLevel === level.title"
+               [class.locked]="!isLevelUnlocked(level.level)"
+               (click)="selectLevel(level, $event)">
+            <div class="level-badge">
+              {{ level.level }}
+              <ion-icon *ngIf="!isLevelUnlocked(level.level)" name="lock-closed" class="lock-icon"></ion-icon>
+            </div>
+            <div class="level-info">
+              <h4 class="level-name">{{ level.title }}</h4>
+              <p class="level-desc">{{ level.description }}</p>
+              <div *ngIf="!isLevelUnlocked(level.level)" class="unlock-cost">5 YAP to unlock</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Allowances Section -->
+    <div class="allowances-section" *ngIf="dailyAllowances.length > 0">
+      <h3 class="section-title">Today's Allowances</h3>
+      <div class="allowance-grid">
+        <ng-container *ngFor="let allowance of dailyAllowances">
+          <div class="allowance-item" 
+               *ngIf="allowance.featureName !== 'Text Messages'"
+               [class.exhausted]="allowance.remaining === 0">
+          <div class="allowance-info">
+            <div class="allowance-header">
+              <span class="allowance-name">{{ allowance.featureName }}</span>
+              <span class="allowance-count">{{ allowance.used }}/{{ allowance.dailyLimit }}</span>
+            </div>
+            <div class="allowance-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" 
+                     [style.width.%]="(allowance.used / allowance.dailyLimit) * 100">
+                </div>
+              </div>
+            </div>
+            <div class="allowance-footer" *ngIf="allowance.remaining === 0">
+              <span class="exhausted-text">Daily limit reached</span>
+              <ion-button size="small" fill="outline" color="warning" 
+                         (click)="purchaseUnlimitedLessons('day')"
+                         *ngIf="allowance.featureName === 'Daily Lessons'">
+                3 YAP - Unlock
+              </ion-button>
+            </div>
+          </div>
+          </div>
+        </ng-container>
       </div>
     </div>
 
@@ -278,38 +273,55 @@
       </div>
     </div>
 
-    <!-- Starting Bonus Earnings Card - Always visible -->
-    <div class="earnings-section">
-      <h2 class="section-title">Your earnings</h2>
-      <div class="earnings-card">
-        <div class="earnings-content">
-          <div class="earnings-left">
-            <div class="earnings-icon">
-              <ion-icon name="diamond" color="warning"></ion-icon>
-            </div>
-            <div class="earnings-info">
-              <h3 class="earnings-amount">{{ earnings.total }} {{ earnings.currency }}</h3>
-              <div class="earnings-change">
-                <ion-icon name="trending-up" color="success"></ion-icon>
-                <span class="change-percent">{{ earnings.change }}%</span>
-                <span class="change-amount">({{ earnings.changeAmount }} {{ earnings.currency }})</span>
-              </div>
-              <p *ngIf="isNewUser" class="earnings-note">Starting bonus from waitlist signup</p>
-            </div>
+    <!-- AI Chat Practice Section -->
+    <div class="ai-chat-section" *ngIf="!isNewUser">
+      <div class="section-header">
+        <h2 class="section-title">AI Conversation Practice</h2>
+        <p class="section-subtitle">Practice speaking with our AI tutor</p>
+      </div>
+      
+      <div class="chat-practice-card" (click)="openAiChat()">
+        <div class="chat-header">
+          <div class="ai-avatar">
+            <ion-icon name="chatbubbles" color="primary"></ion-icon>
           </div>
-          <ion-button 
-            fill="solid" 
-            color="warning" 
-            class="withdraw-btn"
-            (click)="withdraw()">
-            <span class="button-text">Withdraw</span>
-          </ion-button>
+          <div class="chat-info">
+            <h3>Start Conversation</h3>
+            <p>Practice speaking with AI guidance</p>
+          </div>
+          <div class="token-cost">
+            <ion-icon name="diamond" color="warning"></ion-icon>
+            <span>5 tokens/min</span>
+          </div>
         </div>
+        
+        <div class="chat-features">
+          <div class="feature-tag">
+            <ion-icon name="mic" size="small"></ion-icon>
+            <span>Voice Practice</span>
+          </div>
+          <div class="feature-tag">
+            <ion-icon name="analytics" size="small"></ion-icon>
+            <span>Real-time Feedback</span>
+          </div>
+          <div class="feature-tag">
+            <ion-icon name="school" size="small"></ion-icon>
+            <span>Personalized</span>
+          </div>
+        </div>
+        
+        <ion-button expand="block" fill="outline" color="primary" class="start-chat-btn">
+          <ion-icon name="play" slot="start"></ion-icon>
+          Start AI Chat Practice
+        </ion-button>
       </div>
     </div>
 
-    <!-- Your Progress Card -->
-    <div class="progress-section">
+    <!-- Your Progress Card - Dismissible (Non-persistent) -->
+    <div *ngIf="showProgressCard" class="dismissible-card progress-section">
+      <div class="dismiss-button" (click)="dismissCard('progress-card', false)">
+        <ion-icon name="close"></ion-icon>
+      </div>
       <div class="progress-card">
         <h2 class="section-title">Your progress</h2>
         
@@ -470,17 +482,6 @@
     </div>
   </div>
 
-  <!-- Listen Button Container with Stylized Icon -->
-  <div class="listen-button-container">
-    <button class="listen-button" (click)="startListening()">
-      <div class="listen-wave-animation"></div>
-      <span class="listen-icon">
-        <img src="assets/footer/listen/yap_listen_animated.svg" alt="Listen" class="stylized-listen-icon">
-      </span>
-      <span class="listen-text">Listen</span>
-    </button>
-  </div>
-
   <!-- Bottom Navigation with Stylized & Animated SVG Icons -->
   <div class="bottom-nav">
     <div class="nav-item" [class.active]="activeTab === 'home'" (click)="navigateToHome()">
@@ -490,19 +491,19 @@
       </div>
       <span>Home</span>
     </div>
-    <div class="nav-item" [class.active]="activeTab === 'learn'" (click)="navigateToLearn()">
+    <div class="nav-item" [class.active]="activeTab === 'ai-chat'" (click)="navigateToAiChat()">
       <div class="interaction-ripple"></div>
       <div class="custom-icon">
-        <img [src]="activeTab === 'learn' ? 'assets/footer/learn/yap_learn_animated.svg' : 'assets/footer/learn/yap_learn_stylized.svg'" alt="Learn">
+        <img [src]="activeTab === 'ai-chat' ? 'assets/footer/ai-chat/yap_ai_chat_animated.svg' : 'assets/footer/ai-chat/yap_ai_chat_stylized.svg'" alt="AI Chat">
       </div>
-      <span>Learn</span>
+      <span>AI Chat</span>
     </div>
-    <div class="nav-item" [class.active]="activeTab === 'progress'" (click)="navigateToProgress()">
+    <div class="nav-item" [class.active]="activeTab === 'quiz'" (click)="navigateToQuiz()">
       <div class="interaction-ripple"></div>
       <div class="custom-icon">
-        <img [src]="activeTab === 'progress' ? 'assets/footer/progress/yap_progress_animated.svg' : 'assets/footer/progress/yap_progress_stylized.svg'" alt="Progress">
+        <img [src]="activeTab === 'quiz' ? 'assets/footer/quiz/yap_quiz_animated.svg' : 'assets/footer/quiz/yap_quiz_stylized.svg'" alt="Quiz">
       </div>
-      <span>Progress</span>
+      <span>Quiz</span>
     </div>
     <div class="nav-item" [class.active]="activeTab === 'profile'" (click)="navigateToProfile()">
       <div class="interaction-ripple"></div>
