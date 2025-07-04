@@ -11,7 +11,7 @@
     --yap-tertiary-green: #49cf8c;
     --yap-primary-text: #f5f5f5;
     --yap-body-text: #f5f5f5;
-    --yap-body-text-on-dark: #333333;
+    --yap-body-text-on-dark: #1a1a1a;
 
     /** primary - Yellow primary color (for buttons/CTAs) **/
     --ion-color-primary: #ffdb45;
@@ -421,3 +421,29 @@
     */
   // }
   
+  /** Registration Form Input Overrides - Ensure text visibility **/
+  // Override input text colors for registration forms specifically
+  .registration-form,
+  .waitlist-registration-form {
+    ion-input,
+    ion-textarea,
+    input,
+    textarea {
+      --color: #1a1a1a !important;
+      color: #1a1a1a !important;
+      -webkit-text-fill-color: #1a1a1a !important;
+    }
+    
+    .native-input,
+    .native-textarea {
+      color: #1a1a1a !important;
+      -webkit-text-fill-color: #1a1a1a !important;
+    }
+  }
+  
+  // Ensure labels are also dark and visible
+  .registration-form ion-label,
+  .waitlist-registration-form ion-label {
+    --color: #1a1a1a !important;
+    color: #1a1a1a !important;
+  }

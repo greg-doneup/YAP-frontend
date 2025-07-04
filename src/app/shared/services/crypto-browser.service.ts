@@ -20,7 +20,7 @@ export interface WalletAddresses {
   providedIn: 'root'
 })
 export class CryptoBrowserService {
-  private dbName = 'YAPWalletDB';
+  private dbName = 'YAP-SecureWallets'; // Use same DB as registration service
   private dbVersion = 1;
   private dbPromise: Promise<IDBPDatabase>;
 
@@ -31,6 +31,11 @@ export class CryptoBrowserService {
   private async initDB(): Promise<IDBPDatabase> {
     return openDB(this.dbName, this.dbVersion, {
       upgrade(db) {
+        // Primary store for wallet data (matches registration service format)
+        if (!db.objectStoreNames.contains('wallets')) {
+          db.createObjectStore('wallets', { keyPath: 'email' });
+        }
+        // Legacy stores for backward compatibility
         if (!db.objectStoreNames.contains('walletMetadata')) {
           db.createObjectStore('walletMetadata');
         }
@@ -237,7 +242,113 @@ export class CryptoBrowserService {
   }
 
   /**
+   * Store raw mnemonic directly in IndexedDB (client-side storage)
+   * No encryption needed since IndexedDB is already client-side secure
+   */
+  async storeRawMnemonic(mnemonic: string): Promise<void> {
+    console.log('Storing raw mnemonic in IndexedDB...');
+    
+    try {
+      const mnemonicData = {
+        data: mnemonic,
+        timestamp: Date.now()
+      };
+
+      const db = await this.dbPromise;
+      await db.put('encryptedWallets', mnemonicData, 'rawMnemonic');
+      console.log('Raw mnemonic stored successfully in IndexedDB');
+    } catch (error) {
+      console.error('Error storing raw mnemonic:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieve raw mnemonic from IndexedDB
+   */
+  async getRawMnemonic(): Promise<string | null> {
+    console.log('Retrieving raw mnemonic from IndexedDB...');
+    
+    try {
+      const db = await this.dbPromise;
+      const mnemonicData = await db.get('encryptedWallets', 'rawMnemonic');
+      
+      if (!mnemonicData) {
+        console.log('No raw mnemonic found in IndexedDB');
+        return null;
+      }
+
+      console.log('Raw mnemonic retrieved successfully from IndexedDB');
+      return mnemonicData.data;
+    } catch (error) {
+      console.error('Error retrieving raw mnemonic:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Encrypt mnemonic for backend storage (to be sent to MongoDB)
+   */
+  async encryptMnemonicForBackend(mnemonic: string, passphrase: string): Promise<string> {
+    console.log('Encrypting mnemonic for backend storage...');
+    
+    try {
+      // Generate salt and iv for encryption
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+
+      // Derive encryption key from passphrase using PBKDF2
+      const encoder = new TextEncoder();
+      const passphraseBytes = encoder.encode(passphrase);
+      
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        passphraseBytes,
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+      );
+
+      const encryptionKey = await crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: salt,
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt']
+      );
+
+      // Encrypt the mnemonic
+      const encodedMnemonic = encoder.encode(mnemonic);
+      const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        encryptionKey,
+        encodedMnemonic
+      );
+
+      // Combine salt, iv, and encrypted data
+      const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+      combined.set(salt, 0);
+      combined.set(iv, salt.length);
+      combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+
+      // Return as hex string for backend storage
+      const encryptedHex = this.uint8ArrayToHex(combined);
+      console.log('Mnemonic encrypted successfully for backend');
+      return encryptedHex;
+    } catch (error) {
+      console.error('Error encrypting mnemonic for backend:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Encrypt and store mnemonic with user passphrase
+   * @deprecated Use storeRawMnemonic() and encryptMnemonicForBackend() instead
    */
   async storeEncryptedMnemonic(mnemonic: string, passphrase: string): Promise<string> {
     console.log('Encrypting and storing recovery mnemonic...');
@@ -298,67 +409,13 @@ export class CryptoBrowserService {
 
   /**
    * Retrieve and decrypt mnemonic with user passphrase
+   * @deprecated Use getRawMnemonic() instead - no decryption needed for IndexedDB storage
    */
   async getDecryptedMnemonic(passphrase: string): Promise<string | null> {
-    console.log('Retrieving and decrypting mnemonic...');
+    console.log('⚠️ DEPRECATED: getDecryptedMnemonic() - Use getRawMnemonic() instead');
+    console.log('Retrieving raw mnemonic from IndexedDB (no decryption needed)...');
     
-    try {
-      const db = await this.dbPromise;
-      const encryptedData = await db.get('encryptedWallets', 'encryptedMnemonic');
-      
-      if (!encryptedData) {
-        console.log('No encrypted mnemonic found');
-        return null;
-      }
-
-      const combined = this.hexToUint8Array(encryptedData.data);
-      
-      // Extract salt, iv, and encrypted data
-      const salt = combined.slice(0, 16);
-      const iv = combined.slice(16, 28);
-      const encrypted = combined.slice(28);
-
-      // Derive decryption key from passphrase
-      const encoder = new TextEncoder();
-      const passphraseBytes = encoder.encode(passphrase);
-      
-      const keyMaterial = await crypto.subtle.importKey(
-        'raw',
-        passphraseBytes,
-        { name: 'PBKDF2' },
-        false,
-        ['deriveKey']
-      );
-
-      const decryptionKey = await crypto.subtle.deriveKey(
-        {
-          name: 'PBKDF2',
-          salt: salt,
-          iterations: 100000,
-          hash: 'SHA-256'
-        },
-        keyMaterial,
-        { name: 'AES-GCM', length: 256 },
-        false,
-        ['decrypt']
-      );
-
-      // Decrypt the mnemonic
-      const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: iv },
-        decryptionKey,
-        encrypted
-      );
-
-      const decoder = new TextDecoder();
-      const mnemonic = decoder.decode(decrypted);
-      
-      console.log('Mnemonic decrypted successfully');
-      return mnemonic;
-    } catch (error) {
-      console.error('Error decrypting mnemonic:', error);
-      return null;
-    }
+    return await this.getRawMnemonic();
   }
 
   /**
@@ -406,35 +463,190 @@ export class CryptoBrowserService {
    * Clear all stored wallet data
    */
   async clearWalletData(): Promise<void> {
-    console.log('Clearing all wallet data...');
+    console.log('🧹 Clearing all wallet data...');
     
-    const db = await this.dbPromise;
-    await db.clear('walletMetadata');
-    await db.clear('encryptedWallets');
-    
-    console.log('Wallet data cleared successfully');
+    try {
+      // Clear YAP-SecureWallets database
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('YAP-SecureWallets', 1);
+        
+        request.onerror = () => {
+          console.log('YAP-SecureWallets database not available for clearing');
+          resolve();
+        };
+        
+        request.onsuccess = () => {
+          const db = request.result;
+          
+          if (db.objectStoreNames.contains('wallets')) {
+            const transaction = db.transaction(['wallets'], 'readwrite');
+            const store = transaction.objectStore('wallets');
+            const clearRequest = store.clear();
+            
+            clearRequest.onsuccess = () => {
+              console.log('✅ YAP-SecureWallets cleared');
+              resolve();
+            };
+            
+            clearRequest.onerror = () => {
+              console.error('❌ Error clearing YAP-SecureWallets');
+              reject(new Error('Failed to clear YAP-SecureWallets'));
+            };
+          } else {
+            resolve();
+          }
+        };
+      });
+      
+      // Clear legacy YAPWalletDB database
+      try {
+        const db = await this.dbPromise;
+        const tx = db.transaction(['wallets'], 'readwrite');
+        const store = tx.objectStore('wallets');
+        await store.clear();
+        console.log('✅ YAPWalletDB cleared');
+      } catch (error) {
+        console.log('YAPWalletDB not available for clearing:', error);
+      }
+      
+      console.log('✅ All wallet data cleared successfully');
+    } catch (error) {
+      console.error('❌ Error clearing wallet data:', error);
+      throw error;
+    }
   }
 
   /**
    * Get wallet metadata for a user (from IndexedDB)
+   * Updated to work with the new secure wallet storage format
    */
   async getWalletMetadata(email: string): Promise<any> {
+    console.log(`🔍 Retrieving wallet metadata for: ${email}`);
+    
     try {
-      const db = await this.dbPromise;
-      const tx = db.transaction(['wallets'], 'readonly');
-      const store = tx.objectStore('wallets');
-      const result = await store.get(email);
-      
-      if (result) {
+      // First, try to get from YAP-SecureWallets (new secure format)
+      const secureWalletData = await this.getWalletFromSecureDB(email);
+      if (secureWalletData) {
+        console.log('✅ Found wallet data in YAP-SecureWallets:', {
+          seiAddress: secureWalletData.seiAddress,
+          evmAddress: secureWalletData.evmAddress,
+          hasEncryptedMnemonic: !!secureWalletData.encryptedMnemonic,
+          version: secureWalletData.version
+        });
         return {
-          sei_address: result.sei_address,
-          eth_address: result.eth_address,
-          created_at: result.created_at
+          sei_address: secureWalletData.seiAddress,
+          eth_address: secureWalletData.evmAddress,
+          created_at: secureWalletData.createdAt,
+          // Include encrypted mnemonic data for transaction signing
+          encryptedMnemonic: secureWalletData.encryptedMnemonic,
+          mnemonicSalt: secureWalletData.mnemonicSalt,
+          mnemonicNonce: secureWalletData.mnemonicNonce,
+          version: secureWalletData.version
         };
       }
+
+      // Fallback to localStorage for addresses only (no mnemonic data)
+      console.log('🔍 Checking localStorage for wallet_addresses...');
+      const localStorageData = this.getWalletFromLocalStorage();
+      if (localStorageData) {
+        console.log('⚠️ Found wallet addresses in localStorage (no mnemonic data available)');
+        return localStorageData;
+      }
+
+      console.log('❌ No wallet metadata found for email:', email);
       return null;
     } catch (error) {
-      console.error('Error getting wallet metadata:', error);
+      console.error('❌ Error getting wallet metadata:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get wallet data from YAP-SecureWallets database (new format)
+   */
+  private async getWalletFromSecureDB(email: string): Promise<any> {
+    try {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('YAP-SecureWallets', 1);
+        
+        request.onerror = () => {
+          console.log('YAP-SecureWallets database not available');
+          resolve(null);
+        };
+        
+        request.onsuccess = () => {
+          const db = request.result;
+          
+          if (!db.objectStoreNames.contains('wallets')) {
+            console.log('YAP-SecureWallets wallets store not found');
+            resolve(null);
+            return;
+          }
+          
+          const transaction = db.transaction(['wallets'], 'readonly');
+          const store = transaction.objectStore('wallets');
+          const getRequest = store.get(email);
+          
+          getRequest.onsuccess = () => {
+            resolve(getRequest.result);
+          };
+          
+          getRequest.onerror = () => {
+            console.log('Error reading from YAP-SecureWallets');
+            resolve(null);
+          };
+        };
+      });
+    } catch (error) {
+      console.error('Error accessing YAP-SecureWallets:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get all wallet data from YAP-SecureWallets database (for wallet-first auth)
+   */
+  async getAllWalletsFromSecureDB(): Promise<Array<{email: string, seiAddress: string, evmAddress: string}> | null> {
+    try {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('YAP-SecureWallets', 1);
+        
+        request.onerror = () => {
+          console.log('YAP-SecureWallets database not available');
+          resolve(null);
+        };
+        
+        request.onsuccess = () => {
+          const db = request.result;
+          
+          if (!db.objectStoreNames.contains('wallets')) {
+            console.log('YAP-SecureWallets wallets store not found');
+            resolve(null);
+            return;
+          }
+          
+          const transaction = db.transaction(['wallets'], 'readonly');
+          const store = transaction.objectStore('wallets');
+          const getAllRequest = store.getAll();
+          
+          getAllRequest.onsuccess = () => {
+            const wallets = getAllRequest.result || [];
+            const formattedWallets = wallets.map(wallet => ({
+              email: wallet.email,
+              seiAddress: wallet.seiAddress,
+              evmAddress: wallet.evmAddress
+            }));
+            resolve(formattedWallets);
+          };
+          
+          getAllRequest.onerror = () => {
+            console.error('Error getting all wallets from YAP-SecureWallets');
+            resolve(null);
+          };
+        };
+      });
+    } catch (error) {
+      console.error('Error accessing YAP-SecureWallets database:', error);
       return null;
     }
   }
@@ -544,5 +756,114 @@ export class CryptoBrowserService {
       message: 'Backup created successfully',
       backup_id: 'backup_' + Date.now()
     };
+  }
+
+  /**
+   * Store wallet addresses in multiple locations for reliable access
+   * This method ensures wallet addresses are stored in:
+   * 1. IndexedDB (YAP-SecureWallets)
+   * 2. localStorage (wallet_addresses)
+   * 3. localStorage (individual wallet keys)
+   */
+  async storeWalletAddressesReliably(
+    email: string,
+    seiAddress: string,
+    evmAddress: string
+  ): Promise<void> {
+    console.log('💾 Storing wallet addresses reliably...', {
+      email,
+      seiAddress,
+      evmAddress
+    });
+
+    try {
+      // 1. Store in IndexedDB walletMetadata store
+      await this.storeWalletAddresses(seiAddress, evmAddress);
+      
+      // 2. Store in localStorage as JSON
+      const walletAddresses = {
+        sei_address: seiAddress,
+        eth_address: evmAddress,
+        stored_at: new Date().toISOString()
+      };
+      localStorage.setItem('wallet_addresses', JSON.stringify(walletAddresses));
+      
+      // 3. Store individual wallet keys for backward compatibility
+      localStorage.setItem('yap_wallet_address', seiAddress);
+      localStorage.setItem('yap_eth_wallet_address', evmAddress);
+      
+      console.log('✅ Wallet addresses stored reliably in all locations');
+    } catch (error) {
+      console.error('❌ Error storing wallet addresses reliably:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get wallet data from localStorage (fallback - addresses only, no mnemonic)
+   */
+  private getWalletFromLocalStorage(): any {
+    try {
+      // Check wallet_addresses first
+      const walletAddressesStr = localStorage.getItem('wallet_addresses');
+      if (walletAddressesStr) {
+        const walletAddresses = JSON.parse(walletAddressesStr);
+        if (walletAddresses.sei_address || walletAddresses.eth_address) {
+          return {
+            sei_address: walletAddresses.sei_address,
+            eth_address: walletAddresses.eth_address,
+            created_at: walletAddresses.stored_at,
+            source: 'localStorage'
+          };
+        }
+      }
+
+      // Check individual keys
+      const seiAddress = localStorage.getItem('yap_wallet_address');
+      const ethAddress = localStorage.getItem('yap_eth_wallet_address');
+      if (seiAddress || ethAddress) {
+        return {
+          sei_address: seiAddress,
+          eth_address: ethAddress,
+          created_at: new Date().toISOString(),
+          source: 'localStorage-individual'
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error retrieving wallet data from localStorage:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get encrypted mnemonic data for a user (for recovery phrase functionality)
+   * CRITICAL: This method provides access to encrypted mnemonic for transaction signing
+   */
+  async getEncryptedMnemonic(email: string): Promise<{
+    encryptedData: string;
+    salt: string;
+    nonce: string;
+  } | null> {
+    console.log(`🔍 Retrieving encrypted mnemonic for: ${email}`);
+    
+    try {
+      const walletData = await this.getWalletFromSecureDB(email);
+      if (walletData && walletData.encryptedMnemonic) {
+        console.log('✅ Found encrypted mnemonic data');
+        return {
+          encryptedData: walletData.encryptedMnemonic,
+          salt: walletData.mnemonicSalt,
+          nonce: walletData.mnemonicNonce
+        };
+      }
+      
+      console.log('❌ No encrypted mnemonic found for user');
+      return null;
+    } catch (error) {
+      console.error('❌ Error retrieving encrypted mnemonic:', error);
+      return null;
+    }
   }
 }

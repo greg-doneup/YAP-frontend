@@ -19,18 +19,23 @@ export class ApiService {
       }
     }
     
-    return this.http.get<T>(`${this.apiUrl}/${endpoint}`, { params: httpParams });
+    // Remove leading slash from endpoint to avoid double slashes
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    return this.http.get<T>(`${this.apiUrl}/${cleanEndpoint}`, { params: httpParams });
   }
 
   post<T>(endpoint: string, data: any = {}): Observable<T> {
-    return this.http.post<T>(`${this.apiUrl}/${endpoint}`, data);
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    return this.http.post<T>(`${this.apiUrl}/${cleanEndpoint}`, data);
   }
 
   put<T>(endpoint: string, data: any = {}): Observable<T> {
-    return this.http.put<T>(`${this.apiUrl}/${endpoint}`, data);
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    return this.http.put<T>(`${this.apiUrl}/${cleanEndpoint}`, data);
   }
 
   delete<T>(endpoint: string): Observable<T> {
-    return this.http.delete<T>(`${this.apiUrl}/${endpoint}`);
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    return this.http.delete<T>(`${this.apiUrl}/${cleanEndpoint}`);
   }
 }

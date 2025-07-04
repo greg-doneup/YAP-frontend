@@ -1,0 +1,241 @@
+// Quiz page styles
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  text-align: center;
+  
+  ion-spinner {
+    margin-bottom: 1rem;
+  }
+  
+  p {
+    color: var(--ion-color-medium);
+    font-size: 1.1rem;
+  }
+}
+
+.limit-reached-container {
+  padding: 1rem;
+  
+  ion-card {
+    text-align: center;
+    
+    ion-card-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+  }
+}
+
+.progress-card {
+  margin: 1rem;
+  
+  .quiz-progress {
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--ion-color-medium);
+    }
+    
+    ion-progress-bar {
+      margin-top: 0.5rem;
+    }
+  }
+}
+
+.question-card {
+  margin: 1rem;
+  
+  ion-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .question-content {
+    h3 {
+      margin: 1rem 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+    
+    .audio-section {
+      margin: 1rem 0;
+      text-align: center;
+    }
+    
+    .pronunciation-section {
+      .pronunciation-target {
+        text-align: center;
+        margin: 1.5rem 0;
+        
+        h4 {
+          margin-bottom: 0.5rem;
+          color: var(--ion-color-primary);
+        }
+        
+        .target-word {
+          font-size: 2rem;
+          font-weight: bold;
+          color: var(--ion-color-dark);
+          background: var(--ion-color-light);
+          padding: 1rem;
+          border-radius: 12px;
+          margin: 1rem 0;
+        }
+      }
+      
+      .recording-controls {
+        margin: 1rem 0;
+      }
+      
+      .recording-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin: 1rem 0;
+        color: var(--ion-color-danger);
+        
+        .pulse {
+          animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.3; }
+          100% { opacity: 1; }
+        }
+      }
+    }
+    
+    .submit-section {
+      margin-top: 2rem;
+    }
+  }
+}
+
+.results-container {
+  padding: 1rem;
+  
+  .results-card {
+    ion-card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .results-summary {
+      text-align: center;
+      margin-bottom: 2rem;
+      
+      .score-display {
+        margin-bottom: 1rem;
+        
+        h2 {
+          color: var(--ion-color-success);
+          font-size: 2.5rem;
+          margin: 0;
+        }
+        
+        p {
+          color: var(--ion-color-primary);
+          font-size: 1.2rem;
+          font-weight: 600;
+        }
+      }
+      
+      .accuracy-display {
+        ion-progress-bar {
+          margin-bottom: 0.5rem;
+        }
+        
+        p {
+          font-size: 1.1rem;
+          font-weight: 600;
+        }
+      }
+    }
+    
+    .attempts-review {
+      margin: 2rem 0;
+      
+      h4 {
+        margin-bottom: 1rem;
+        color: var(--ion-color-dark);
+      }
+      
+      ion-item {
+        --padding-start: 0;
+        --padding-end: 0;
+        margin-bottom: 0.5rem;
+        
+        ion-avatar {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          
+          ion-icon {
+            font-size: 1.5rem;
+          }
+        }
+        
+        .feedback {
+          font-style: italic;
+          color: var(--ion-color-medium);
+          margin-top: 0.25rem;
+        }
+      }
+    }
+    
+    .daily-status {
+      background: var(--ion-color-light);
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+      
+      p {
+        margin: 0.25rem 0;
+      }
+    }
+    
+    .action-buttons {
+      margin-top: 2rem;
+      
+      ion-button {
+        margin-bottom: 0.5rem;
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .question-card {
+    margin: 0.5rem;
+  }
+  
+  .results-container {
+    padding: 0.5rem;
+  }
+  
+  .progress-card {
+    margin: 0.5rem;
+  }
+}
+
+// Dark theme adjustments
+@media (prefers-color-scheme: dark) {
+  .pronunciation-section .pronunciation-target .target-word {
+    background: var(--ion-color-dark);
+    color: var(--ion-color-light);
+  }
+}

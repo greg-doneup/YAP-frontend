@@ -1,0 +1,186 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()" fill="clear">
+        <ion-icon name="chevron-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Wallet Recovery</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="wallet-recovery-content">
+  <div class="container">
+    <!-- Header Section -->
+    <div class="header-section">
+      <div class="logo-container">
+        <img src="assets/logo/YAP-LOGO.png" alt="YAP Logo" class="logo">
+      </div>
+      <h1>Recover Your Wallet</h1>
+      <p class="subtitle">Enter your email and passphrase to recover your existing YAP wallet</p>
+    </div>
+
+    <!-- Recovery Method Selection -->
+    <div class="recovery-method-section">
+      <ion-segment [(ngModel)]="recoveryMethod" (ionChange)="onRecoveryMethodChange()">
+        <ion-segment-button value="passphrase">
+          <ion-label>Email + Passphrase</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="phrase">
+          <ion-label>Recovery Phrase</ion-label>
+        </ion-segment-button>
+      </ion-segment>
+    </div>
+
+    <!-- Email + Passphrase Recovery Form -->
+    <form class="recovery-form" *ngIf="recoveryMethod === 'passphrase'" (ngSubmit)="recoverWithPassphrase()">
+      <!-- Email Field -->
+      <div class="form-group">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Email Address</ion-label>
+          <ion-input
+            type="email"
+            [(ngModel)]="email"
+            name="email"
+            placeholder="Enter your email"
+            required
+            (ionBlur)="onEmailBlur()">
+          </ion-input>
+        </ion-item>
+      </div>
+
+      <!-- Passphrase Field -->
+      <div class="form-group">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Secure Passphrase</ion-label>
+          <ion-input
+            [type]="showPassphrase ? 'text' : 'password'"
+            [(ngModel)]="passphrase"
+            name="passphrase"
+            placeholder="Enter your secure passphrase"
+            required>
+          </ion-input>
+          <ion-button 
+            fill="clear" 
+            slot="end" 
+            (click)="togglePassphraseVisibility()">
+            <ion-icon [name]="showPassphrase ? 'eye-off' : 'eye'"></ion-icon>
+          </ion-button>
+        </ion-item>
+      </div>
+
+      <!-- Recovery Button -->
+      <ion-button 
+        expand="block"
+        type="submit"
+        class="yap-button recovery-button"
+        [disabled]="!isPassphraseFormValid() || isLoading">
+        <ion-spinner *ngIf="isLoading" name="crescent" class="spinner"></ion-spinner>
+        <ion-icon *ngIf="!isLoading" name="key-outline" slot="start"></ion-icon>
+        <span>{{ isLoading ? getLoadingText() : 'Recover Wallet' }}</span>
+      </ion-button>
+    </form>
+
+    <!-- Recovery Phrase Form -->
+    <form class="recovery-form" *ngIf="recoveryMethod === 'phrase'" (ngSubmit)="recoverWithPhrase()">
+      <!-- Recovery Phrase Field -->
+      <div class="form-group">
+        <ion-item lines="none" class="custom-input recovery-phrase-input">
+          <ion-label position="stacked">Recovery Phrase</ion-label>
+          <ion-textarea
+            [(ngModel)]="recoveryPhrase"
+            name="recoveryPhrase"
+            placeholder="Enter your 12 or 24 word recovery phrase"
+            rows="4"
+            required>
+          </ion-textarea>
+        </ion-item>
+        <div class="helper-text">
+          <ion-icon name="information-circle-outline"></ion-icon>
+          <span>Enter each word separated by spaces. This is the phrase you saved when creating your wallet.</span>
+        </div>
+      </div>
+
+      <!-- New Passphrase Field -->
+      <div class="form-group">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">New Secure Passphrase</ion-label>
+          <ion-input
+            [type]="showNewPassphrase ? 'text' : 'password'"
+            [(ngModel)]="newPassphrase"
+            name="newPassphrase"
+            placeholder="Create a new secure passphrase"
+            required>
+          </ion-input>
+          <ion-button 
+            fill="clear" 
+            slot="end" 
+            (click)="toggleNewPassphraseVisibility()">
+            <ion-icon [name]="showNewPassphrase ? 'eye-off' : 'eye'"></ion-icon>
+          </ion-button>
+        </ion-item>
+      </div>
+
+      <!-- Confirm Passphrase Field -->
+      <div class="form-group">
+        <ion-item lines="none" class="custom-input">
+          <ion-label position="stacked">Confirm New Passphrase</ion-label>
+          <ion-input
+            [type]="showConfirmPassphrase ? 'text' : 'password'"
+            [(ngModel)]="confirmPassphrase"
+            name="confirmPassphrase"
+            placeholder="Confirm your new passphrase"
+            required>
+          </ion-input>
+          <ion-button 
+            fill="clear" 
+            slot="end" 
+            (click)="toggleConfirmPassphraseVisibility()">
+            <ion-icon [name]="showConfirmPassphrase ? 'eye-off' : 'eye'"></ion-icon>
+          </ion-button>
+        </ion-item>
+      </div>
+
+      <!-- Recovery Button -->
+      <ion-button 
+        expand="block"
+        type="submit"
+        class="yap-button recovery-button"
+        [disabled]="!isPhraseFormValid() || isLoading">
+        <ion-spinner *ngIf="isLoading" name="crescent" class="spinner"></ion-spinner>
+        <ion-icon *ngIf="!isLoading" name="refresh-outline" slot="start"></ion-icon>
+        <span>{{ isLoading ? getLoadingText() : 'Recover & Reset Wallet' }}</span>
+      </ion-button>
+    </form>
+
+    <!-- Alternative Options -->
+    <div class="alternative-options">
+      <div class="divider">
+        <span>Need help?</span>
+      </div>
+      
+      <ion-button 
+        expand="block"
+        fill="outline"
+        class="yap-button help-button"
+        (click)="showRecoveryHelp()">
+        <ion-icon name="help-circle-outline" slot="start"></ion-icon>
+        <span>Recovery Help</span>
+      </ion-button>
+
+      <ion-button 
+        expand="block"
+        fill="clear"
+        class="yap-button back-button"
+        (click)="goToRegistration()">
+        <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+        <span>Back to Registration Options</span>
+      </ion-button>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Having trouble? <a href="mailto:support@yap.com">Contact Support</a></p>
+    </div>
+  </div>
+</ion-content>

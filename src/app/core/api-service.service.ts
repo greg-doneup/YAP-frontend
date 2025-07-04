@@ -58,7 +58,9 @@ export class ApiService {
    * GET request with authentication and error handling
    */
   get<T>(endpoint: string, params = {}, customTimeout?: number, responseType?: any): Observable<T> {
-    const url = `${this.baseUrl}/${endpoint}`;
+    // Remove leading slash from endpoint to avoid double slashes
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    const url = `${this.baseUrl}/${cleanEndpoint}`;
     
     return this.http.get<T>(url, {
       headers: this.createHeaders(),
@@ -75,7 +77,9 @@ export class ApiService {
    * POST request with authentication and error handling
    */
   post<T>(endpoint: string, data = {}, customTimeout?: number): Observable<T> {
-    const url = `${this.baseUrl}/${endpoint}`;
+    // Remove leading slash from endpoint to avoid double slashes
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    const url = `${this.baseUrl}/${cleanEndpoint}`;
     
     return this.http.post<T>(url, data, {
       headers: this.createHeaders()
@@ -90,7 +94,9 @@ export class ApiService {
    * PUT request with authentication and error handling
    */
   put<T>(endpoint: string, data = {}, customTimeout?: number): Observable<T> {
-    const url = `${this.baseUrl}/${endpoint}`;
+    // Remove leading slash from endpoint to avoid double slashes
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    const url = `${this.baseUrl}/${cleanEndpoint}`;
     
     return this.http.put<T>(url, data, {
       headers: this.createHeaders()
@@ -105,7 +111,9 @@ export class ApiService {
    * DELETE request with authentication and error handling
    */
   delete<T>(endpoint: string, customTimeout?: number): Observable<T> {
-    const url = `${this.baseUrl}/${endpoint}`;
+    // Remove leading slash from endpoint to avoid double slashes
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    const url = `${this.baseUrl}/${cleanEndpoint}`;
     
     return this.http.delete<T>(url, {
       headers: this.createHeaders()
@@ -120,7 +128,9 @@ export class ApiService {
    * PATCH request with authentication and error handling
    */
   patch<T>(endpoint: string, data = {}, customTimeout?: number): Observable<T> {
-    const url = `${this.baseUrl}/${endpoint}`;
+    // Remove leading slash from endpoint to avoid double slashes
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    const url = `${this.baseUrl}/${cleanEndpoint}`;
     
     return this.http.patch<T>(url, data, {
       headers: this.createHeaders()

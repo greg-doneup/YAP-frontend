@@ -1,13 +1,230 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>quiz</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Daily Quiz</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" (click)="goToDashboard()">
+        <ion-icon name="home-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">quiz</ion-title>
-    </ion-toolbar>
-  </ion-header>
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p>Loading your personalized quiz...</p>
+  </div>
+
+  <!-- Daily Limit Reached -->
+  <div *ngIf="!canTakeQuiz && !isLoading" class="limit-reached-container">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="time-outline" color="warning"></ion-icon>
+          Daily Quiz Limit Reached
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>You've completed {{dailyStatus?.quizzesCompleted || 0}} out of {{dailyStatus?.maxDailyQuizzes || 4}} quizzes today!</p>
+        <p>Come back tomorrow for more quiz challenges.</p>
+        <p><strong>Tokens earned today:</strong> {{dailyStatus?.tokensEarnedToday || 0}}</p>
+        <p><strong>Points earned today:</strong> {{dailyStatus?.pointsEarnedToday || 0}}</p>
+        
+        <ion-button expand="block" (click)="goToDashboard()" class="mt-4">
+          <ion-icon name="arrow-back" slot="start"></ion-icon>
+          Back to Dashboard
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+  </div>
+
+  <!-- Quiz Content -->
+  <div *ngIf="canTakeQuiz && !isLoading && !showResults">
+    <!-- Progress Bar -->
+    <ion-card class="progress-card">
+      <ion-card-content>
+        <div class="quiz-progress">
+          <div class="progress-info">
+            <span>Question {{currentQuestionNumber}} of {{totalQuestions}}</span>
+            <span>CEFR Level: {{userCefrLevel}}</span>
+          </div>
+          <ion-progress-bar [value]="progressPercentage / 100" color="primary"></ion-progress-bar>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Current Question -->
+    <ion-card *ngIf="currentQuestion" class="question-card">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon [name]="getQuestionIcon()" color="primary"></ion-icon>
+          {{getQuestionTypeTitle()}}
+        </ion-card-title>
+        <ion-card-subtitle *ngIf="currentQuestion.context">
+          Context: {{currentQuestion.context}}
+        </ion-card-subtitle>
+      </ion-card-header>
+      
+      <ion-card-content>
+        <div class="question-content">
+          <h3>{{currentQuestion.question}}</h3>
+          
+          <!-- Audio for pronunciation questions -->
+          <div *ngIf="currentQuestion.audioUrl" class="audio-section">
+            <ion-button fill="outline" (click)="playQuestionAudio()">
+              <ion-icon name="play-circle" slot="start"></ion-icon>
+              Listen
+            </ion-button>
+          </div>
+
+          <!-- Multiple Choice Options -->
+          <ion-radio-group *ngIf="currentQuestion.type === 'multiple_choice'" [(ngModel)]="userAnswer">
+            <ion-item *ngFor="let option of currentQuestion.options">
+              <ion-radio slot="start" [value]="option"></ion-radio>
+              <ion-label>{{option}}</ion-label>
+            </ion-item>
+          </ion-radio-group>
+
+          <!-- Text Input -->
+          <div *ngIf="currentQuestion.type === 'text' || currentQuestion.type === 'translation'">
+            <ion-item>
+              <ion-textarea 
+                [(ngModel)]="userAnswer" 
+                placeholder="Type your answer here..."
+                rows="3"
+                autoGrow="true">
+              </ion-textarea>
+            </ion-item>
+          </div>
+
+          <!-- Pronunciation Recording -->
+          <div *ngIf="currentQuestion.type === 'pronunciation'" class="pronunciation-section">
+            <div class="pronunciation-target">
+              <h4>Say this word:</h4>
+              <p class="target-word">{{currentQuestion.targetWord}}</p>
+            </div>
+            
+            <div class="recording-controls">
+              <ion-button 
+                *ngIf="!isRecording" 
+                (click)="startRecording()" 
+                expand="block" 
+                color="danger">
+                <ion-icon name="mic" slot="start"></ion-icon>
+                Start Recording
+              </ion-button>
+              
+              <ion-button 
+                *ngIf="isRecording" 
+                (click)="stopRecording()" 
+                expand="block" 
+                color="success">
+                <ion-icon name="stop-circle" slot="start"></ion-icon>
+                Stop Recording
+              </ion-button>
+            </div>
+            
+            <div *ngIf="isRecording" class="recording-indicator">
+              <ion-icon name="radio-button-on" color="danger" class="pulse"></ion-icon>
+              <span>Recording...</span>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="submit-section">
+            <ion-button 
+              *ngIf="currentQuestion.type !== 'pronunciation'"
+              expand="block" 
+              (click)="submitTextAnswer()" 
+              [disabled]="isProcessing || !userAnswer.trim()"
+              color="primary">
+              <ion-spinner *ngIf="isProcessing" name="crescent" slot="start"></ion-spinner>
+              <ion-icon *ngIf="!isProcessing" name="checkmark-circle" slot="start"></ion-icon>
+              {{isProcessing ? 'Processing...' : 'Submit Answer'}}
+            </ion-button>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+
+  <!-- Quiz Results -->
+  <div *ngIf="showResults" class="results-container">
+    <ion-card class="results-card">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="trophy" color="success"></ion-icon>
+          Quiz Complete!
+        </ion-card-title>
+      </ion-card-header>
+      
+      <ion-card-content>
+        <div class="results-summary">
+          <div class="score-display">
+            <h2>{{sessionScore}} Points</h2>
+            <p>{{sessionTokensEarned}} Tokens Earned</p>
+          </div>
+          
+          <div class="accuracy-display">
+            <ion-progress-bar 
+              [value]="getAccuracyPercentage() / 100" 
+              color="success">
+            </ion-progress-bar>
+            <p>{{getAccuracyPercentage()}}% Accuracy</p>
+          </div>
+        </div>
+
+        <div class="attempts-review">
+          <h4>Review Your Answers:</h4>
+          <ion-list>
+            <ion-item *ngFor="let attempt of sessionAttempts">
+              <ion-avatar slot="start">
+                <ion-icon 
+                  [name]="attempt.isCorrect ? 'checkmark-circle' : 'close-circle'"
+                  [color]="attempt.isCorrect ? 'success' : 'danger'">
+                </ion-icon>
+              </ion-avatar>
+              <ion-label>
+                <h3>{{attempt.userAnswer}}</h3>
+                <p *ngIf="!attempt.isCorrect">Correct: {{attempt.correctAnswer}}</p>
+                <p class="feedback">{{attempt.feedback}}</p>
+              </ion-label>
+              <ion-badge slot="end" [color]="attempt.isCorrect ? 'success' : 'light'">
+                +{{attempt.points}}
+              </ion-badge>
+            </ion-item>
+          </ion-list>
+        </div>
+
+        <div class="daily-status" *ngIf="dailyStatus">
+          <p><strong>Daily Progress:</strong></p>
+          <p>Quizzes completed: {{dailyStatus.quizzesCompleted}}/{{dailyStatus.maxDailyQuizzes}}</p>
+          <p>Remaining today: {{dailyStatus.remainingQuizzes}}</p>
+        </div>
+
+        <div class="action-buttons">
+          <ion-button 
+            *ngIf="dailyStatus && dailyStatus.remainingQuizzes > 0"
+            expand="block" 
+            (click)="takeAnotherQuiz()"
+            color="primary">
+            <ion-icon name="refresh" slot="start"></ion-icon>
+            Take Another Quiz ({{dailyStatus.remainingQuizzes}} left)
+          </ion-button>
+          
+          <ion-button 
+            expand="block" 
+            fill="outline"
+            (click)="goToDashboard()">
+            <ion-icon name="home" slot="start"></ion-icon>
+            Back to Dashboard
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
 </ion-content>

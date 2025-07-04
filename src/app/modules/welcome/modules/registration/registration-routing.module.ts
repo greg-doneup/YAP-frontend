@@ -3,6 +3,7 @@ import { Routes, RouterModule } from '@angular/router';
 
 import { StandardRegistrationPage } from './pages/standard-registration.page';
 import { WaitlistRegistrationPage } from './pages/waitlist-registration.page';
+import { WalletRecoveryPage } from './pages/wallet-recovery.page';
 
 const routes: Routes = [
   {
@@ -17,6 +18,10 @@ const routes: Routes = [
   {
     path: 'waitlist',
     component: WaitlistRegistrationPage
+  },
+  {
+    path: 'recovery',
+    component: WalletRecoveryPage
   }
 ];
 

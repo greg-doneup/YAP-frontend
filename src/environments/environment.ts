@@ -4,8 +4,9 @@
 
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8000', // Development points to mock server
-  rpcUrl: 'http://localhost:8000/mock-rpc', // Mock RPC endpoint for development
+  apiUrl: 'https://perci.goyap.ai/api', // Temporarily point to live API for testing with /api prefix
+  wsUrl: 'wss://perci.goyap.ai', // WebSocket URL for AI chat and real-time features
+  rpcUrl: 'https://evm-rpc-testnet.sei-apis.com', // Use live RPC for testing
   enableErrorLogging: true // Added for error service logging control
 };
 

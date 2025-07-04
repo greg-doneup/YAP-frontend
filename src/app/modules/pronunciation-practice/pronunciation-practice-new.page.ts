@@ -96,8 +96,8 @@ export class PronunciationPracticePage implements OnInit, OnDestroy {
         try {
           // Get user profile to determine language preference
           const userProfile = await this.profileService.getUserProfile(currentUser.id).toPromise();
-          // Map language to language code
-          this.userLanguageToLearn = userProfile?.initial_language_to_learn || 'spanish';
+          // Map language to language code - use fallback since this UserProfile doesn't have language preference
+          this.userLanguageToLearn = 'spanish'; // Fallback since profile doesn't include language preference
           this.currentLanguageCode = this.getLanguageCode(this.userLanguageToLearn);
         } catch (error) {
           console.log('Using fallback user and language for development');
@@ -131,15 +131,15 @@ export class PronunciationPracticePage implements OnInit, OnDestroy {
       if (vocabulary && vocabulary.length > 0) {
         // Convert vocabulary items to practice phrases
         this.lessonPhrases = vocabulary.map(item => ({
-          id: item.id,
+          id: item.id || `vocab-${Date.now()}-${Math.random()}`,
           targetText: item.term,
           translation: item.translation,
           languageCode: this.currentLanguageCode,
           difficulty: 'beginner' as const,
           category: 'vocabulary',
-          lessonId: item.lessonId,
-          lessonTitle: item.lessonTitle,
-          language: item.language
+          lessonId: 'daily-vocab',
+          lessonTitle: 'Daily Vocabulary',
+          language: this.userLanguageToLearn
         }));
         
         this.totalPhrases = this.lessonPhrases.length;
@@ -147,9 +147,7 @@ export class PronunciationPracticePage implements OnInit, OnDestroy {
         this.currentPhrase = this.lessonPhrases[0];
         
         // Update lesson info based on loaded data
-        if (vocabulary[0].lessonTitle) {
-          this.updateLessonInfo(vocabulary[0]);
-        }
+        console.log('Loaded vocabulary for pronunciation practice');
       } else {
         // No vocabulary available, show error
         this.currentPhrase = null;
@@ -385,38 +383,34 @@ export class PronunciationPracticePage implements OnInit, OnDestroy {
       const currentUser = this.authService.currentUserValue;
       const userId = currentUser?.id || 'waitlist-user-main';
 
-      // Convert audio blob to base64
-      const reader = new FileReader();
-      reader.readAsDataURL(audioRecording.blob);
-      reader.onload = async () => {
-        const base64Audio = reader.result as string;
+      // Use the base64 audio data directly from AudioRecording
+      const base64Audio = audioRecording.value;
         
-        try {
-          const assessmentData = {
-            userId: userId,
-            lessonId: this.currentPhrase?.lessonId || 'pronunciation-practice',
-            wordId: this.currentPhrase?.id || 'phrase-1',
-            audio: base64Audio,
-            transcript: this.currentPhrase?.targetText,
-            languageCode: this.currentLanguageCode
-          };
+      try {
+        const assessmentData = {
+          userId: userId,
+          lessonId: this.currentPhrase?.lessonId || 'pronunciation-practice',
+          wordId: this.currentPhrase?.id || 'phrase-1',
+          audio: base64Audio,
+          transcript: this.currentPhrase?.targetText,
+          languageCode: this.currentLanguageCode
+        };
 
-          const result = await this.learningService.submitPronunciationAssessment(assessmentData).toPromise();
-          
-          this.recordingState = 'complete';
-          this.pronunciationResult = result;
-          this.showWordAnalysis = true;
-          
-          // Create audio element for recording playback if available
-          if (result.audioUrl) {
-            this.recordingAudio = new Audio(result.audioUrl);
-          }
-        } catch (error) {
-          console.error('Error evaluating pronunciation:', error);
-          this.recordingState = 'ready';
-          await this.showErrorAlert('Could not evaluate your pronunciation');
+        const result = await this.learningService.submitPronunciationAssessment(assessmentData).toPromise();
+        
+        this.recordingState = 'complete';
+        this.pronunciationResult = result;
+        this.showWordAnalysis = true;
+        
+        // Create audio element for recording playback if available
+        if (result.audioUrl) {
+          this.recordingAudio = new Audio(result.audioUrl);
         }
-      };
+      } catch (error) {
+        console.error('Error evaluating pronunciation:', error);
+        this.recordingState = 'ready';
+        await this.showErrorAlert('Could not evaluate your pronunciation');
+      }
       
     } catch (error) {
       console.error('Error in pronunciation evaluation:', error);
@@ -536,8 +530,8 @@ export class PronunciationPracticePage implements OnInit, OnDestroy {
     return this.pronunciationResult.wordDetails.map(word => ({
       text: word.word,
       score: word.score,
-      startTime: word.startTime,
-      endTime: word.endTime
+      startTime: word.start_time,
+      endTime: word.end_time
     }));
   }
 

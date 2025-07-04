@@ -1,0 +1,297 @@
+/* Token Display Component Styles */
+
+.token-display-container {
+  background: var(--ion-color-light, #f8f9fa);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 8px 0;
+  border: 1px solid var(--ion-color-medium-tint, #e9ecef);
+
+  &.compact {
+    padding: 8px;
+    margin: 4px 0;
+  }
+}
+
+/* Token Balance Section */
+.token-balance-section {
+  margin-bottom: 16px;
+
+  .balance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+
+    .balance-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .token-icon {
+        font-size: 24px;
+        color: var(--ion-color-warning, #ffc409);
+      }
+
+      .balance-amount {
+        font-size: 28px;
+        font-weight: bold;
+        color: var(--ion-color-dark, #222428);
+      }
+
+      .balance-label {
+        font-size: 16px;
+        color: var(--ion-color-medium, #92949c);
+      }
+    }
+
+    .refresh-button {
+      --color: var(--ion-color-medium, #92949c);
+    }
+  }
+
+  .balance-details {
+    background: var(--ion-color-light-shade, #e9ecef);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+
+    .detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2px 0;
+
+      .detail-label {
+        font-size: 14px;
+        color: var(--ion-color-medium, #92949c);
+      }
+
+      .detail-value {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--ion-color-dark, #222428);
+      }
+    }
+  }
+
+  .quick-actions {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+/* Daily Allowances Section */
+.allowances-section {
+  margin-bottom: 16px;
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ion-color-dark, #222428);
+    margin: 0 0 12px 0;
+  }
+
+  .allowance-item {
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--ion-color-light-shade, #e9ecef);
+
+    .allowance-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+
+      .allowance-name {
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--ion-color-dark, #222428);
+      }
+
+      .allowance-count {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--ion-color-primary, #3880ff);
+        background: var(--ion-color-primary-tint, rgba(56, 128, 255, 0.1));
+        padding: 4px 8px;
+        border-radius: 12px;
+      }
+    }
+
+    .allowance-progress {
+      margin-bottom: 8px;
+
+      ion-progress-bar {
+        height: 6px;
+        border-radius: 3px;
+      }
+    }
+
+    .allowance-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+
+      .reset-time {
+        color: var(--ion-color-medium, #92949c);
+      }
+    }
+  }
+}
+
+/* Unlimited Passes Section */
+.unlimited-passes-section {
+  margin-bottom: 16px;
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ion-color-dark, #222428);
+    margin: 0 0 12px 0;
+  }
+
+  .unlimited-pass-item {
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--ion-color-light-shade, #e9ecef);
+
+    &.active {
+      border-color: var(--ion-color-success, #2dd36f);
+      background: var(--ion-color-success-tint, rgba(45, 211, 111, 0.05));
+    }
+
+    .pass-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+
+      .unlimited-icon {
+        font-size: 20px;
+      }
+
+      .pass-name {
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--ion-color-dark, #222428);
+      }
+    }
+
+    .pass-status {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      .time-remaining {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--ion-color-success, #2dd36f);
+      }
+
+      .status-label {
+        font-size: 14px;
+        color: var(--ion-color-medium, #92949c);
+      }
+
+      &.expired {
+        .status-label {
+          color: var(--ion-color-danger, #eb445a);
+          font-weight: 500;
+        }
+      }
+    }
+  }
+
+  .no-passes {
+    text-align: center;
+    padding: 24px;
+    color: var(--ion-color-medium, #92949c);
+
+    ion-icon {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin: 8px 0;
+      font-weight: 500;
+    }
+  }
+}
+
+/* Compact Mode */
+.compact-summary {
+  .feature-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+
+    ion-chip {
+      --background: var(--ion-color-light, #f8f9fa);
+      --color: var(--ion-color-dark, #222428);
+      font-size: 12px;
+      height: 24px;
+    }
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .token-display-container {
+    padding: 12px;
+
+    .balance-header .balance-main {
+      .balance-amount {
+        font-size: 24px;
+      }
+
+      .balance-label {
+        font-size: 14px;
+      }
+    }
+
+    .section-title {
+      font-size: 16px;
+    }
+
+    .allowance-item,
+    .unlimited-pass-item {
+      padding: 10px;
+    }
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .token-display-container {
+    background: var(--ion-color-dark-tint, #383a3e);
+    border-color: var(--ion-color-medium-shade, #808289);
+  }
+
+  .allowance-item,
+  .unlimited-pass-item {
+    background: var(--ion-color-dark-shade, #1e2023);
+    border-color: var(--ion-color-medium-shade, #808289);
+  }
+
+  .balance-details {
+    background: var(--ion-color-dark-shade, #1e2023);
+  }
+}
+
+/* Animation for refresh */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.refresh-button.refreshing ion-icon {
+  animation: spin 1s linear infinite;
+}

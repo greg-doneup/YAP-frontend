@@ -1,0 +1,136 @@
+<!-- Token Display Component Template -->
+<div class="token-display-container" [class.compact]="compact">
+  
+  <!-- Token Balance Section -->
+  <div class="token-balance-section">
+    <ng-container *ngIf="tokenBalance$ | async as balance">
+      <div class="balance-header">
+        <div class="balance-main">
+          <ion-icon name="diamond" class="token-icon"></ion-icon>
+          <span class="balance-amount">{{ balance.balance | number:'1.0-0' }}</span>
+          <span class="balance-label">Tokens</span>
+        </div>
+        <ion-button 
+          fill="clear" 
+          size="small" 
+          (click)="refreshData()"
+          class="refresh-button">
+          <ion-icon name="refresh" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+      
+      <div class="balance-details" *ngIf="!compact">
+        <div class="detail-item" *ngIf="balance.stakedBalance > 0">
+          <span class="detail-label">Staked:</span>
+          <span class="detail-value">{{ balance.stakedBalance | number:'1.0-0' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Total:</span>
+          <span class="detail-value">{{ balance.totalBalance | number:'1.0-0' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Last Updated:</span>
+          <span class="detail-value">{{ balance.lastUpdated | date:'short' }}</span>
+        </div>
+      </div>
+
+      <div class="quick-actions" *ngIf="!compact">
+        <ion-button 
+          size="small" 
+          fill="outline" 
+          color="primary"
+          (click)="showTokenPurchaseOptions()">
+          <ion-icon name="add" slot="start"></ion-icon>
+          Get Tokens
+        </ion-button>
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- Daily Allowances Section -->
+  <div class="allowances-section" *ngIf="showAllowances">
+    <h3 class="section-title" *ngIf="!compact">Daily Allowances</h3>
+    
+    <ng-container *ngIf="dailyAllowances$ | async as allowances">
+      <div class="allowance-item" *ngFor="let allowance of filterAllowances(allowances)">
+        <div class="allowance-header">
+          <span class="allowance-name">{{ getFeatureDisplayName(allowance.featureId) }}</span>
+          <span class="allowance-count">{{ allowance.remaining }}/{{ allowance.dailyLimit }}</span>
+        </div>
+        
+        <div class="allowance-progress">
+          <ion-progress-bar 
+            [value]="getProgressPercentage(allowance) / 100"
+            [color]="getProgressColor(getProgressPercentage(allowance))">
+          </ion-progress-bar>
+        </div>
+        
+        <div class="allowance-footer" *ngIf="!compact">
+          <span class="reset-time">Resets {{ allowance.resetsAt | date:'short' }}</span>
+          <ion-button 
+            size="small" 
+            fill="clear" 
+            color="primary"
+            *ngIf="allowance.remaining === 0"
+            (click)="purchaseUnlimitedHour(allowance.featureId, allowance.featureName)">
+            <ion-icon name="time" slot="start"></ion-icon>
+            Unlimited Hour (2 tokens)
+          </ion-button>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- Unlimited Hour Passes Section -->
+  <div class="unlimited-passes-section" *ngIf="showUnlimitedPasses">
+    <h3 class="section-title" *ngIf="!compact">Active Unlimited Passes</h3>
+    
+    <ng-container *ngIf="unlimitedPasses$ | async as passes">
+      <div class="unlimited-pass-item" 
+           *ngFor="let pass of filterUnlimitedPasses(passes)"
+           [class.active]="isUnlimitedPassActive(pass)">
+        
+        <div class="pass-header">
+          <ion-icon name="infinity" class="unlimited-icon" color="success"></ion-icon>
+          <span class="pass-name">{{ getFeatureDisplayName(pass.featureId) }}</span>
+        </div>
+        
+        <div class="pass-status" *ngIf="isUnlimitedPassActive(pass)">
+          <span class="time-remaining">{{ formatTimeRemaining(pass.expiresAt!) }}</span>
+          <span class="status-label">remaining</span>
+        </div>
+        
+        <div class="pass-status expired" *ngIf="!isUnlimitedPassActive(pass)">
+          <span class="status-label">Expired</span>
+        </div>
+      </div>
+      
+      <!-- No active passes message -->
+      <div class="no-passes" *ngIf="filterUnlimitedPasses(passes).length === 0 && !compact">
+        <ion-icon name="time-outline"></ion-icon>
+        <p>No active unlimited passes</p>
+        <ion-text color="medium">
+          <small>Purchase unlimited hour passes when you run out of daily allowances</small>
+        </ion-text>
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- Compact Mode Summary -->
+  <div class="compact-summary" *ngIf="compact">
+    <ng-container *ngIf="(dailyAllowances$ | async) as allowances">
+      <div class="feature-status" *ngFor="let allowance of filterAllowances(allowances)">
+        <ion-chip 
+          [color]="allowance.remaining > 0 ? 'success' : 'warning'"
+          [outline]="allowance.remaining === 0">
+          <ion-icon 
+            [name]="allowance.remaining > 0 ? 'checkmark' : 'time'" 
+            slot="start">
+          </ion-icon>
+          <ion-label>{{ allowance.remaining }}</ion-label>
+        </ion-chip>
+      </div>
+    </ng-container>
+  </div>
+
+</div>

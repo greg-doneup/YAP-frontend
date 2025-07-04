@@ -164,6 +164,146 @@
 }
 
 /**
+ * Button Text Visibility Fixes
+ * -----------------------------------------------------
+ * Ensure button text is always visible regardless of theme
+ */
+
+// Fix alert button text visibility
+.alert-wrapper .alert-button {
+  color: var(--ion-color-primary-contrast) !important;
+  font-weight: 500 !important;
+}
+
+.alert-wrapper .alert-button.alert-button-cancel {
+  color: var(--ion-color-medium) !important;
+}
+
+.alert-wrapper .alert-button.alert-button-confirm {
+  color: var(--ion-color-primary) !important;
+  font-weight: 600 !important;
+}
+
+// Fix general button text visibility
+ion-button {
+  --color: var(--ion-color-primary-contrast) !important;
+  font-weight: 500 !important;
+}
+
+ion-button[fill="clear"] {
+  --color: var(--ion-color-primary) !important;
+}
+
+ion-button[fill="outline"] {
+  --color: var(--ion-color-primary) !important;
+  --border-color: var(--ion-color-primary) !important;
+}
+
+ion-button[color="primary"] {
+  --color: var(--ion-color-primary-contrast) !important;
+}
+
+ion-button[color="secondary"] {
+  --color: var(--ion-color-secondary-contrast) !important;
+}
+
+ion-button[color="danger"] {
+  --color: white !important;
+}
+
+ion-button[color="success"] {
+  --color: white !important;
+}
+
+// Ensure text is visible in modals and popovers
+.modal-wrapper ion-button,
+.popover-wrapper ion-button {
+  --color: var(--ion-color-primary-contrast) !important;
+}
+
+/**
+ * Enhanced Button and Form Visibility Fixes
+ * -----------------------------------------------------
+ * Additional fixes for button text visibility issues
+ */
+
+// Force button text visibility with higher specificity
+ion-button,
+ion-button[fill="solid"],
+ion-button[color="primary"],
+ion-button[color="secondary"],
+.alert-button,
+.action-sheet-button {
+  color: white !important;
+  --color: white !important;
+  font-weight: 500 !important;
+}
+
+// Clear and outline buttons should use primary color
+ion-button[fill="clear"],
+ion-button[fill="outline"] {
+  color: var(--ion-color-primary) !important;
+  --color: var(--ion-color-primary) !important;
+}
+
+// Specific fixes for registration and form buttons
+.registration-form ion-button,
+.wallet-creation ion-button,
+.create-account ion-button {
+  color: white !important;
+  --color: white !important;
+  background-color: var(--ion-color-primary) !important;
+  font-weight: 600 !important;
+}
+
+// Alert dialog button fixes with maximum specificity
+.alert-wrapper .alert-button,
+ion-alert .alert-button {
+  color: var(--ion-color-primary) !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+}
+
+// Input and textarea text visibility
+ion-input,
+ion-textarea {
+  --color: var(--ion-color-dark) !important;
+  --placeholder-color: var(--ion-color-medium) !important;
+}
+
+// Modal and popover content text visibility
+.modal-wrapper,
+.popover-wrapper {
+  color: var(--ion-color-dark) !important;
+}
+
+.modal-wrapper ion-button,
+.popover-wrapper ion-button {
+  color: white !important;
+  --color: white !important;
+}
+
+// Ensure all text elements have proper contrast
+.ion-page,
+ion-content {
+  color: var(--ion-color-dark) !important;
+}
+
+// Loading and toast text fixes
+ion-loading,
+ion-toast {
+  color: white !important;
+  --color: white !important;
+}
+
+// List item text visibility
+ion-item,
+ion-list {
+  color: var(--ion-color-dark) !important;
+  --color: var(--ion-color-dark) !important;
+}
+
+/**
  * YAP Typography
  * -----------------------------------------------------
  */
@@ -189,4 +329,305 @@ p, span, .yap-body {
 .yap-dark-bg p,
 .yap-dark-bg span {
   color: var(--yap-body-text-on-dark) !important;
+}
+
+/**
+ * Specific fixes for Account Creation Page and Alert Dialogs
+ * -----------------------------------------------------
+ * These styles specifically target the UI elements shown in the screenshot
+ */
+
+/* Create Account Page Specific Fixes */
+.create-account-page,
+.account-creation-container,
+ion-content[class*="create"] {
+  --ion-background-color: #4372c4 !important;
+  background: #4372c4 !important;
+}
+
+/* Account Passphrase input styling */
+.create-account-page ion-input,
+.create-account-page ion-textarea,
+.account-passphrase-input {
+  --color: #1a1a1a !important;
+  --background: rgba(255, 255, 255, 0.95) !important;
+  --placeholder-color: #666666 !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Create Account Button specific styling */
+.create-account-button,
+.create-account-page ion-button[color="primary"],
+ion-button[class*="create-account"] {
+  --background: #ffdb45 !important;
+  --color: #333333 !important;
+  --border-color: #ffdb45 !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  height: 48px !important;
+}
+
+/* Alert Dialog Comprehensive Fixes */
+ion-alert,
+.alert-wrapper,
+.alert-container {
+  --background: rgba(255, 255, 255, 0.98) !important;
+  --color: #1a1a1a !important;
+}
+
+ion-alert .alert-head h2,
+ion-alert .alert-message,
+.alert-wrapper .alert-head h2,
+.alert-wrapper .alert-message {
+  color: #1a1a1a !important;
+  font-weight: 500 !important;
+}
+
+/* Alert Button Super Specific Fixes */
+ion-alert .alert-button,
+.alert-wrapper .alert-button,
+.alert-button-group ion-button,
+.alert-button-inner {
+  color: #4372c4 !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+ion-alert .alert-button:hover,
+.alert-wrapper .alert-button:hover {
+  background: rgba(67, 114, 196, 0.1) !important;
+  color: #4372c4 !important;
+}
+
+/* Error message styling */
+.error-message,
+.failed-message,
+.alert-wrapper .alert-message[class*="error"] {
+  color: #e13a3f !important;
+  font-weight: 500 !important;
+}
+
+/* Waitlist Access Link */
+.waitlist-link,
+.access-waitlist-link,
+ion-button[class*="waitlist"] {
+  --color: #ffdb45 !important;
+  font-weight: 500 !important;
+  text-decoration: underline !important;
+}
+
+/* Terms and Privacy Policy Links */
+.terms-privacy-links,
+.terms-privacy-links a,
+.terms-link,
+.privacy-link {
+  color: rgba(255, 255, 255, 0.8) !important;
+  text-decoration: underline !important;
+}
+
+.terms-privacy-links a:hover,
+.terms-link:hover,
+.privacy-link:hover {
+  color: #ffdb45 !important;
+}
+
+/* Force text visibility on all modal/alert content */
+.modal-wrapper *,
+.alert-wrapper *,
+.popover-wrapper * {
+  color: inherit !important;
+}
+
+/* Ensure proper contrast for all text elements */
+.ion-page h1,
+.ion-page h2,
+.ion-page h3,
+.ion-page p,
+.ion-page span,
+.ion-page div {
+  color: #f5f5f5 !important;
+}
+
+.modal-wrapper h1,
+.modal-wrapper h2,
+.modal-wrapper h3,
+.modal-wrapper p,
+.modal-wrapper span,
+.modal-wrapper div,
+.alert-wrapper h1,
+.alert-wrapper h2,
+.alert-wrapper h3,
+.alert-wrapper p,
+.alert-wrapper span,
+.alert-wrapper div {
+  color: #1a1a1a !important;
+}
+
+/* WALLET COMPONENT DIRECT STYLING - NO VARIABLES */
+/* Force all wallet text to be white with hard-coded colors */
+.native-input.sc-ion-input-ios,
+.balance-amount,
+.balance-header h3,
+.balance-header ion-button,
+.wallet-balance,
+.wallet-balance-widget,
+.wallet-balance-widget *,
+.balance-widget,
+.balance-widget *,
+.allowance-amount,
+.allowance-widget,
+.allowance-widget *,
+.wallet-allowance,
+.wallet-allowance *,
+.balance-container,
+.balance-container *,
+.allowance-container,
+.allowance-container *,
+.wallet-info,
+.wallet-info *,
+.wallet-summary,
+.wallet-summary * {
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+/* Specific wallet component selectors */
+[class*="wallet"] [class*="balance"],
+[class*="wallet"] [class*="allowance"],
+[class*="balance"] *,
+[class*="allowance"] * {
+  color: #ffffff !important;
+}
+
+/* Angular component scoped styles override */
+[_ngcontent-ng-c4157346123],
+[_ngcontent-ng-c4157346123] *,
+.balance-header[_ngcontent-ng-c4157346123],
+.balance-header[_ngcontent-ng-c4157346123] *,
+.allowance-name[_ngcontent-ng-c4157346123],
+.allowance-name[_ngcontent-ng-c4157346123] * {
+  color: #ffffff !important;
+}
+
+/* Fallback for any dark text on wallet components */
+.wallet-widget h1,
+.wallet-widget h2, 
+.wallet-widget h3,
+.wallet-widget h4,
+.wallet-widget h5,
+.wallet-widget h6,
+.wallet-widget p,
+.wallet-widget span,
+.wallet-widget div,
+.wallet-widget ion-button,
+.wallet-widget ion-label,
+.wallet-widget .item-native,
+.wallet-widget .label {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+/* MAXIMUM SPECIFICITY WALLET TEXT FIXES */
+/* These styles have the highest possible specificity to override any existing styles */
+
+/* Target every possible wallet element with extreme specificity */
+.ion-page .wallet-balance,
+.ion-page .wallet-balance *,
+.ion-page .wallet-allowance,
+.ion-page .wallet-allowance *,
+.ion-page .balance-widget,
+.ion-page .balance-widget *,
+.ion-page .allowance-widget,
+.ion-page .allowance-widget *,
+ion-content .wallet-balance,
+ion-content .wallet-balance *,
+ion-content .wallet-allowance,
+ion-content .wallet-allowance *,
+ion-content .balance-widget,
+ion-content .balance-widget *,
+ion-content .allowance-widget,
+ion-content .allowance-widget * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+}
+
+/* Force override ANY Angular component styling */
+div[class*="wallet"] *,
+div[class*="balance"] *,
+div[class*="allowance"] *,
+span[class*="wallet"] *,
+span[class*="balance"] *,
+span[class*="allowance"] *,
+p[class*="wallet"] *,
+p[class*="balance"] *,
+p[class*="allowance"] *,
+h1[class*="wallet"] *,
+h2[class*="wallet"] *,
+h3[class*="wallet"] *,
+h1[class*="balance"] *,
+h2[class*="balance"] *,
+h3[class*="balance"] *,
+h1[class*="allowance"] *,
+h2[class*="allowance"] *,
+h3[class*="allowance"] * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Target specific balance and allowance text elements */
+.balance-amount,
+.allowance-amount,
+.balance-value,
+.allowance-value,
+.wallet-balance-amount,
+.wallet-allowance-amount,
+.balance-display,
+.allowance-display {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+}
+
+/* Override any CSS variable usage */
+[style*="--ion-color-dark"],
+[style*="color: var(--ion-color-dark)"] {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Nuclear option - force ALL text in wallet sections to be white */
+section[class*="wallet"] *,
+section[class*="balance"] *,
+section[class*="allowance"] *,
+.wallet-section *,
+.balance-section *,
+.allowance-section * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Ensure wallet headers are visible */
+.wallet-header,
+.wallet-header *,
+.balance-header,
+.balance-header *,
+.allowance-header,
+.allowance-header * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 500 !important;
+}
+
+/* Last resort - target by element type within wallet areas */
+.ion-page div:contains("Balance") *,
+.ion-page div:contains("Allowance") *,
+.ion-page span:contains("YAP") *,
+.ion-page span:contains("$") * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }

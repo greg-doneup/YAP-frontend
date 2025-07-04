@@ -3,9 +3,12 @@ import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { trigger, state, style, transition, animate } from '@angular/animations';
+import { ToastController, ModalController } from '@ionic/angular';
 
 import { LearningService, VocabItem } from '../../core/learning/learning.service';
 import { VoiceService, PronunciationResult, WordAnalysis, PronunciationMetrics, CEFRFeedback } from '../../core/voice/voice.service';
+import { TokenService } from '../../services/token.service';
+import { TokenSpendingModalComponent } from '../../components/token-spending-modal.component';
 
 interface Phrase {
   phrase: string;
@@ -48,14 +51,51 @@ export class PronunciationPracticePage implements OnInit, OnDestroy {
   showAssessment: boolean = false;
   pronunciationResult: PronunciationResult | null = null;
   
+  // Token-gated features
+  currentBalance = 0;
+  tokensPerAssessment = 5;
+  hasUnlimitedPass = false;
+  assessmentFeatureId = 'pronunciation_assessment';
+  
   constructor(
     private router: Router,
     private learningService: LearningService,
-    private voiceService: VoiceService
+    private voiceService: VoiceService,
+    private tokenService: TokenService,
+    private toastController: ToastController,
+    private modalController: ModalController
   ) {}
 
   ngOnInit() {
     this.loadUserLanguageAndPhrases();
+    this.loadTokenInfo();
+  }
+
+  private loadTokenInfo() {
+    // Subscribe to token balance
+    this.tokenService.tokenBalance$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(balance => {
+      this.currentBalance = balance.totalBalance;
+    });
+
+    // Check for unlimited passes
+    this.tokenService.unlimitedPasses$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(passes => {
+      const pass = passes.find(p => p.featureId === this.assessmentFeatureId && p.isActive);
+      this.hasUnlimitedPass = !!pass;
+    });
+
+    // Load daily allowances to display remaining free assessments
+    this.tokenService.dailyAllowances$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(allowances => {
+      const assessmentAllowance = allowances.find(a => a.featureId === 'pronunciation_assessment');
+      if (assessmentAllowance) {
+        console.log(`Pronunciation assessments remaining: ${assessmentAllowance.remaining}/${assessmentAllowance.dailyLimit}`);
+      }
+    });
   }
 
   ngOnDestroy() {
@@ -366,33 +406,96 @@ export class PronunciationPracticePage implements OnInit, OnDestroy {
       this.isRecording = false;
       this.isProcessing = true;
       
-      // Verify pronunciation and auto-advance if successful
-      if (this.currentPhrase) {
-        this.voiceService.verifyPronunciation(this.currentPhrase.phrase)
-          .pipe(takeUntil(this.destroy$))
-          .subscribe({
-            next: (result: PronunciationResult) => {
-              this.isProcessing = false;
-              this.pronunciationScore = result.score;
-              this.pronunciationResult = result;
-              
-              if (result.pass) {
-                // Mark phrase as completed and show detailed assessment
-                this.phraseCompleted = true;
-                this.showAssessment = true;
-              } else {
-                // Show assessment for improvement feedback
-                this.showAssessment = true;
-                this.phraseCompleted = false;
-                console.log('Pronunciation needs improvement. Score:', result.score);
-              }
-            },
-            error: (error) => {
-              this.isProcessing = false;
-              console.error('Error verifying pronunciation:', error);
-            }
-          });
+      // Check if user has tokens or unlimited pass before processing
+      this.checkTokensForAssessment();
+    }
+  }
+
+  private async checkTokensForAssessment() {
+    if (this.hasUnlimitedPass) {
+      // User has unlimited pass, proceed with assessment
+      this.processAssessment();
+      return;
+    }
+
+    // First check if user has free daily allowances
+    const allowanceCheck = await this.tokenService.canUseFeature('pronunciation_assessment').toPromise();
+    
+    if (allowanceCheck?.canUse && (allowanceCheck.allowanceRemaining || 0) > 0) {
+      // Use free allowance
+      const allowanceResult = await this.tokenService.useAllowance('pronunciation_assessment', 1).toPromise();
+      
+      if (allowanceResult?.success) {
+        console.log(`Used free allowance for pronunciation assessment. Remaining: ${allowanceResult.remaining}`);
+        this.processAssessment();
+        return;
       }
+    }
+
+    // No free allowances, check token balance
+    if (this.currentBalance >= this.tokensPerAssessment) {
+      // User has enough tokens, show spending confirmation
+      await this.showTokenSpendingModal();
+    } else {
+      // Insufficient tokens and no allowances
+      this.isProcessing = false;
+      await this.presentToast('Insufficient tokens for pronunciation assessment. You need ' + this.tokensPerAssessment + ' tokens, or wait for your daily free assessment to reset.', 'warning');
+    }
+  }
+
+  private async showTokenSpendingModal() {
+    const modal = await this.modalController.create({
+      component: TokenSpendingModalComponent,
+      componentProps: {
+        featureId: this.assessmentFeatureId,
+        featureName: 'Pronunciation Assessment',
+        tokensRequired: this.tokensPerAssessment,
+        action: 'pronunciation_assessment',
+        description: 'Get detailed feedback on your pronunciation with AI analysis'
+      },
+      cssClass: 'token-spending-modal'
+    });
+
+    modal.onDidDismiss().then((result) => {
+      if (result.data?.success) {
+        // Tokens spent successfully, proceed with assessment
+        this.processAssessment();
+      } else {
+        // User cancelled or failed, stop processing
+        this.isProcessing = false;
+      }
+    });
+
+    await modal.present();
+  }
+
+  private processAssessment() {
+    // Verify pronunciation and auto-advance if successful
+    if (this.currentPhrase) {
+      this.voiceService.verifyPronunciation(this.currentPhrase.phrase)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (result: PronunciationResult) => {
+            this.isProcessing = false;
+            this.pronunciationScore = result.score;
+            this.pronunciationResult = result;
+            
+            if (result.pass) {
+              // Mark phrase as completed and show detailed assessment
+              this.phraseCompleted = true;
+              this.showAssessment = true;
+            } else {
+              // Show assessment for improvement feedback
+              this.showAssessment = true;
+              this.phraseCompleted = false;
+              console.log('Pronunciation needs improvement. Score:', result.score);
+            }
+          },
+          error: (error) => {
+            this.isProcessing = false;
+            console.error('Error verifying pronunciation:', error);
+          }
+        });
     }
   }
 
@@ -474,5 +577,15 @@ export class PronunciationPracticePage implements OnInit, OnDestroy {
 
   loadPhrases() {
     this.loadUserLanguageAndPhrases();
+  }
+
+  private async presentToast(message: string, color: 'success' | 'danger' | 'warning' = 'success') {
+    const toast = await this.toastController.create({
+      message,
+      duration: 3000,
+      color,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 }

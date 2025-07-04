@@ -8,7 +8,7 @@ export interface Lesson {
   id: string;
   title: string;
   description: string;
-  type: 'practice' | 'quiz' | 'flashcard';
+  type: 'practice' | 'quiz' | 'flashcard' | 'conversation' | 'pronunciation';
   level: string;
   progress: number;
   day: string;
@@ -17,6 +17,9 @@ export interface Lesson {
   imageUrl?: string;
   isNextLevel?: boolean;
   isRecommended?: boolean;
+  conversationalTheme?: string;
+  grammarFocus?: string[];
+  vocabulary?: string[];
 }
 
 @Injectable({
@@ -34,27 +37,33 @@ export class LessonService {
     'A1.1': [
       {
         id: 'a11-greetings-1',
-        title: 'Greetings',
-        description: 'Learn basic greetings and introductions',
-        type: 'practice',
+        title: 'Introduction and Greetings',
+        description: 'Learn how to greet people and introduce yourself',
+        type: 'conversation',
         level: 'A1.1',
         progress: 25,
         day: 'Mon',
         difficulty: 1,
         estimatedTime: 10,
-        imageUrl: 'assets/images/card-banner/yap_composed_banner.jpg'
+        imageUrl: 'assets/images/card-banner/yap_composed_banner.jpg',
+        conversationalTheme: 'Greetings and introducing oneself',
+        grammarFocus: ['Subject pronouns', 'verb to be (present simple)', 'basic word order'],
+        vocabulary: ['hello', 'goodbye', 'name', 'age', 'nationality']
       },
       {
         id: 'a11-numbers-1',
-        title: 'Numbers 1-10',
-        description: 'Learn counting from 1 to 10',
-        type: 'practice',
+        title: 'Numbers and Personal Information',
+        description: 'Practice numbers and sharing basic personal information',
+        type: 'conversation',
         level: 'A1.1',
         progress: 0,
         day: 'Tue',
         difficulty: 1,
         estimatedTime: 8,
-        imageUrl: 'assets/images/card-banner/yap_composed_banner.jpg'
+        imageUrl: 'assets/images/card-banner/yap_composed_banner.jpg',
+        conversationalTheme: 'Exchanging basic personal information',
+        grammarFocus: ['numbers 0-20', 'simple Wh- questions'],
+        vocabulary: ['numbers', 'days of the week', 'country', 'city']
       },
       {
         id: 'a11-basics-1',

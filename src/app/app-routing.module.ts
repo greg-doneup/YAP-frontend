@@ -2,6 +2,8 @@ import { NgModule } from '@angular/core';
 import { PreloadAllModules, RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
 import { WelcomeGuard } from './core/guards/welcome.guard';
+import { WalletAuthGuard } from './core/guards/wallet-auth.guard';
+import { WalletWelcomeGuard } from './core/guards/wallet-welcome.guard';
 
 const routes: Routes = [
   {
@@ -21,12 +23,12 @@ const routes: Routes = [
   {
     path: 'welcome',
     loadChildren: () => import('./modules/welcome/welcome.module').then( m => m.WelcomePageModule),
-    canActivate: [WelcomeGuard]
+    canActivate: [WalletWelcomeGuard]
   },
   {
     path: 'dashboard',
     loadChildren: () => import('./modules/dashboard/dashboard.module').then( m => m.DashboardModule),
-    canActivate: [AuthGuard]
+    canActivate: [WalletAuthGuard]
   },
   {
     path: 'vocab-practice',
@@ -61,11 +63,16 @@ const routes: Routes = [
   {
     path: 'profile',
     loadChildren: () => import('./modules/profile/profile.module').then( m => m.ProfilePageModule),
-    canActivate: [AuthGuard]
+    canActivate: [WalletAuthGuard]
   },
   {
     path: 'settings',
     loadChildren: () => import('./modules/settings/settings.module').then( m => m.SettingsPageModule),
+    canActivate: [AuthGuard]
+  },
+  {
+    path: 'ai-chat',
+    loadChildren: () => import('./modules/ai-chat/ai-chat.module').then( m => m.AiChatPageModule),
     canActivate: [AuthGuard]
   },
   {

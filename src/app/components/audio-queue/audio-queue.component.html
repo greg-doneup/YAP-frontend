@@ -1,0 +1,87 @@
+<div class="audio-queue" [class.visible]="isVisible && queueItems.length > 0">
+  
+  <!-- Queue Header -->
+  <div class="queue-header">
+    <div class="queue-title">
+      <ion-icon name="list" color="primary"></ion-icon>
+      <span>Audio Queue ({{ queueItems.length }})</span>
+    </div>
+    
+    <div class="queue-actions">
+      <ion-button 
+        fill="clear" 
+        size="small"
+        (click)="clearQueue()"
+        [disabled]="queueItems.length === 0">
+        <ion-icon name="trash" slot="icon-only"></ion-icon>
+      </ion-button>
+      
+      <ion-button 
+        fill="clear" 
+        size="small"
+        (click)="toggleQueue()">
+        <ion-icon name="chevron-down" slot="icon-only"></ion-icon>
+      </ion-button>
+    </div>
+  </div>
+
+  <!-- Queue Items -->
+  <div class="queue-items" *ngIf="isVisible">
+    <div 
+      *ngFor="let item of queueItems; trackBy: trackByFn" 
+      class="queue-item"
+      [class.high-priority]="item.priority === 'high'"
+      [class.low-priority]="item.priority === 'low'">
+      
+      <!-- Priority Indicator -->
+      <div class="priority-indicator">
+        <ion-icon 
+          [name]="getPriorityIcon(item.priority)" 
+          [color]="getPriorityColor(item.priority)"
+          size="small">
+        </ion-icon>
+      </div>
+
+      <!-- Track Info -->
+      <div class="track-info">
+        <div class="track-title">{{ item.track.title }}</div>
+        <div class="track-details">
+          <span class="track-type">{{ item.track.type | titlecase }}</span>
+          <span class="separator">•</span>
+          <span class="track-priority">{{ item.priority | titlecase }} Priority</span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="item-actions">
+        <ion-button 
+          fill="clear" 
+          size="small"
+          (click)="removeFromQueue(item.track)"
+          color="medium">
+          <ion-icon name="close" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-queue" *ngIf="queueItems.length === 0">
+      <ion-icon name="musical-notes" color="medium"></ion-icon>
+      <span>No audio in queue</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Floating Queue Button (when minimized) -->
+<div class="floating-queue-btn" *ngIf="!isVisible && queueItems.length > 0">
+  <ion-button 
+    fill="solid" 
+    size="small"
+    color="primary"
+    (click)="toggleQueue()"
+    class="queue-toggle-btn">
+    <ion-icon name="list" slot="start"></ion-icon>
+    {{ queueItems.length }}
+  </ion-button>
+</div>

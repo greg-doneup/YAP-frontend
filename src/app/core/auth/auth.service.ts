@@ -210,6 +210,29 @@ export class AuthService {
           return this.handleAuthResponse(response);
         }),
         catchError(error => {
+          console.error('Token validation failed:', error);
+          
+          // Check if we have valid localStorage authentication flags
+          // If user just registered, don't clear auth data immediately
+          const isUserAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+          const currentUserStr = localStorage.getItem('currentUser');
+          const userWallet = localStorage.getItem('user_wallet');
+          
+          if (isUserAuthenticated && currentUserStr && userWallet) {
+            console.log('Token validation failed, but localStorage indicates recent successful registration. Preserving auth state.');
+            
+            // Try to recover from localStorage instead of clearing everything
+            try {
+              const user = JSON.parse(currentUserStr);
+              this.currentUserSubject.next(user);
+              console.log('Recovered authentication state from localStorage after token validation failure');
+              return of(user);
+            } catch (parseError) {
+              console.error('Failed to parse user from localStorage during token validation recovery:', parseError);
+            }
+          }
+          
+          // Only clear auth data if localStorage doesn't indicate successful registration
           this.clearAuthData();
           this.errorService.handleError(error, 'token-validation-failed');
           return throwError(() => error);
@@ -328,16 +351,20 @@ export class AuthService {
       console.log('- SEI:', wallets.seiWallet.address);
       console.log('- EVM:', wallets.evmWallet.address);
 
-      // Step 3: Encrypt and store mnemonic locally
-      console.log('Step 3: Encrypting and storing mnemonic...');
-      const encryptedMnemonic = await this.cryptoService.storeEncryptedMnemonic(mnemonic, passphrase);
+      // Step 3: Store raw mnemonic locally in IndexedDB
+      console.log('Step 3: Storing raw mnemonic locally...');
+      await this.cryptoService.storeRawMnemonic(mnemonic);
 
-      // Step 4: Store wallet addresses locally
-      console.log('Step 4: Storing wallet addresses...');
+      // Step 4: Encrypt mnemonic for backend storage
+      console.log('Step 4: Encrypting mnemonic for backend...');
+      const encryptedMnemonic = await this.cryptoService.encryptMnemonicForBackend(mnemonic, passphrase);
+
+      // Step 5: Store wallet addresses locally
+      console.log('Step 5: Storing wallet addresses...');
       await this.cryptoService.storeWalletAddresses(wallets.seiWallet.address, wallets.evmWallet.address);
 
-      // Step 5: Send to backend for profile creation/update
-      console.log('Step 5: Sending wallet data to backend...');
+      // Step 6: Send to backend for profile creation/update
+      console.log('Step 6: Sending wallet data to backend...');
       const walletAuthRequest = {
         email: email,
         passphrase: passphrase, // For backend hashing/verification
@@ -407,15 +434,15 @@ export class AuthService {
     console.log('=== STARTING WALLET RECOVERY ===');
     
     try {
-      // Step 1: Get encrypted mnemonic from secure storage
-      const decryptedMnemonic = await this.cryptoService.getDecryptedMnemonic(passphrase);
+      // Step 1: Get raw mnemonic from secure storage (IndexedDB)
+      const rawMnemonic = await this.cryptoService.getRawMnemonic();
       
-      if (!decryptedMnemonic) {
-        throw new Error('Could not decrypt mnemonic with provided passphrase');
+      if (!rawMnemonic) {
+        throw new Error('Could not retrieve mnemonic from local storage');
       }
 
       // Step 2: Re-derive wallets from recovered mnemonic
-      const wallets = await this.cryptoService.deriveWalletsFromMnemonic(decryptedMnemonic);
+      const wallets = await this.cryptoService.deriveWalletsFromMnemonic(rawMnemonic);
 
       console.log('Wallets recovered:');
       console.log('- SEI:', wallets.seiWallet.address);

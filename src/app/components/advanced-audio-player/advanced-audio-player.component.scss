@@ -1,0 +1,404 @@
+/* Advanced Audio Player Styles */
+.advanced-audio-player {
+  position: relative;
+  background: var(--ion-color-light);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 8px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+
+  &.compact {
+    padding: 8px 12px;
+    border-radius: 8px;
+  }
+
+  &.loading {
+    opacity: 0.7;
+    pointer-events: none;
+  }
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  z-index: 10;
+
+  .loading-text {
+    margin-top: 8px;
+    font-size: 0.875rem;
+    color: var(--ion-color-medium);
+  }
+}
+
+/* Track Info */
+.track-info {
+  margin-bottom: 12px;
+  
+  .track-title {
+    font-weight: 600;
+    color: var(--ion-color-dark);
+    font-size: 1rem;
+    margin-bottom: 4px;
+  }
+
+  .track-type {
+    font-size: 0.75rem;
+    color: var(--ion-color-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+/* Waveform Section */
+.waveform-section {
+  margin: 16px 0;
+  
+  &.compact {
+    margin: 8px 0;
+  }
+
+  .waveform-container {
+    width: 100%;
+    height: 80px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--ion-color-light-shade);
+
+    /* WaveSurfer styling */
+    wave {
+      border-radius: 4px;
+    }
+  }
+
+  /* Fallback Progress Bar */
+  .fallback-progress {
+    width: 100%;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    
+    .progress-track {
+      position: relative;
+      width: 100%;
+      height: 4px;
+      background: var(--ion-color-light-shade);
+      border-radius: 2px;
+      cursor: pointer;
+      
+      .progress-fill {
+        height: 100%;
+        background: var(--ion-color-primary);
+        border-radius: 2px;
+        transition: width 0.1s ease;
+      }
+      
+      .progress-thumb {
+        position: absolute;
+        top: -4px;
+        width: 12px;
+        height: 12px;
+        background: var(--ion-color-primary);
+        border-radius: 50%;
+        transform: translateX(-50%);
+        transition: left 0.1s ease;
+      }
+    }
+  }
+}
+
+/* Main Controls */
+.main-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  .play-button {
+    --color: var(--ion-color-primary);
+    --size: 48px;
+    width: var(--size);
+    height: var(--size);
+    
+    ion-icon {
+      font-size: 24px;
+    }
+  }
+
+  .time-display {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: monospace;
+    font-size: 0.875rem;
+    color: var(--ion-color-dark);
+    min-width: 80px;
+
+    .separator {
+      color: var(--ion-color-medium);
+    }
+  }
+}
+
+/* Volume Control */
+.volume-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .volume-button {
+    --color: var(--ion-color-medium);
+  }
+
+  .volume-slider {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ion-color-light);
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    z-index: 20;
+    width: 120px;
+
+    &.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    ion-range {
+      --bar-height: 3px;
+      --knob-size: 16px;
+    }
+  }
+}
+
+/* Speed Control */
+.speed-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .speed-button {
+    --color: var(--ion-color-medium);
+    
+    .speed-text {
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+  }
+
+  .speed-options {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ion-color-light);
+    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    z-index: 20;
+    min-width: 60px;
+
+    &.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .speed-option {
+      --color: var(--ion-color-medium);
+      font-size: 0.75rem;
+      height: 32px;
+      margin: 0;
+
+      &[color="primary"] {
+        --color: var(--ion-color-primary);
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+/* Stop Button */
+.stop-button {
+  --color: var(--ion-color-medium);
+  
+  &[disabled] {
+    opacity: 0.4;
+  }
+}
+
+/* Error Message */
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--ion-color-danger-tint);
+  border-radius: 6px;
+  margin-top: 12px;
+  font-size: 0.875rem;
+  color: var(--ion-color-danger-shade);
+
+  ion-icon {
+    font-size: 16px;
+  }
+
+  ion-button {
+    --color: var(--ion-color-danger);
+    margin-left: auto;
+  }
+}
+
+/* Compact Mode */
+.compact-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .compact-info {
+    flex: 1;
+    min-width: 0;
+
+    .track-title-compact {
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: var(--ion-color-dark);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .time-compact {
+      font-size: 0.75rem;
+      color: var(--ion-color-medium);
+      font-family: monospace;
+    }
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .advanced-audio-player {
+    padding: 12px;
+
+    .main-controls {
+      gap: 8px;
+      
+      .play-button {
+        --size: 44px;
+        
+        ion-icon {
+          font-size: 20px;
+        }
+      }
+
+      .time-display {
+        font-size: 0.8rem;
+        min-width: 70px;
+      }
+    }
+
+    .volume-slider,
+    .speed-options {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      transform: none;
+    }
+  }
+
+  .waveform-section {
+    .waveform-container {
+      height: 60px;
+    }
+
+    &.compact .waveform-container {
+      height: 40px;
+    }
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .advanced-audio-player {
+    background: var(--ion-color-dark);
+    
+    .track-info .track-title {
+      color: var(--ion-color-light);
+    }
+
+    .waveform-container {
+      background: var(--ion-color-dark-shade);
+    }
+
+    .fallback-progress .progress-track {
+      background: var(--ion-color-dark-shade);
+    }
+
+    .loading-overlay {
+      background: rgba(0, 0, 0, 0.9);
+    }
+
+    .volume-slider,
+    .speed-options {
+      background: var(--ion-color-dark);
+    }
+  }
+}
+
+/* Animation Classes */
+.pulse-animation {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

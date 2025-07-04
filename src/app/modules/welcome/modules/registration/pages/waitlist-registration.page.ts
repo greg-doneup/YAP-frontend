@@ -4,6 +4,7 @@ import { LoadingController, AlertController } from '@ionic/angular';
 import { HttpClient } from '@angular/common/http';
 import { RegistrationService, StandardWalletCreationResult, WaitlistUserData } from '../services/registration.service';
 import { RegistrationAuthService } from '../services/registration-auth.service';
+import { SecureWalletRegistrationService } from '../../../../../services/secure-wallet-registration.service';
 
 @Component({
   selector: 'app-waitlist-registration',
@@ -27,7 +28,8 @@ export class WaitlistRegistrationPage {
     private alertController: AlertController,
     private http: HttpClient,
     private registrationService: RegistrationService,
-    private authService: RegistrationAuthService
+    private authService: RegistrationAuthService,
+    private secureWalletService: SecureWalletRegistrationService
   ) {}
 
   /** Navigate back to intro */
@@ -94,21 +96,45 @@ export class WaitlistRegistrationPage {
     this.isLoading = true;
 
     try {
-      // Use the unified creation method - it will pull name/language from database automatically
-      const result = await this.registrationService.createWalletWithConversion(
-        this.email, 
+      // Ensure we have required data for registration
+      if (!this.databaseUserData?.name || !this.databaseUserData?.language_to_learn) {
+        throw new Error('Name and language to learn are required for registration');
+      }
+
+      // Use secure wallet creation service instead of legacy method
+      const result = await this.secureWalletService.createSecureWallet(
+        this.email,
         this.securePhrase,
-        this.databaseUserData?.name, // Auto-filled from database
-        this.databaseUserData?.language_to_learn // Auto-filled from database
+        this.databaseUserData.name, // Auto-filled from database
+        this.databaseUserData.language_to_learn // Auto-filled from database
       );
 
-      if (result.status === 'success') {
-        // Store auth tokens if provided
-        if (result.token) {
-          await this.authService.completeAuthentication(result, this.email);
-        }
+      if (result.success) {
+        // Convert SecureRegistrationResponse to StandardWalletCreationResult format
+        const standardResult = {
+          status: 'success' as const,
+          sei_address: result.walletAddress || '',
+          eth_address: result.ethWalletAddress || '',
+          waitlist_bonus: result.starting_points || 0,
+          message: result.message || 'Account converted successfully',
+          starting_points: result.starting_points || 0,
+          token: result.token,
+          refreshToken: result.refreshToken,
+          userId: result.userId,
+          isWaitlistConversion: result.isWaitlistConversion || true,
+          walletAddress: result.walletAddress,
+          ethWalletAddress: result.ethWalletAddress,
+          encryptedMnemonic: result.encryptedMnemonic
+        };
 
-        // Navigate to dashboard after successful registration
+        // Use the registration auth service to complete authentication properly
+        await this.authService.completeAuthentication(standardResult, this.email);
+
+        // Small delay to ensure authentication state is fully updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Navigate to dashboard after successful authentication
+        console.log('✅ Waitlist conversion and authentication completed, navigating to dashboard');
         this.router.navigate(['/dashboard']);
       } else {
         await this.showAlert('Registration Failed', result.message || 'Failed to create wallet');

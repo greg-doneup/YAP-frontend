@@ -53,13 +53,18 @@
     --color: #ffffff;
     font-weight: 500;
     opacity: 0.8;
+    font-size: 0.85rem; // Smaller text
+    --padding-start: 8px;
+    --padding-end: 12px;
+    margin-right: 8px; // Move further to the right
     
     span {
-      margin-right: 4px;
+      margin-right: 3px; // Reduced spacing
+      font-size: 0.8rem; // Smaller text
     }
     
     ion-icon {
-      font-size: 16px;
+      font-size: 14px; // Smaller icon
     }
   }
 }

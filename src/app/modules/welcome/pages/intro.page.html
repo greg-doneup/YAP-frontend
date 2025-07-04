@@ -1,4 +1,40 @@
 <ion-content>
+  <!-- Desktop/Tablet overlay message -->
+  <div class="desktop-overlay">
+    <div class="desktop-content">
+      <div class="desktop-logo">
+        <img src="assets/logo/YAP.png" alt="YAP Logo" />
+      </div>
+      
+      <h1 class="desktop-title">Welcome to YAP</h1>
+      <p class="desktop-subtitle">Your AI-Powered Language Learning Companion</p>
+      
+      <div class="mobile-instruction">
+        <div class="mobile-icon">📱</div>
+        <div class="mobile-text">For the best experience, please access YAP from your mobile device</div>
+        <div class="mobile-subtext">YAP is optimized for mobile learning on-the-go</div>
+      </div>
+      
+      <div class="desktop-features">
+        <div class="feature-item">
+          <div class="feature-icon">🎯</div>
+          <div class="feature-title">Personalized Learning</div>
+          <div class="feature-desc">AI-powered lessons tailored to your pace</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🗣️</div>
+          <div class="feature-title">Speech Practice</div>
+          <div class="feature-desc">Real-time pronunciation feedback</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">💰</div>
+          <div class="feature-title">Earn Rewards</div>
+          <div class="feature-desc">Get paid to practice languages</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Skip button with enhanced styling -->
   <div *ngIf="currentSlide < totalSlides - 1" class="skip-button">
     <ion-button fill="clear" color="light" (click)="skipIntro()">
@@ -162,73 +198,73 @@
               </div>
             </div>
           </div>
-          
-          <!-- Community Network Animation (Slide 3) -->
-          <div *ngIf="i === 3" class="slide-animation">
-            <div class="community-animation-container">
-              <div class="community-network">
-                <!-- Central globe/connection hub -->
-                <div class="community-hub">
-                  <div class="globe-icon">🌐</div>
-                  <div class="hub-pulse"></div>
+        </div>
+        
+        <!-- Community Network Animation (Slide 4) - MOVED OUTSIDE IMAGE BLOCK -->
+        <div *ngIf="i === 3" class="slide-animation">
+          <div class="community-animation-container">
+            <div class="community-network">
+              <!-- Central globe/connection hub -->
+              <div class="community-hub">
+                <div class="globe-icon">🌐</div>
+                <div class="hub-pulse"></div>
+              </div>
+              
+              <!-- Floating user avatars in orbit -->
+              <div class="community-users">
+                <div class="user-avatar" 
+                     *ngFor="let user of communityData.users; let j = index"
+                     [attr.data-country]="user.country"
+                     [style.animation-delay]="j * 0.3 + 's'">
+                  <div class="avatar-circle">
+                    <span class="flag">{{ user.flag }}</span>
+                    <div class="connection-line"></div>
+                  </div>
+                  <div class="user-info">
+                    <span class="user-name">{{ user.name }}</span>
+                    <span class="learning">Learning {{ user.learning }}</span>
+                  </div>
+                  <div class="achievement-badge">{{ user.badge }}</div>
                 </div>
-                
-                <!-- Floating user avatars in orbit -->
-                <div class="community-users">
-                  <div class="user-avatar" 
-                       *ngFor="let user of communityData.users; let j = index"
-                       [attr.data-country]="user.country"
-                       [style.animation-delay]="j * 0.3 + 's'">
-                    <div class="avatar-circle">
-                      <span class="flag">{{ user.flag }}</span>
-                      <div class="connection-line"></div>
-                    </div>
-                    <div class="user-info">
-                      <span class="user-name">{{ user.name }}</span>
-                      <span class="learning">Learning {{ user.learning }}</span>
-                    </div>
-                    <div class="achievement-badge">{{ user.badge }}</div>
-                  </div>
+              </div>
+              
+              <!-- Language exchange bubbles -->
+              <div class="language-exchanges">
+                <div class="exchange-bubble"
+                     *ngFor="let exchange of communityData.exchanges; let k = index"
+                     [style.animation-delay]="k * 0.8 + 1.5 + 's'">
+                  <div class="from-language">{{ exchange.from }}</div>
+                  <div class="exchange-arrow">↔️</div>
+                  <div class="to-language">{{ exchange.to }}</div>
                 </div>
-                
-                <!-- Language exchange bubbles -->
-                <div class="language-exchanges">
-                  <div class="exchange-bubble"
-                       *ngFor="let exchange of communityData.exchanges; let k = index"
-                       [style.animation-delay]="k * 0.8 + 1.5 + 's'">
-                    <div class="from-language">{{ exchange.from }}</div>
-                    <div class="exchange-arrow">↔️</div>
-                    <div class="to-language">{{ exchange.to }}</div>
-                  </div>
+              </div>
+              
+              <!-- Statistics counters -->
+              <div class="community-stats">
+                <div class="stat-item">
+                  <span class="stat-number">10K+</span>
+                  <span class="stat-label">Active Learners</span>
                 </div>
-                
-                <!-- Statistics counters -->
-                <div class="community-stats">
-                  <div class="stat-item">
-                    <span class="stat-number">10K+</span>
-                    <span class="stat-label">Active Learners</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-number">50+</span>
-                    <span class="stat-label">Languages</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-number">1M+</span>
-                    <span class="stat-label">Conversations</span>
-                  </div>
+                <div class="stat-item">
+                  <span class="stat-number">50+</span>
+                  <span class="stat-label">Languages</span>
                 </div>
-                
-                <!-- Floating success messages -->
-                <div class="success-messages">
-                  <div class="success-message" [style.animation-delay]="'2.5s'">
-                    "Made my first friend in Spanish! 🎉"
-                  </div>
-                  <div class="success-message" [style.animation-delay]="'3.8s'">
-                    "Level up! Arabic pronunciation improved! 📈"
-                  </div>
-                  <div class="success-message" [style.animation-delay]="'5.1s'">
-                    "Helped someone with English today! 🤝"
-                  </div>
+                <div class="stat-item">
+                  <span class="stat-number">1M+</span>
+                  <span class="stat-label">Conversations</span>
+                </div>
+              </div>
+              
+              <!-- Floating success messages -->
+              <div class="success-messages">
+                <div class="success-message" [style.animation-delay]="'2.5s'">
+                  "Made my first friend in Spanish! 🎉"
+                </div>
+                <div class="success-message" [style.animation-delay]="'3.8s'">
+                  "Level up! Arabic pronunciation improved! 📈"
+                </div>
+                <div class="success-message" [style.animation-delay]="'5.1s'">
+                  "Helped someone with English today! 🤝"
                 </div>
               </div>
             </div>
@@ -270,7 +306,7 @@
               <div class="pulsing-glow"></div>
             </div>
             
-            <!-- Get Started button -->
+            <!-- Get Started button for new users -->
             <ion-button 
               expand="block"
               class="yap-button get-started-button" 
@@ -279,14 +315,24 @@
               <span>{{ slide.buttonText }}</span>
             </ion-button>
             
-            <!-- I already have an account button -->
+            <!-- Waitlist users without wallet -->
             <ion-button 
               expand="block"
-              class="yap-button account-button" 
+              class="yap-button waitlist-button" 
               fill="outline"
-              (click)="loginExisting()">
-              <ion-icon name="person-outline" slot="start"></ion-icon>
+              (click)="joinFromWaitlist()">
+              <ion-icon name="people-outline" slot="start"></ion-icon>
               <span>{{ slide.secondButtonText }}</span>
+            </ion-button>
+            
+            <!-- Existing wallet users (third user flow) -->
+            <ion-button 
+              expand="block"
+              class="yap-button wallet-recovery-button" 
+              fill="clear"
+              (click)="recoverWallet()">
+              <ion-icon name="wallet-outline" slot="start"></ion-icon>
+              <span>{{ slide.thirdButtonText }}</span>
             </ion-button>
           </ng-container>
         </div>
