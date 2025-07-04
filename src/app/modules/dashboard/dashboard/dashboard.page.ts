@@ -12,6 +12,7 @@ import { ApiService } from '../../../core/api-service.service';
 import { DailyAllowanceService, DailyAllowance, LessonAccess } from '../../../services/daily-allowance.service';
 import { DismissedCardsService } from '../../../shared/services/dismissed-cards.service';
 import { DailyTrackerData } from '../../../shared/components/daily-tracker/daily-tracker.component';
+import { AiChatPage, DailyChatCompletion, ChatWordAnalysis } from '../../ai-chat/ai-chat.page';
 import { Subscription } from 'rxjs';
 
 
@@ -120,6 +121,20 @@ export class DashboardPage implements OnInit, OnDestroy {
       name: "Jacob jones",
       earnings: 2000
     }
+  };
+
+  // Voice chat progress tracking
+  voiceChatStats = {
+    freeMessagesUsed: 0,
+    freeMessagesLimit: 4,
+    paidMessagesUsed: 0,
+    hasEarnedDailyToken: false,
+    megaBonusProgress: 0,
+    megaBonusTarget: 10,
+    canEarnMegaBonus: false,
+    hasEarnedMegaBonus: false,
+    extractedWords: 0,
+    canAccessQuiz: false
   };
 
   constructor(
@@ -257,6 +272,11 @@ export class DashboardPage implements OnInit, OnDestroy {
     this.subscriptions.forEach(sub => sub.unsubscribe());
   }
   
+  ionViewWillEnter() {
+    // Refresh voice chat progress when returning to dashboard
+    this.loadVoiceChatProgress();
+  }
+  
   /**
    * Initialize the state of dismissible cards
    */
@@ -332,6 +352,9 @@ export class DashboardPage implements OnInit, OnDestroy {
             
             // Load user earnings data including waitlist bonus
             this.loadUserEarnings();
+            
+            // Load voice chat progress
+            this.loadVoiceChatProgress();
           } else {
             // Default settings for non-authenticated users
             this.isNewUser = true;
@@ -464,40 +487,59 @@ export class DashboardPage implements OnInit, OnDestroy {
   }
   
   /**
-   * Open AI Chat with allowance and token verification
+   * Open AI Chat with voice-only allowance and token verification
    */
   async openAiChat() {
     try {
-      // First check if user has free allowances
-      const allowanceCheck = await this.tokenService.canUseFeature('ai-chat').toPromise();
+      // Load current voice chat progress
+      this.loadVoiceChatProgress();
       
-      if (allowanceCheck?.canUse && (allowanceCheck.allowanceRemaining || 0) > 0) {
-        // User has free allowances, can proceed
+      // Check if user has free voice messages remaining
+      if (this.voiceChatStats.freeMessagesUsed < this.voiceChatStats.freeMessagesLimit) {
+        const remaining = this.voiceChatStats.freeMessagesLimit - this.voiceChatStats.freeMessagesUsed;
+        console.log(`User has ${remaining} free voice messages remaining`);
         this.router.navigate(['/ai-chat']);
         return;
       }
 
-      // No free allowances, check token balance
+      console.log('No free voice messages, checking token balance...');
+      
+      // No free voice messages, check token balance (need 2 tokens per voice message)
       const tokenBalance = await this.tokenService.getTokenBalance().toPromise();
       
-      if (!tokenBalance || tokenBalance.balance < 5) {
-        // Show token spending modal or insufficient balance warning
+      if (!tokenBalance || tokenBalance.balance < 2) {
+        // Show voice-specific insufficient balance warning
         const toast = await this.toastCtrl.create({
-          message: 'No free AI chat messages remaining today and insufficient tokens. You need at least 5 tokens, or wait for your daily allowance to reset.',
-          duration: 4000,
+          message: `You've used your ${this.voiceChatStats.freeMessagesLimit} free voice messages today! Each additional voice message costs 2 YAP tokens. You need at least 2 tokens to continue.`,
+          duration: 5000,
           color: 'warning',
-          position: 'top'
+          position: 'top',
+          buttons: [
+            {
+              text: 'Earn Tokens',
+              handler: () => {
+                // Navigate to lessons/quiz to earn tokens
+                this.router.navigate(['/vocab-practice']);
+              }
+            },
+            {
+              text: 'Close',
+              role: 'cancel'
+            }
+          ]
         });
         await toast.present();
         return;
       }
       
-      // Navigate to AI chat page
+      // User has tokens, navigate to voice chat
+      console.log('User has sufficient tokens for voice chat');
       this.router.navigate(['/ai-chat']);
+      
     } catch (error) {
-      console.error('Error opening AI chat:', error);
+      console.error('Error opening voice chat:', error);
       const toast = await this.toastCtrl.create({
-        message: 'Unable to start AI chat. Please try again.',
+        message: 'Unable to start voice chat. Please try again.',
         duration: 3000,
         color: 'danger',
         position: 'top'
@@ -1005,6 +1047,107 @@ export class DashboardPage implements OnInit, OnDestroy {
         return 'Review';
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  }
+
+  /**
+   * Load voice chat progress from localStorage
+   */
+  loadVoiceChatProgress(): void {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const savedCompletion = localStorage.getItem(`dailyVoiceCompletion_${today}`);
+      
+      if (savedCompletion) {
+        const completion: DailyChatCompletion = JSON.parse(savedCompletion);
+        
+        this.voiceChatStats = {
+          freeMessagesUsed: completion.messagesCompleted || 0,
+          freeMessagesLimit: completion.targetMessages || 4,
+          paidMessagesUsed: completion.paidMessagesCount || 0,
+          hasEarnedDailyToken: completion.isCompleted || false,
+          megaBonusProgress: Math.min(completion.paidMessagesCount || 0, 10),
+          megaBonusTarget: 10,
+          canEarnMegaBonus: (completion.paidMessagesCount || 0) >= 10 && !completion.extendedSessionBonus,
+          hasEarnedMegaBonus: (completion.extendedSessionBonus || 0) > 0,
+          extractedWords: completion.wordsExtracted?.length || 0,
+          canAccessQuiz: completion.isCompleted || false
+        };
+      } else {
+        // Default values for new day
+        this.voiceChatStats = {
+          freeMessagesUsed: 0,
+          freeMessagesLimit: 4,
+          paidMessagesUsed: 0,
+          hasEarnedDailyToken: false,
+          megaBonusProgress: 0,
+          megaBonusTarget: 10,
+          canEarnMegaBonus: false,
+          hasEarnedMegaBonus: false,
+          extractedWords: 0,
+          canAccessQuiz: false
+        };
+      }
+      
+      console.log('Voice chat progress loaded:', this.voiceChatStats);
+    } catch (error) {
+      console.error('Error loading voice chat progress:', error);
+    }
+  }
+
+  /**
+   * Get today's voice chat words for quiz integration
+   */
+  getTodaysVoiceChatWords(): ChatWordAnalysis[] {
+    return AiChatPage.getTodaysChatWords();
+  }
+
+  /**
+   * Check if voice chat is completed (required for quiz access)
+   */
+  hasCompletedVoiceChatToday(): boolean {
+    return AiChatPage.hasCompletedVoiceChatToday();
+  }
+
+  /**
+   * Get voice chat completion status for UI display
+   */
+  getVoiceChatCompletionStatus(): string {
+    if (this.voiceChatStats.hasEarnedDailyToken) {
+      return 'completed';
+    } else if (this.voiceChatStats.freeMessagesUsed > 0) {
+      return 'in-progress';
+    } else {
+      return 'not-started';
+    }
+  }
+
+  /**
+   * Get progress message for voice chat
+   */
+  getVoiceChatProgressMessage(): string {
+    const remaining = this.voiceChatStats.freeMessagesLimit - this.voiceChatStats.freeMessagesUsed;
+    
+    if (this.voiceChatStats.hasEarnedDailyToken) {
+      return `✅ Daily voice chat completed! ${this.voiceChatStats.extractedWords} words ready for quiz`;
+    } else if (remaining > 0) {
+      return `${remaining} free voice messages remaining`;
+    } else {
+      return '🎯 Complete voice chat to unlock daily quiz';
+    }
+  }
+
+  /**
+   * Get mega bonus progress message
+   */
+  getMegaBonusProgressMessage(): string {
+    if (this.voiceChatStats.hasEarnedMegaBonus) {
+      return '🌟 Mega bonus earned! (+10 tokens)';
+    } else if (this.voiceChatStats.paidMessagesUsed > 0) {
+      const remaining = this.voiceChatStats.megaBonusTarget - this.voiceChatStats.paidMessagesUsed;
+      return `🎯 ${remaining} more paid messages = 10 token mega bonus!`;
+    } else {
+      return '💎 Reach 10 paid voice messages for 10 token bonus (50% cashback!)';
     }
   }
 }

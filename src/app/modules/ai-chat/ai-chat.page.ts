@@ -3,6 +3,9 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { TokenService, TokenSpendingRequest } from '../../services/token.service';
 import { AudioService, AudioTrack } from '../../services/audio.service';
+import { AiChatSessionService, AiChatSession } from '../../services/ai-chat-session.service';
+import { BlockchainService } from '../../services/blockchain.service';
+import { RewardService } from '../../core/reward/reward.service';
 import { ToastController, ModalController, AlertController } from '@ionic/angular';
 import { Subscription } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -47,6 +50,27 @@ export interface WordScore {
   feedback?: string;
 }
 
+export interface ChatWordAnalysis {
+  word: string;
+  isQuizWorthy: boolean;
+  difficulty: 'easy' | 'medium' | 'hard';
+  frequency: number;
+  partOfSpeech: 'noun' | 'verb' | 'adjective' | 'adverb' | 'other';
+  translation?: string;
+}
+
+export interface DailyChatCompletion {
+  date: string;
+  messagesCompleted: number;
+  targetMessages: number;
+  tokensEarned: number;
+  wordsExtracted: ChatWordAnalysis[];
+  isCompleted: boolean;
+  extendedSessionBonus?: number;
+  paidMessagesCount: number;
+  sessionTokensSpent: number;
+}
+
 @Component({
   selector: 'app-ai-chat',
   templateUrl: './ai-chat.page.html',
@@ -77,7 +101,10 @@ export class AiChatPage implements OnInit, OnDestroy {
   isRecording = false;
   isProcessing = false;
   isConnected = false;
-  isSessionInitialized = false;  // Add guard to prevent duplicate session initialization
+  isInitializing = false;
+  
+  // Session management through singleton service
+  private aiChatSession: AiChatSession | null = null;
   
   // Token tracking
   sessionTokensUsed = 0;
@@ -107,6 +134,21 @@ export class AiChatPage implements OnInit, OnDestroy {
   // Selected response for practice
   selectedResponseForPractice?: SuggestedResponse;
 
+  // Token earning tracking - Voice-only chat limits
+  dailyFreeVoiceLimit = 4; // Reduced for voice-only chats
+  currentDailyVoiceCount = 0;
+  currentPaidVoiceCount = 0;
+  hasEarnedDailyToken = false;
+  hasEarnedExtendedSessionBonus = false;
+  extractedChatWords: ChatWordAnalysis[] = [];
+  
+  // Completion tracking
+  dailyCompletion: DailyChatCompletion | null = null;
+  
+  // Voice-specific tracking
+  sessionVoiceMessages = 0;
+  isUsingFreeAllowance = true;
+
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -114,152 +156,124 @@ export class AiChatPage implements OnInit, OnDestroy {
     private http: HttpClient,
     private tokenService: TokenService,
     private audioService: AudioService,
+    private aiChatSessionService: AiChatSessionService,
+    private blockchainService: BlockchainService,
+    private rewardService: RewardService,
     private toastController: ToastController,
     private modalController: ModalController,
     private alertController: AlertController
-  ) {}
+  ) {
+    const componentId = 'comp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+    console.log('� AiChatPage: Constructor called', { componentId });
+  }
 
-  ngOnInit() {
-    this.initializeChat();
-    // Welcome message is now handled by the backend initial AI message
-    // this.addWelcomeMessage();
+  async ngOnInit() {
+    console.log('🚀 AiChatPage: ngOnInit called');
+    
+    // Subscribe to the session service
+    this.subscriptions.push(
+      this.aiChatSessionService.session$.subscribe(session => {
+        if (session) {
+          console.log('🚀 AiChatPage: Received session from service:', session.sessionId);
+          this.aiChatSession = session;
+          this.sessionId = session.sessionId;
+          this.userId = session.userId;
+          this.isConnected = session.isConnected;
+          this.messages = [...session.messages]; // Copy messages
+        }
+      })
+    );
+    
+    // Initialize daily tracking
+    await this.initializeDailyTracking();
+    
+    // Initialize the chat
+    await this.initializeChat();
   }
 
   ngOnDestroy() {
+    console.log('🚀 AiChatPage: ngOnDestroy called');
     this.subscriptions.forEach(sub => sub.unsubscribe());
     this.disconnectWebSocket();
     this.audioService.dispose(); // Clean up audio resources
   }
 
   ionViewWillEnter() {
-    // Reconnect when user returns to this page, but only if not already initialized
-    if (!this.isConnected && !this.isSessionInitialized) {
-      console.log('Reconnecting to AI chat service...');
-      this.initializeChat();
-    }
+    console.log('🚀 AiChatPage: ionViewWillEnter called');
+    // No additional initialization needed - everything is handled by the session service
   }
 
   /**
    * Initialize chat session and check allowances, then token balance
    */
   async initializeChat() {
+    console.log('🚀 AiChatPage: initializeChat called');
+    
     // Prevent duplicate initialization
-    if (this.isSessionInitialized) {
-      console.log('Chat already initialized, skipping...');
+    if (this.isInitializing) {
+      console.log('🚀 AiChatPage: Already initializing, skipping...');
       return;
     }
-
+    
+    this.isInitializing = true;
+    
     try {
-      // First check if user has free allowances for AI chat
-      const allowanceCheck = await this.tokenService.canUseFeature('ai-chat').toPromise();
-      
-      if (allowanceCheck?.canUse) {
-        console.log('User has free AI chat allowance available');
-        await this.connectToAiService();
+      // Check if user has free voice messages remaining
+      if (this.currentDailyVoiceCount < this.dailyFreeVoiceLimit) {
+        console.log(`🚀 AiChatPage: User has ${this.dailyFreeVoiceLimit - this.currentDailyVoiceCount} free voice messages remaining`);
+        await this.getOrCreateSession();
         this.sessionStartTime = new Date();
+        console.log('🚀 AiChatPage: Initialization completed successfully with free voice allowance');
         return;
       }
 
-      // No free allowances, check token balance
+      console.log('🚀 AiChatPage: No free voice messages, checking token balance...');
+      
+      // No free voice messages, check token balance (need 2 tokens per voice message)
       const balance = await this.tokenService.getTokenBalance().toPromise();
-      if (!balance || balance.balance < 5) {
-        await this.showInsufficientTokensWarning();
+      if (!balance || balance.balance < 2) {
+        console.log('🚀 AiChatPage: Insufficient token balance for voice chat');
+        await this.showInsufficientTokensForVoiceWarning();
         this.router.navigate(['/dashboard']);
         return;
       }
 
+      console.log('🚀 AiChatPage: User has tokens for voice chat, connecting to service...');
+      
       // User has tokens, connect to service
-      await this.connectToAiService();
+      await this.getOrCreateSession();
       this.sessionStartTime = new Date();
+      console.log('🚀 AiChatPage: Initialization completed successfully with tokens');
       
     } catch (error) {
-      console.error('Error initializing chat:', error);
-      await this.showErrorToast('Failed to initialize chat session');
+      console.error('🚀 AiChatPage: Error initializing chat:', error);
+      await this.showErrorToast('Failed to initialize voice chat session');
+    } finally {
+      this.isInitializing = false;
     }
   }
-
+  
   /**
-   * Add welcome message to chat
+   * Get or create AI chat session through the singleton service
    */
-  private async addWelcomeMessage() {
-    // Check current allowance status
-    const allowance = await this.tokenService.getFeatureAllowance('ai-chat').toPromise();
-    
-    let welcomeContent = 'Hello! I\'m your AI language tutor. You can practice speaking with me by typing or using voice messages.';
-    
-    if (allowance && allowance.remaining > 0) {
-      welcomeContent += ` You have ${allowance.remaining} free messages remaining today. After that, messages will cost 1 token each.`;
-    } else {
-      welcomeContent += ' Messages cost 1 token each.';
+  private async getOrCreateSession(): Promise<void> {
+    try {
+      const session = await this.aiChatSessionService.getOrCreateSession();
+      console.log('🚀 AiChatPage: Got session from service:', session.sessionId);
+      
+      // The session will be automatically updated via the subscription in ngOnInit
+      this.isConnected = true;
+    } catch (error) {
+      console.error('🚀 AiChatPage: Error getting session from service:', error);
+      throw error;
     }
-
-    const welcomeMessage: ChatMessage = {
-      id: 'welcome-' + Date.now(),
-      content: welcomeContent,
-      isUser: false,
-      timestamp: new Date()
-    };
-    this.messages.push(welcomeMessage);
   }
 
   /**
    * Get current user ID (placeholder implementation)
    */
   private getCurrentUserId(): string {
-    // TODO: Replace with actual user ID from authentication service
-    // For now, generate a simple session-based ID
-    if (!this.userId) {
-      this.userId = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    }
-    return this.userId;
-  }
-
-  /**
-   * Connect to AI chat service (HTTP fallback)
-   */
-  private async connectToAiService() {
-    // Prevent duplicate session initialization
-    if (this.isSessionInitialized) {
-      console.log('Session already initialized, skipping...');
-      return;
-    }
-
-    try {
-      // Start a new chat session with the AI service
-      const sessionResponse = await this.http.post<any>(`${environment.apiUrl}/chat/start-session`, {
-        userId: this.getCurrentUserId(),
-        language: 'spanish',
-        cefrLevel: 'B1',
-        conversationMode: 'free' as const
-      }).toPromise();
-
-      if (sessionResponse && sessionResponse.success && sessionResponse.session) {
-        this.sessionId = sessionResponse.session.sessionId;
-        this.userId = this.getCurrentUserId();
-        this.isConnected = true;
-        console.log('Connected to AI chat service with sessionId:', this.sessionId);
-        
-        // Add the initial AI message if provided
-        if (sessionResponse.session.initialMessage) {
-          const initialMessage: ChatMessage = {
-            id: 'ai-initial-' + Date.now(),
-            content: sessionResponse.session.initialMessage,
-            isUser: false,
-            timestamp: new Date(),
-            translation: sessionResponse.session.initialMessageTranslation,
-            showTranslation: true,  // Always show translations for AI messages
-            showSideBySide: false   // Default to collapsed side-by-side view
-          };
-          this.messages.push(initialMessage);
-          this.isSessionInitialized = true;  // Mark session as initialized
-        }
-      } else {
-        throw new Error('Failed to get session ID from AI service');
-      }
-    } catch (error) {
-      console.error('Error connecting to AI service:', error);
-      throw error;
-    }
+    return this.userId || 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   }
 
   /**
@@ -271,24 +285,19 @@ export class AiChatPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Send text message
+   * Send text message - DISABLED for voice-only chat
    */
   async sendMessage() {
-    if (!this.currentMessage.trim()) return;
-
-    const userMessage: ChatMessage = {
-      id: 'user-' + Date.now(),
-      content: this.currentMessage,
-      isUser: true,
-      timestamp: new Date()
-    };
-
-    this.messages.push(userMessage);
+    // Voice-only chat - redirect to voice recording
+    const alert = await this.alertController.create({
+      header: 'Voice Chat Only',
+      message: 'This is a voice-only conversation experience. Please use the microphone button to speak!',
+      buttons: ['OK']
+    });
+    await alert.present();
+    
+    // Clear any text input
     this.currentMessage = '';
-
-    // Spend tokens and send to AI
-    await this.processUserMessage(userMessage);
-    this.scrollToBottom();
   }
 
   /**
@@ -353,7 +362,8 @@ export class AiChatPage implements OnInit, OnDestroy {
       audioTrack
     };
 
-    this.messages.push(audioMessage);
+    // Add message to the session service
+    this.aiChatSessionService.addMessage(audioMessage);
     
     // Process the message (this will trigger AI response and speech-to-text)
     await this.processUserMessage(audioMessage);
@@ -381,29 +391,40 @@ export class AiChatPage implements OnInit, OnDestroy {
   private async processUserMessage(message: ChatMessage) {
     try {
       this.isProcessing = true;
+      this.sessionVoiceMessages++;
 
-      // First try to use daily allowance
-      const allowanceCheck = await this.tokenService.canUseFeature('ai-chat').toPromise();
-      
-      if (allowanceCheck?.canUse && (allowanceCheck.allowanceRemaining || 0) > 0) {
-        // Use free allowance
-        const allowanceResult = await this.tokenService.useAllowance('ai-chat', 1).toPromise();
+      // Check if user is still within free voice allowance
+      if (this.currentDailyVoiceCount < this.dailyFreeVoiceLimit) {
+        // Use free voice allowance
+        this.currentDailyVoiceCount++;
+        this.isUsingFreeAllowance = true;
         
-        if (allowanceResult?.success) {
-          console.log(`Used free allowance for AI chat. Remaining: ${allowanceResult.remaining}`);
-          await this.sendToAiService(message);
-          return;
+        // Update daily completion tracking
+        if (this.dailyCompletion) {
+          this.dailyCompletion.messagesCompleted = this.currentDailyVoiceCount;
+          this.saveDailyCompletion();
         }
+        
+        console.log(`Used free voice message ${this.currentDailyVoiceCount}/${this.dailyFreeVoiceLimit}`);
+        await this.sendToAiService(message);
+        
+        // Check if user has completed daily allowance
+        await this.checkDailyVoiceCompletion();
+        
+        return;
       }
 
-      // No free allowances available, try spending tokens
+      // Free allowance exhausted, need to spend tokens
+      this.isUsingFreeAllowance = false;
+      
       const spendingRequest: TokenSpendingRequest = {
-        featureId: 'ai-chat',
-        amount: 1, // 1 token per message
-        action: 'chat_message',
+        featureId: 'ai-chat-voice',
+        amount: 2, // 2 tokens per voice message (more expensive than text)
+        action: 'voice_chat_message',
         metadata: {
           messageId: message.id,
-          messageType: message.isAudio ? 'audio' : 'text'
+          messageType: 'voice',
+          sessionId: this.sessionId
         }
       };
 
@@ -414,10 +435,25 @@ export class AiChatPage implements OnInit, OnDestroy {
         return;
       }
 
-      this.sessionTokensUsed += 1;
-      console.log(`Spent 1 token for AI chat. New balance: ${spendingResult.newBalance}`);
+      this.sessionTokensUsed += 2;
+      this.currentPaidVoiceCount++;
+      
+      // Update daily completion tracking with paid message data
+      if (this.dailyCompletion) {
+        this.dailyCompletion.paidMessagesCount = this.currentPaidVoiceCount;
+        this.dailyCompletion.sessionTokensSpent = this.sessionTokensUsed;
+        this.saveDailyCompletion();
+      }
+      
+      console.log(`Spent 2 tokens for voice chat. New balance: ${spendingResult.newBalance}`);
       
       await this.sendToAiService(message);
+      
+      // Show mega bonus progress
+      await this.showMegaBonusProgress();
+      
+      // Check for extended session bonus
+      await this.checkExtendedSessionBonus();
 
     } catch (error) {
       console.error('Error processing message:', error);
@@ -512,15 +548,7 @@ export class AiChatPage implements OnInit, OnDestroy {
     
     // Use suggested responses from backend if available, otherwise generate fallback
     let suggestedResponses: SuggestedResponse[] = [];
-    if (response.suggestedResponses && response.suggestedResponses.length > 0) {
-      // Backend provides suggested responses as strings, convert to our format
-      suggestedResponses = response.suggestedResponses.slice(0, 3).map((suggestion: string, index: number) => ({
-        id: 'backend-suggestion-' + Date.now() + '-' + index,
-        spanish: suggestion,
-        english: '', // Will be generated
-        difficulty: 'medium' as const
-      }));
-      
+    
     // Use translation from backend if available, otherwise generate one
     let translation = '';
     if (response.aiMessageTranslation) {
@@ -590,27 +618,26 @@ export class AiChatPage implements OnInit, OnDestroy {
     console.log('Suggested Responses from Backend:', response.suggestedResponses);
     console.log('Final AI Message:', aiMessage);
 
-    this.messages.push(aiMessage);
+    // Add AI message to the session service
+    this.aiChatSessionService.addMessage(aiMessage);
     
     // Handle pronunciation result if this was a voice message
     if (originalMessage?.isAudio && response.pronunciationResult) {
-      // Find the user message and add pronunciation assessment
-      const userMessage = this.messages.find(msg => msg.id === originalMessage.id);
-      if (userMessage) {
-        userMessage.pronunciation = {
+      // Find the user message and update it with pronunciation assessment
+      this.aiChatSessionService.updateMessage(originalMessage.id, {
+        pronunciation: {
           overallScore: response.pronunciationResult.overallScore || 85,
           accuracyScore: response.pronunciationResult.accuracyScore || 85,
           fluencyScore: response.pronunciationResult.fluencyScore || 85,
           completenessScore: response.pronunciationResult.completenessScore || 85,
           feedback: response.pronunciationResult.feedback || 'Good pronunciation!',
           wordScores: response.pronunciationResult.wordDetails || []
-        };
-        console.log('Added pronunciation assessment to user message:', userMessage.pronunciation);
-      }
+        }
+      });
+      console.log('Added pronunciation assessment to user message:', originalMessage.id);
     }
     
     this.scrollToBottom();
-  }
   }
 
   /**
@@ -741,16 +768,50 @@ export class AiChatPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Show error toast
+   * Show insufficient tokens warning for voice chat
    */
-  private async showErrorToast(message: string) {
-    const toast = await this.toastController.create({
-      message,
-      duration: 3000,
-      color: 'danger',
-      position: 'top'
+  private async showInsufficientTokensForVoiceWarning() {
+    const stats = this.getVoiceChatStats();
+    const remainingForBonus = Math.max(0, 10 - this.currentPaidVoiceCount);
+    
+    const alert = await this.alertController.create({
+      header: 'Voice Chat Requires Tokens',
+      message: `
+        <div style="text-align: left;">
+          <p>You've used your ${this.dailyFreeVoiceLimit} free voice messages for today!</p>
+          <br>
+          <p><strong>To continue voice chatting:</strong></p>
+          <ul>
+            <li>Each voice message costs 2 YAP tokens</li>
+            <li>You need at least 2 tokens to continue</li>
+          </ul>
+          <br>
+          ${!this.hasEarnedExtendedSessionBonus && remainingForBonus > 0 ? `
+          <div style="background: linear-gradient(135deg, #4CAF50, #45a049); padding: 12px; border-radius: 8px; color: white; margin: 10px 0;">
+            <p style="margin: 0; font-weight: bold;">🎯 MEGA BONUS OPPORTUNITY!</p>
+            <p style="margin: 5px 0 0 0; font-size: 14px;">
+              Just ${remainingForBonus} more paid messages = <strong>10 YAP tokens bonus!</strong><br>
+              (That's 50% cashback on your spending!)
+            </p>
+          </div>
+          ` : ''}
+          <p><em>💡 Complete lessons and quizzes to earn more tokens!</em></p>
+        </div>
+      `,
+      buttons: [
+        {
+          text: 'Get Tokens',
+          handler: () => {
+            this.router.navigate(['/dashboard']);
+          }
+        },
+        {
+          text: 'Close',
+          role: 'cancel'
+        }
+      ]
     });
-    await toast.present();
+    await alert.present();
   }
 
   /**
@@ -759,17 +820,31 @@ export class AiChatPage implements OnInit, OnDestroy {
   async exitChat() {
     this.disconnectWebSocket();
     
-    // Show session summary
+    // Show session summary with voice-specific stats
     const sessionDuration = this.sessionStartTime ? 
       Math.round((Date.now() - this.sessionStartTime.getTime()) / 60000) : 0;
 
-    const toast = await this.toastController.create({
-      message: `Chat session ended. Duration: ${sessionDuration} min, Tokens used: ${this.sessionTokensUsed}`,
-      duration: 4000,
-      color: 'success',
-      position: 'top'
+    const stats = this.getVoiceChatStats();
+    const remainingForBonus = Math.max(0, 10 - this.currentPaidVoiceCount);
+    
+    const alert = await this.alertController.create({
+      header: 'Voice Chat Session Complete',
+      message: `
+        <div style="text-align: left;">
+          <p><strong>Session Duration:</strong> ${sessionDuration} minutes</p>
+          <p><strong>Free Voice Messages Used:</strong> ${stats.freeMessagesUsed}/${stats.freeMessagesLimit}</p>
+          <p><strong>Paid Voice Messages:</strong> ${stats.paidMessagesUsed}</p>
+          <p><strong>Tokens Spent:</strong> ${this.sessionTokensUsed}</p>
+          ${stats.hasEarnedDailyToken ? '<p><strong>🎉 Daily Token Earned!</strong></p>' : ''}
+          ${stats.hasEarnedExtendedBonus ? '<p><strong>🌟 Mega Bonus Earned: 10 Tokens!</strong></p>' : ''}
+          ${!stats.hasEarnedExtendedBonus && remainingForBonus === 0 ? '<p><strong>🎯 Ready for Mega Bonus next session!</strong></p>' : ''}
+          ${!stats.hasEarnedExtendedBonus && remainingForBonus > 0 ? `<p><strong>🎯 ${remainingForBonus} more paid messages for 10 token bonus!</strong></p>` : ''}
+          <p><strong>Quiz Words Extracted:</strong> ${stats.extractedWords}</p>
+        </div>
+      `,
+      buttons: ['Continue']
     });
-    await toast.present();
+    await alert.present();
 
     this.router.navigate(['/dashboard']);
   }
@@ -800,7 +875,8 @@ export class AiChatPage implements OnInit, OnDestroy {
       translation: response.english
     };
 
-    this.messages.push(userMessage);
+    // Add message to the session service
+    this.aiChatSessionService.addMessage(userMessage);
     
     // Process the message
     await this.processUserMessage(userMessage);
@@ -1267,5 +1343,404 @@ export class AiChatPage implements OnInit, OnDestroy {
       position: 'top'
     });
     await toast.present();
+  }
+
+  /**
+   * TrackBy function for messages to prevent duplicate rendering
+   */
+  trackByMessageId(index: number, message: ChatMessage): string {
+    return message.id;
+  }
+
+  /**
+   * Initialize daily tracking for voice chats and token earning
+   */
+  async initializeDailyTracking() {
+    try {
+      // Get today's date string
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Load daily completion data from localStorage
+      const savedCompletion = localStorage.getItem(`dailyVoiceCompletion_${today}`);
+      
+      if (savedCompletion) {
+        this.dailyCompletion = JSON.parse(savedCompletion);
+        this.currentDailyVoiceCount = this.dailyCompletion?.messagesCompleted || 0;
+        this.currentPaidVoiceCount = this.dailyCompletion?.paidMessagesCount || 0;
+        this.sessionTokensUsed = this.dailyCompletion?.sessionTokensSpent || 0;
+        this.hasEarnedDailyToken = this.dailyCompletion?.isCompleted || false;
+        this.hasEarnedExtendedSessionBonus = (this.dailyCompletion?.extendedSessionBonus || 0) > 0;
+      } else {
+        // Initialize new daily completion
+        this.dailyCompletion = {
+          date: today,
+          messagesCompleted: 0,
+          targetMessages: this.dailyFreeVoiceLimit,
+          tokensEarned: 0,
+          wordsExtracted: [],
+          isCompleted: false,
+          paidMessagesCount: 0,
+          sessionTokensSpent: 0
+        };
+        this.saveDailyCompletion();
+      }
+      
+      console.log('Daily voice tracking initialized:', this.dailyCompletion);
+    } catch (error) {
+      console.error('Error initializing daily tracking:', error);
+    }
+  }
+
+  /**
+   * Save daily completion to localStorage
+   */
+  private saveDailyCompletion() {
+    if (this.dailyCompletion) {
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.setItem(`dailyVoiceCompletion_${today}`, JSON.stringify(this.dailyCompletion));
+    }
+  }
+
+  /**
+   * Check if user has completed daily voice chat allowance and award token
+   */
+  async checkDailyVoiceCompletion() {
+    if (!this.dailyCompletion || this.hasEarnedDailyToken) {
+      return;
+    }
+
+    // Check if user has used all free voice messages
+    if (this.currentDailyVoiceCount >= this.dailyFreeVoiceLimit) {
+      try {
+        // Award daily voice chat completion token
+        await this.awardDailyVoiceCompletionToken();
+        
+        // Extract words from chat messages for quiz generation
+        await this.extractQuizWordsFromChat();
+        
+        // Mark as completed
+        this.dailyCompletion.isCompleted = true;
+        this.dailyCompletion.tokensEarned = 1;
+        this.hasEarnedDailyToken = true;
+        
+        this.saveDailyCompletion();
+        
+        console.log('Daily voice completion achieved!');
+      } catch (error) {
+        console.error('Error awarding daily voice completion token:', error);
+      }
+    }
+  }
+
+  /**
+   * Award daily voice chat completion token
+   */
+  async awardDailyVoiceCompletionToken() {
+    try {
+      const walletAddress = this.getCurrentUserWalletAddress();
+      if (!walletAddress) {
+        console.warn('No wallet address available for token reward');
+        return;
+      }
+
+      // Record daily completion through blockchain service
+      const result = await this.blockchainService.recordDailyCompletion(walletAddress);
+      
+      if (result.success) {
+        const toast = await this.toastController.create({
+          message: `🎉 Daily voice chat completed! You earned ${result.reward} YAP tokens!`,
+          duration: 4000,
+          color: 'success',
+          position: 'top'
+        });
+        await toast.present();
+        
+        console.log('Daily voice completion token awarded:', result);
+      }
+    } catch (error) {
+      console.error('Error awarding daily voice completion token:', error);
+    }
+  }
+
+  /**
+   * Check for extended session bonus (10+ paid voice messages = 10 token bonus!)
+   */
+  async checkExtendedSessionBonus() {
+    if (this.hasEarnedExtendedSessionBonus || this.currentPaidVoiceCount < 10) {
+      return;
+    }
+
+    try {
+      const walletAddress = this.getCurrentUserWalletAddress();
+      if (!walletAddress) {
+        console.warn('No wallet address available for extended session bonus');
+        return;
+      }
+
+      // Award generous extended session bonus (10 tokens - roughly half of what they spent!)
+      // This creates a strong incentive to reach 10 paid messages
+      const bonusAmount = 10;
+      
+      // Use custom reward to award the full 10 tokens
+      const result = await this.rewardService.recordCompletion(walletAddress).toPromise();
+      
+      // Award additional tokens through multiple lesson completions to reach 10 total
+      if (result?.success) {
+        // Award additional completions to reach the 10 token target
+        for (let i = 0; i < 9; i++) {
+          await this.blockchainService.recordLessonCompletion(
+            walletAddress,
+            9999 + i, // Different lesson IDs for each bonus
+            5, // High difficulty for extended sessions
+            90 // Excellent completion score
+          );
+        }
+        
+        this.hasEarnedExtendedSessionBonus = true;
+        
+        // Update daily completion tracking
+        if (this.dailyCompletion) {
+          this.dailyCompletion.extendedSessionBonus = bonusAmount;
+          this.saveDailyCompletion();
+        }
+        
+        const alert = await this.alertController.create({
+          header: '🎉 MEGA BONUS UNLOCKED!',
+          message: `
+            <div style="text-align: center;">
+              <h3 style="color: #4CAF50; margin: 10px 0;">Congratulations!</h3>
+              <p style="font-size: 18px; margin: 15px 0;">
+                <strong>You earned ${bonusAmount} YAP tokens!</strong>
+              </p>
+              <p style="margin: 10px 0;">
+                🎯 Extended Session Bonus achieved!<br>
+                💰 You spent ~20 tokens and got 10 back!<br>
+                🌟 That's 50% cashback for your dedication!
+              </p>
+              <p style="font-style: italic; color: #666; margin-top: 15px;">
+                Keep up the amazing conversation practice!
+              </p>
+            </div>
+          `,
+          buttons: [
+            {
+              text: '¡Excelente!',
+              handler: () => {
+                // Optional: trigger celebration animation or sound
+              }
+            }
+          ]
+        });
+        await alert.present();
+        
+        console.log('Extended session mega bonus awarded:', bonusAmount, 'tokens');
+      }
+    } catch (error) {
+      console.error('Error awarding extended session bonus:', error);
+    }
+  }
+
+  /**
+   * Extract quiz-worthy words from chat messages
+   */
+  async extractQuizWordsFromChat() {
+    try {
+      // Get all Spanish words from AI messages (excluding user messages)
+      const aiMessages = this.messages.filter(msg => !msg.isUser);
+      const allText = aiMessages.map(msg => msg.content).join(' ');
+      
+      // Extract meaningful words for quiz generation
+      const words = this.extractMeaningfulWords(allText);
+      
+      // Add to daily completion
+      if (this.dailyCompletion) {
+        this.dailyCompletion.wordsExtracted = words;
+        this.saveDailyCompletion();
+      }
+      
+      this.extractedChatWords = words;
+      console.log('Extracted chat words for quiz generation:', words);
+    } catch (error) {
+      console.error('Error extracting chat words:', error);
+    }
+  }
+
+  /**
+   * Extract meaningful words from text for quiz generation
+   */
+  private extractMeaningfulWords(text: string): ChatWordAnalysis[] {
+    // Remove punctuation and split into words
+    const words = text.toLowerCase()
+      .replace(/[.,¡!¿?;:()"""'']/g, '')
+      .split(/\s+/)
+      .filter(word => word.length > 2);
+
+    // Common Spanish words to exclude (articles, prepositions, etc.)
+    const fillerWords = [
+      'el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'al', 'en', 'con', 'por', 'para', 'que', 'se', 'es', 'me', 'te', 'le', 'nos', 'os', 'les', 'y', 'o', 'pero', 'si', 'no', 'muy', 'más', 'tan', 'como', 'cuando', 'donde', 'quien', 'cual', 'este', 'esta', 'estos', 'estas', 'ese', 'esa', 'esos', 'esas', 'aquel', 'aquella', 'aquellos', 'aquellas', 'mi', 'tu', 'su', 'nuestro', 'vuestro', 'mio', 'tuyo', 'suyo', 'nuestros', 'vuestros', 'toda', 'todo', 'todos', 'todas', 'algún', 'alguna', 'algunos', 'algunas', 'ningún', 'ninguna', 'ningunos', 'ningunas'
+    ];
+
+    // Filter out filler words and get unique meaningful words
+    const meaningfulWords = [...new Set(words)]
+      .filter(word => !fillerWords.includes(word))
+      .slice(0, 15); // Limit to 15 words
+
+    return meaningfulWords.map(word => ({
+      word,
+      isQuizWorthy: true,
+      difficulty: this.determineDifficulty(word),
+      frequency: words.filter(w => w === word).length,
+      partOfSpeech: this.guessPartOfSpeech(word),
+      translation: undefined // Will be generated later
+    }));
+  }
+
+  /**
+   * Determine difficulty level of a word
+   */
+  private determineDifficulty(word: string): 'easy' | 'medium' | 'hard' {
+    // Simple heuristics for difficulty
+    if (word.length <= 4) return 'easy';
+    if (word.length <= 7) return 'medium';
+    return 'hard';
+  }
+
+  /**
+   * Guess part of speech (simple heuristics)
+   */
+  private guessPartOfSpeech(word: string): 'noun' | 'verb' | 'adjective' | 'adverb' | 'other' {
+    // Simple Spanish word ending patterns
+    if (word.endsWith('ar') || word.endsWith('er') || word.endsWith('ir')) return 'verb';
+    if (word.endsWith('mente')) return 'adverb';
+    if (word.endsWith('oso') || word.endsWith('osa') || word.endsWith('ivo') || word.endsWith('iva')) return 'adjective';
+    return 'noun'; // Default to noun
+  }
+
+  /**
+   * Get current user wallet address
+   */
+  private getCurrentUserWalletAddress(): string | null {
+    // This would typically come from a wallet service
+    // For now, return a placeholder or get from local storage
+    return localStorage.getItem('walletAddress') || null;
+  }
+
+  /**
+   * Get current voice chat statistics for UI display
+   */
+  getVoiceChatStats() {
+    return {
+      freeMessagesUsed: this.currentDailyVoiceCount,
+      freeMessagesLimit: this.dailyFreeVoiceLimit,
+      paidMessagesUsed: this.currentPaidVoiceCount,
+      hasEarnedDailyToken: this.hasEarnedDailyToken,
+      canEarnExtendedBonus: this.currentPaidVoiceCount >= 10 && !this.hasEarnedExtendedSessionBonus,
+      extendedBonusProgress: this.currentPaidVoiceCount < 10 ? this.currentPaidVoiceCount : 10,
+      extendedBonusTarget: 10,
+      extendedBonusAmount: 10, // Show the enticing 10 token bonus
+      extractedWords: this.extractedChatWords.length,
+      hasEarnedExtendedBonus: this.hasEarnedExtendedSessionBonus
+    };
+  }
+
+  /**
+   * Show error toast
+   */
+  private async showErrorToast(message: string) {
+    const toast = await this.toastController.create({
+      message,
+      duration: 3000,
+      color: 'danger',
+      position: 'top'
+    });
+    await toast.present();
+  }
+
+  /**
+   * Get today's extracted chat words for quiz generation
+   * This should be called by the quiz system
+   */
+  static getTodaysChatWords(): ChatWordAnalysis[] {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const savedCompletion = localStorage.getItem(`dailyVoiceCompletion_${today}`);
+      
+      if (savedCompletion) {
+        const completion: DailyChatCompletion = JSON.parse(savedCompletion);
+        return completion.wordsExtracted || [];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error getting today\'s chat words:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if user has completed voice chat requirement for quiz access
+   */
+  static hasCompletedVoiceChatToday(): boolean {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const savedCompletion = localStorage.getItem(`dailyVoiceCompletion_${today}`);
+      
+      if (savedCompletion) {
+        const completion: DailyChatCompletion = JSON.parse(savedCompletion);
+        return completion.isCompleted || false;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error checking voice chat completion:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear old daily completions (cleanup method)
+   */
+  static clearOldCompletions() {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const keys = Object.keys(localStorage).filter(key => 
+        key.startsWith('dailyVoiceCompletion_') && !key.includes(today)
+      );
+      
+      keys.forEach(key => localStorage.removeItem(key));
+      console.log(`Cleared ${keys.length} old voice completion records`);
+    } catch (error) {
+      console.error('Error clearing old completions:', error);
+    }
+  }
+
+  /**
+   * Show mega bonus progress notification when user starts paying
+   */
+  async showMegaBonusProgress() {
+    if (this.hasEarnedExtendedSessionBonus) return;
+    
+    const remainingForBonus = Math.max(0, 10 - this.currentPaidVoiceCount);
+    
+    // Show progress notifications at certain milestones
+    const shouldShowProgress = [9, 7, 5, 3, 1].includes(remainingForBonus);
+    
+    if (shouldShowProgress) {
+      const toast = await this.toastController.create({
+        message: remainingForBonus === 1 
+          ? `🔥 Just 1 more paid message for your 10 token MEGA BONUS!`
+          : `🎯 ${remainingForBonus} more paid messages = 10 token MEGA BONUS! (50% cashback)`,
+        duration: remainingForBonus === 1 ? 5000 : 3500,
+        color: remainingForBonus <= 3 ? 'warning' : 'primary',
+        position: 'top',
+        buttons: [
+          {
+            text: 'Got it!',
+            role: 'cancel'
+          }
+        ]
+      });
+      await toast.present();
+    }
   }
 }

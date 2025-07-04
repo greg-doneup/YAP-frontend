@@ -1926,3 +1926,267 @@ ion-button {
     padding-top: 20px; // Make room for dismiss button
   }
 }
+
+// Voice Chat Practice Card Styles
+.chat-practice-card {
+  background: rgba(18, 55, 95, 0.7);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  }
+
+  .chat-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+
+    .ai-avatar {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--ion-color-primary), #2196F3);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 1rem;
+
+      ion-icon {
+        font-size: 24px;
+        color: white;
+      }
+    }
+
+    .chat-info {
+      flex: 1;
+
+      h3 {
+        color: white;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+      }
+
+      p {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+        margin: 0;
+      }
+    }
+
+    .voice-progress-badge {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 8px 12px;
+      border-radius: 8px;
+      
+      &.completed {
+        background: rgba(76, 175, 80, 0.2);
+        border: 1px solid rgba(76, 175, 80, 0.3);
+      }
+
+      ion-icon {
+        margin-right: 6px;
+        font-size: 18px;
+      }
+
+      span {
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .voice-progress-container {
+    margin-bottom: 1rem;
+
+    .progress-bar {
+      background: rgba(255, 255, 255, 0.1);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+
+      .progress-fill {
+        background: linear-gradient(90deg, #4CAF50, #8BC34A);
+        height: 100%;
+        transition: width 0.3s ease;
+        border-radius: 4px;
+      }
+    }
+
+    .progress-text {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 0.85rem;
+      text-align: center;
+
+      .completed-text {
+        color: #4CAF50;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .mega-bonus-progress {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.15));
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 1rem;
+
+    .bonus-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+
+      ion-icon {
+        margin-right: 8px;
+        font-size: 18px;
+      }
+
+      .bonus-title {
+        flex: 1;
+        color: #FFC107;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+
+      .bonus-reward {
+        color: #FFC107;
+        font-weight: 700;
+        font-size: 0.9rem;
+      }
+    }
+
+    .bonus-progress-bar {
+      background: rgba(255, 255, 255, 0.1);
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 6px;
+
+      .bonus-progress-fill {
+        background: linear-gradient(90deg, #FFC107, #FF9800);
+        height: 100%;
+        transition: width 0.3s ease;
+        border-radius: 3px;
+      }
+    }
+
+    .bonus-text {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+  }
+
+  .mega-bonus-achieved {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
+    border: 1px solid rgba(255, 193, 7, 0.4);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 1rem;
+
+    ion-icon {
+      margin-right: 8px;
+      font-size: 20px;
+    }
+
+    span {
+      color: #FFC107;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+  }
+
+  .quiz-status {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 1rem;
+
+    &.ready {
+      background: rgba(76, 175, 80, 0.15);
+      border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+
+    .quiz-info {
+      display: flex;
+      align-items: center;
+      width: 100%;
+
+      ion-icon {
+        margin-right: 10px;
+        font-size: 18px;
+      }
+
+      span {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.85rem;
+      }
+    }
+
+    &.ready .quiz-info span {
+      color: #4CAF50;
+      font-weight: 600;
+    }
+  }
+
+  .chat-features {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+
+    .feature-tag {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.8);
+
+      &.voice-only {
+        background: rgba(76, 175, 80, 0.2);
+        border: 1px solid rgba(76, 175, 80, 0.3);
+        color: #4CAF50;
+      }
+
+      ion-icon {
+        margin-right: 4px;
+      }
+
+      span {
+        font-weight: 500;
+      }
+    }
+  }
+
+  .start-chat-btn {
+    --border-radius: 12px;
+    font-weight: 600;
+    height: 44px;
+    margin: 0;
+
+    ion-icon {
+      margin-right: 8px;
+    }
+  }
+}
