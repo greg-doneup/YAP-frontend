@@ -35,6 +35,7 @@ export interface SecureRegistrationResponse {
   token?: string;
   refreshToken?: string;
   starting_points?: number;
+  token_bonus?: number; // New field for waitlist token bonus
   isWaitlistConversion?: boolean;
   walletAddress?: string;
   ethWalletAddress?: string;
@@ -226,6 +227,7 @@ export class SecureWalletRegistrationService {
         token: response.token,
         refreshToken: response.refreshToken,
         starting_points: response.starting_points || 0,
+        token_bonus: response.token_bonus || 0, // New field for waitlist token bonus
         isWaitlistConversion: response.isWaitlistConversion || false,
         walletAddress: response.walletAddress || walletData.seiWallet.address,
         ethWalletAddress: response.ethWalletAddress || walletData.evmWallet.address,

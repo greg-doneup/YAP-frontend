@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { TokenService, TokenSpendingRequest } from '../../services/token.service';
@@ -6,6 +6,7 @@ import { AudioService, AudioTrack } from '../../services/audio.service';
 import { AiChatSessionService, AiChatSession } from '../../services/ai-chat-session.service';
 import { BlockchainService } from '../../services/blockchain.service';
 import { RewardService } from '../../core/reward/reward.service';
+import { ProgressService } from '../../services/progress.service';
 import { ToastController, ModalController, AlertController } from '@ionic/angular';
 import { Subscription } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -103,6 +104,13 @@ export class AiChatPage implements OnInit, OnDestroy {
   isConnected = false;
   isInitializing = false;
   
+  // Dynamic header
+  userLanguage = 'AI Chat';
+  
+  // Suggestions drawer
+  showSuggestionsDrawer = false;
+  drawerPosition = 'bottom';
+  
   // Session management through singleton service
   private aiChatSession: AiChatSession | null = null;
   
@@ -148,6 +156,9 @@ export class AiChatPage implements OnInit, OnDestroy {
   // Voice-specific tracking
   sessionVoiceMessages = 0;
   isUsingFreeAllowance = true;
+  
+  // Audio management
+  private currentAudio: HTMLAudioElement | null = null;
 
   private subscriptions: Subscription[] = [];
 
@@ -159,9 +170,11 @@ export class AiChatPage implements OnInit, OnDestroy {
     private aiChatSessionService: AiChatSessionService,
     private blockchainService: BlockchainService,
     private rewardService: RewardService,
+    private progressService: ProgressService,
     private toastController: ToastController,
     private modalController: ModalController,
-    private alertController: AlertController
+    private alertController: AlertController,
+    private cdr: ChangeDetectorRef
   ) {
     const componentId = 'comp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
     console.log('� AiChatPage: Constructor called', { componentId });
@@ -169,6 +182,9 @@ export class AiChatPage implements OnInit, OnDestroy {
 
   async ngOnInit() {
     console.log('🚀 AiChatPage: ngOnInit called');
+    
+    // Load user language preference
+    this.loadUserLanguage();
     
     // Subscribe to the session service
     this.subscriptions.push(
@@ -196,11 +212,106 @@ export class AiChatPage implements OnInit, OnDestroy {
     this.subscriptions.forEach(sub => sub.unsubscribe());
     this.disconnectWebSocket();
     this.audioService.dispose(); // Clean up audio resources
+    
+    // Stop any currently playing audio
+    this.stopCurrentAudio();
+    
+    // Cancel any ongoing speech synthesis
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+    }
+  }
+
+  /**
+   * Load user's language preference from localStorage
+   */
+  private loadUserLanguage() {
+    try {
+      console.log('🔄 AI Chat: Loading user language...');
+      
+      // Try multiple sources for user language data
+      let languageToLearn = null;
+      
+      // First try currentUser in localStorage
+      const currentUser = localStorage.getItem('currentUser');
+      console.log('AI Chat: currentUser from localStorage:', currentUser);
+      
+      if (currentUser) {
+        const userData = JSON.parse(currentUser);
+        languageToLearn = userData.language_to_learn || userData.languageToLearn || userData.initial_language_to_learn;
+        console.log('AI Chat: Found user language from currentUser:', languageToLearn, 'from userData:', userData);
+      }
+      
+      // If still no language, try to get it from the registration data
+      if (!languageToLearn) {
+        const registrationData = localStorage.getItem('registrationData');
+        console.log('AI Chat: registrationData from localStorage:', registrationData);
+        
+        if (registrationData) {
+          const regData = JSON.parse(registrationData);
+          languageToLearn = regData.language_to_learn || regData.languageToLearn || regData.initial_language_to_learn;
+          console.log('AI Chat: Found user language from registrationData:', languageToLearn, 'from regData:', regData);
+        }
+      }
+      
+      // Also try direct language_to_learn key
+      if (!languageToLearn) {
+        languageToLearn = localStorage.getItem('language_to_learn');
+        console.log('AI Chat: Found direct language_to_learn:', languageToLearn);
+      }
+
+      // Try user profile data from API response if available
+      if (!languageToLearn) {
+        const userProfile = localStorage.getItem('userProfile');
+        if (userProfile) {
+          const profileData = JSON.parse(userProfile);
+          languageToLearn = profileData.language_to_learn || profileData.initial_language_to_learn;
+          console.log('AI Chat: Found user language from userProfile:', languageToLearn);
+        }
+      }
+      
+      // If we found a language, format it for display
+      if (languageToLearn) {
+        // Capitalize first letter and add "Chat" instead of "Practice" for AI chat
+        this.userLanguage = languageToLearn.charAt(0).toUpperCase() + 
+                           languageToLearn.slice(1) + ' Chat';
+        console.log('✅ AI Chat: Set userLanguage to:', this.userLanguage);
+      } else {
+        console.log('⚠️ AI Chat: No language found, using fallback');
+        this.userLanguage = 'AI Chat'; // More specific fallback for AI chat
+      }
+    } catch (error) {
+      console.error('❌ Error loading user language preference:', error);
+      this.userLanguage = 'AI Chat'; // More specific fallback for AI chat
+    }
   }
 
   ionViewWillEnter() {
     console.log('🚀 AiChatPage: ionViewWillEnter called');
+    
+    // Refresh user language preference each time the page is entered
+    this.loadUserLanguage();
+    
+    // Force change detection to ensure the header updates
+    this.cdr.detectChanges();
+    
+    // Show instructions toast
+    this.showInstructionsToast();
     // No additional initialization needed - everything is handled by the session service
+  }
+
+  /**
+   * Show instructions toast on page entry
+   */
+  private async showInstructionsToast() {
+    const toast = await this.toastController.create({
+      message: 'Tap AI messages to hear them spoken aloud',
+      duration: 3000,
+      position: 'top',
+      color: 'primary',
+      icon: 'volume-high'
+    });
+    toast.present();
   }
 
   /**
@@ -406,6 +517,17 @@ export class AiChatPage implements OnInit, OnDestroy {
         }
         
         console.log(`Used free voice message ${this.currentDailyVoiceCount}/${this.dailyFreeVoiceLimit}`);
+        
+        // Record EVERY free voice chat action for blockchain batching (even if no tokens earned yet)
+        try {
+          const userId = this.getCurrentUserId();
+          await this.recordFreeVoiceChatProgress(userId, this.currentDailyVoiceCount);
+          console.log(`Free voice chat ${this.currentDailyVoiceCount} recorded for batching`);
+        } catch (progressError) {
+          console.error('Error recording free voice chat progress:', progressError);
+          // Don't fail the message sending if progress recording fails
+        }
+        
         await this.sendToAiService(message);
         
         // Check if user has completed daily allowance
@@ -446,6 +568,22 @@ export class AiChatPage implements OnInit, OnDestroy {
       }
       
       console.log(`Spent 2 tokens for voice chat. New balance: ${spendingResult.newBalance}`);
+      
+      // Record token spending AND paid voice message progress for blockchain batching
+      try {
+        const userId = this.getCurrentUserId();
+        
+        // Record the token spending
+        await this.progressService.submitTokenSpending(userId, 2, 'voice_chat_message');
+        console.log('Token spending recorded for batching');
+        
+        // Record the paid voice message progress (separate from token spending)
+        await this.recordPaidVoiceChatProgress(userId, this.currentPaidVoiceCount);
+        console.log(`Paid voice chat ${this.currentPaidVoiceCount} recorded for batching`);
+      } catch (progressError) {
+        console.error('Error recording paid voice chat progress:', progressError);
+        // Don't fail the message sending if progress recording fails
+      }
       
       await this.sendToAiService(message);
       
@@ -820,31 +958,30 @@ export class AiChatPage implements OnInit, OnDestroy {
   async exitChat() {
     this.disconnectWebSocket();
     
-    // Show session summary with voice-specific stats
+    // Show session summary toast with voice-specific stats
     const sessionDuration = this.sessionStartTime ? 
       Math.round((Date.now() - this.sessionStartTime.getTime()) / 60000) : 0;
 
     const stats = this.getVoiceChatStats();
     const remainingForBonus = Math.max(0, 10 - this.currentPaidVoiceCount);
     
-    const alert = await this.alertController.create({
-      header: 'Voice Chat Session Complete',
-      message: `
-        <div style="text-align: left;">
-          <p><strong>Session Duration:</strong> ${sessionDuration} minutes</p>
-          <p><strong>Free Voice Messages Used:</strong> ${stats.freeMessagesUsed}/${stats.freeMessagesLimit}</p>
-          <p><strong>Paid Voice Messages:</strong> ${stats.paidMessagesUsed}</p>
-          <p><strong>Tokens Spent:</strong> ${this.sessionTokensUsed}</p>
-          ${stats.hasEarnedDailyToken ? '<p><strong>🎉 Daily Token Earned!</strong></p>' : ''}
-          ${stats.hasEarnedExtendedBonus ? '<p><strong>🌟 Mega Bonus Earned: 10 Tokens!</strong></p>' : ''}
-          ${!stats.hasEarnedExtendedBonus && remainingForBonus === 0 ? '<p><strong>🎯 Ready for Mega Bonus next session!</strong></p>' : ''}
-          ${!stats.hasEarnedExtendedBonus && remainingForBonus > 0 ? `<p><strong>🎯 ${remainingForBonus} more paid messages for 10 token bonus!</strong></p>` : ''}
-          <p><strong>Quiz Words Extracted:</strong> ${stats.extractedWords}</p>
-        </div>
-      `,
-      buttons: ['Continue']
+    // Create a concise toast message
+    let toastMessage = `Session: ${sessionDuration}min | Tokens: ${this.sessionTokensUsed}`;
+    if (stats.hasEarnedDailyToken) {
+      toastMessage += ' | 🎉 Daily Token Earned!';
+    }
+    if (stats.hasEarnedExtendedBonus) {
+      toastMessage += ' | 🌟 Mega Bonus: 10 Tokens!';
+    }
+    
+    const toast = await this.toastController.create({
+      message: toastMessage,
+      duration: 4000,
+      position: 'top',
+      color: 'success',
+      icon: 'checkmark-circle'
     });
-    await alert.present();
+    await toast.present();
 
     this.router.navigate(['/dashboard']);
   }
@@ -884,6 +1021,17 @@ export class AiChatPage implements OnInit, OnDestroy {
   }
 
   /**
+   * Stop any currently playing audio
+   */
+  private stopCurrentAudio() {
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio.currentTime = 0;
+      this.currentAudio = null;
+    }
+  }
+
+  /**
    * Generate audio for a suggested response
    */
   async generateSuggestedResponseAudio(response: SuggestedResponse) {
@@ -892,10 +1040,11 @@ export class AiChatPage implements OnInit, OnDestroy {
       const audioResponse = await this.http.post<any>(`${environment.apiUrl}/chat/tts`, {
         text: response.spanish,
         language: 'spanish',
-        voice: 'onyx', // Different voice for suggested responses (male voice)
+        voice: 'nova', // High-quality neural voice for consistency
         options: {
-          rate: 0.85, // Slightly slower for learning pronunciation
-          emotion: 'friendly'
+          rate: 0.75, // Slower for pronunciation practice
+          emotion: 'friendly',
+          pitch: 'medium'
         }
       }).toPromise();
 
@@ -911,13 +1060,35 @@ export class AiChatPage implements OnInit, OnDestroy {
    * Play audio for a suggested response
    */
   async playSuggestedResponseAudio(response: SuggestedResponse) {
+    // Stop any currently playing audio first
+    this.stopCurrentAudio();
+    
     if (!response.audioUrl) {
       await this.generateSuggestedResponseAudio(response);
     }
     
     if (response.audioUrl) {
-      const audio = new Audio(response.audioUrl);
-      await audio.play();
+      try {
+        const audio = new Audio(response.audioUrl);
+        this.currentAudio = audio;
+        
+        // Set audio properties for better learning experience
+        audio.volume = 0.9;
+        audio.preload = 'auto';
+        
+        // Clear reference when audio ends
+        audio.addEventListener('ended', () => {
+          if (this.currentAudio === audio) {
+            this.currentAudio = null;
+          }
+        });
+        
+        await audio.play();
+        console.log('Suggested response audio played successfully');
+      } catch (error) {
+        console.error('Error playing suggested response audio:', error);
+        this.currentAudio = null;
+      }
     }
   }
 
@@ -927,38 +1098,63 @@ export class AiChatPage implements OnInit, OnDestroy {
   async playMessageTTS(message: ChatMessage) {
     if (message.isGeneratingAudio) return;
     
+    // Stop any currently playing audio first
+    this.stopCurrentAudio();
+    
     try {
       message.isGeneratingAudio = true;
+      
+      // Determine the language from the user's preference
+      const currentUser = localStorage.getItem('currentUser');
+      let userLanguage = 'spanish';
+      if (currentUser) {
+        try {
+          const userData = JSON.parse(currentUser);
+          userLanguage = userData.language_to_learn || 'spanish';
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+        }
+      }
       
       // Call neural TTS service with OpenAI's high-quality model
       const ttsResponse = await this.http.post<any>(`${environment.apiUrl}/chat/tts`, {
         text: message.content,
-        language: 'spanish',
-        voice: 'nova', // High-quality Spanish neural voice
+        language: userLanguage,
+        voice: 'nova', // High-quality neural voice (consistent across app)
         options: {
-          rate: 0.9, // Slightly slower for language learning
-          emotion: 'neutral'
+          rate: 0.75, // Slower for language learning comprehension
+          emotion: 'neutral',
+          pitch: 'medium',
+          neural: true // Explicitly request neural processing
         }
       }).toPromise();
 
       if (ttsResponse && ttsResponse.success && ttsResponse.audioData) {
         // Create and play audio using the high-quality neural TTS
         const audio = new Audio(`data:audio/wav;base64,${ttsResponse.audioData}`);
+        this.currentAudio = audio;
         
         // Set audio properties for better experience
-        audio.volume = 0.8;
+        audio.volume = 0.9;
         audio.preload = 'auto';
+        
+        // Clear reference when audio ends
+        audio.addEventListener('ended', () => {
+          if (this.currentAudio === audio) {
+            this.currentAudio = null;
+          }
+        });
         
         // Play the neural audio
         await audio.play();
         console.log('Neural TTS audio played successfully', {
           voice: ttsResponse.voiceUsed,
           duration: ttsResponse.duration,
-          model: ttsResponse.metadata?.model
+          model: ttsResponse.metadata?.model,
+          language: userLanguage,
+          rate: 0.75
         });
         
-        // Show success feedback (optional, remove to reduce noise)
-        // await this.showSuccessToast('Neural voice audio played');
       } else {
         throw new Error('Invalid TTS response');
       }
@@ -968,7 +1164,6 @@ export class AiChatPage implements OnInit, OnDestroy {
       // Try fallback TTS using Web Speech API
       try {
         await this.playTTSWithWebSpeech(message.content);
-        console.log('Using device TTS fallback after neural TTS failure');
         console.log('Using device TTS fallback after neural TTS failure');
       } catch (fallbackError) {
         console.error('Fallback TTS also failed:', fallbackError);
@@ -987,16 +1182,47 @@ export class AiChatPage implements OnInit, OnDestroy {
       // Cancel any ongoing speech
       speechSynthesis.cancel();
       
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'es-ES';
-      utterance.rate = 0.8;
-      utterance.pitch = 1;
+      // Get user's language preference
+      const currentUser = localStorage.getItem('currentUser');
+      let userLanguage = 'spanish';
+      let speechLang = 'es-ES';
       
-      // Try to find a Spanish voice
+      if (currentUser) {
+        try {
+          const userData = JSON.parse(currentUser);
+          userLanguage = userData.language_to_learn || 'spanish';
+          
+          // Map language to speech synthesis locale
+          if (userLanguage === 'french') {
+            speechLang = 'fr-FR';
+          } else {
+            speechLang = 'es-ES'; // Default to Spanish
+          }
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+        }
+      }
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = speechLang;
+      utterance.rate = 0.6; // Slower for language learning
+      utterance.pitch = 1;
+      utterance.volume = 0.9;
+      
+      // Try to find the best voice for the user's language
       const voices = speechSynthesis.getVoices();
-      const spanishVoice = voices.find(voice => voice.lang.startsWith('es'));
-      if (spanishVoice) {
-        utterance.voice = spanishVoice;
+      let targetVoice = voices.find(voice => 
+        voice.lang.startsWith(speechLang.split('-')[0]) && 
+        voice.name.toLowerCase().includes('neural')
+      );
+      
+      if (!targetVoice) {
+        targetVoice = voices.find(voice => voice.lang.startsWith(speechLang.split('-')[0]));
+      }
+      
+      if (targetVoice) {
+        utterance.voice = targetVoice;
+        console.log('Using voice:', targetVoice.name, 'for language:', userLanguage);
       }
       
       return new Promise<void>((resolve, reject) => {
@@ -1443,22 +1669,40 @@ export class AiChatPage implements OnInit, OnDestroy {
         return;
       }
 
-      // Record daily completion through blockchain service
-      const result = await this.blockchainService.recordDailyCompletion(walletAddress);
+      // Submit daily completion progress for batched blockchain recording
+      const userId = this.getCurrentUserId();
+      const sessionData = {
+        voiceMessagesUsed: this.currentDailyVoiceCount,
+        paidVoiceMessagesUsed: this.currentPaidVoiceCount,
+        startTime: this.sessionStartTime?.getTime() || Date.now() - 3600000, // 1 hour ago default
+      };
+
+      const success = await this.progressService.submitAIChatDailyCompletion(userId, sessionData);
       
-      if (result.success) {
+      if (success) {
         const toast = await this.toastController.create({
-          message: `🎉 Daily voice chat completed! You earned ${result.reward} YAP tokens!`,
+          message: `🎉 Daily voice chat completed! You earned 1 YAP token! (Will be processed in next batch)`,
           duration: 4000,
           color: 'success',
           position: 'top'
         });
         await toast.present();
         
-        console.log('Daily voice completion token awarded:', result);
+        console.log('Daily voice completion progress submitted for batching');
+      } else {
+        throw new Error('Failed to submit daily completion progress');
       }
     } catch (error) {
-      console.error('Error awarding daily voice completion token:', error);
+      console.error('Error submitting daily voice completion progress:', error);
+      
+      // Show user-friendly error message
+      const toast = await this.toastController.create({
+        message: '⚠️ Unable to submit progress. Your tokens will be awarded when connection is restored.',
+        duration: 3000,
+        color: 'warning',
+        position: 'top'
+      });
+      await toast.present();
     }
   }
 
@@ -1477,25 +1721,18 @@ export class AiChatPage implements OnInit, OnDestroy {
         return;
       }
 
-      // Award generous extended session bonus (10 tokens - roughly half of what they spent!)
-      // This creates a strong incentive to reach 10 paid messages
+      // Submit mega bonus progress for batched blockchain recording
       const bonusAmount = 10;
+      const userId = this.getCurrentUserId();
+      const sessionData = {
+        voiceMessagesUsed: this.currentDailyVoiceCount,
+        paidVoiceMessagesUsed: this.currentPaidVoiceCount,
+        startTime: this.sessionStartTime?.getTime() || Date.now() - 3600000,
+      };
+
+      const success = await this.progressService.submitAIChatMegaBonus(userId, sessionData);
       
-      // Use custom reward to award the full 10 tokens
-      const result = await this.rewardService.recordCompletion(walletAddress).toPromise();
-      
-      // Award additional tokens through multiple lesson completions to reach 10 total
-      if (result?.success) {
-        // Award additional completions to reach the 10 token target
-        for (let i = 0; i < 9; i++) {
-          await this.blockchainService.recordLessonCompletion(
-            walletAddress,
-            9999 + i, // Different lesson IDs for each bonus
-            5, // High difficulty for extended sessions
-            90 // Excellent completion score
-          );
-        }
-        
+      if (success) {
         this.hasEarnedExtendedSessionBonus = true;
         
         // Update daily completion tracking
@@ -1518,7 +1755,8 @@ export class AiChatPage implements OnInit, OnDestroy {
                 🌟 That's 50% cashback for your dedication!
               </p>
               <p style="font-style: italic; color: #666; margin-top: 15px;">
-                Keep up the amazing conversation practice!
+                Keep up the amazing conversation practice!<br>
+                <em>Tokens will be awarded in the next batch processing.</em>
               </p>
             </div>
           `,
@@ -1533,10 +1771,21 @@ export class AiChatPage implements OnInit, OnDestroy {
         });
         await alert.present();
         
-        console.log('Extended session mega bonus awarded:', bonusAmount, 'tokens');
+        console.log('Extended session mega bonus progress submitted for batching');
+      } else {
+        throw new Error('Failed to submit mega bonus progress');
       }
     } catch (error) {
-      console.error('Error awarding extended session bonus:', error);
+      console.error('Error submitting extended session bonus progress:', error);
+      
+      // Show user-friendly error message
+      const toast = await this.toastController.create({
+        message: '⚠️ Unable to submit mega bonus progress. Your tokens will be awarded when connection is restored.',
+        duration: 3000,
+        color: 'warning',
+        position: 'top'
+      });
+      await toast.present();
     }
   }
 
@@ -1742,5 +1991,72 @@ export class AiChatPage implements OnInit, OnDestroy {
       });
       await toast.present();
     }
+  }
+
+  /**
+   * Record individual free voice chat progress for blockchain batching
+   */
+  async recordFreeVoiceChatProgress(userId: string, messageNumber: number): Promise<void> {
+    try {
+      const sessionData = {
+        startTime: this.sessionStartTime?.getTime() || Date.now() - 600000, // 10 minutes ago default
+      };
+
+      const success = await this.progressService.submitFreeVoiceChatMessage(userId, messageNumber, sessionData);
+      
+      if (success) {
+        console.log(`Free voice chat progress recorded: message ${messageNumber}/4`);
+      } else {
+        console.warn(`Failed to record free voice chat progress for message ${messageNumber}`);
+      }
+    } catch (error) {
+      console.error(`Error recording free voice chat progress for message ${messageNumber}:`, error);
+      // Don't throw - we don't want to interrupt the user's chat experience
+    }
+  }
+
+  /**
+   * Record individual paid voice chat progress for blockchain batching
+   */
+  async recordPaidVoiceChatProgress(userId: string, paidMessageNumber: number): Promise<void> {
+    try {
+      const sessionData = {
+        startTime: this.sessionStartTime?.getTime() || Date.now() - 600000,
+        totalVoiceMessages: this.currentDailyVoiceCount + paidMessageNumber,
+        tokensSpentThisSession: this.sessionTokensUsed,
+      };
+
+      const success = await this.progressService.submitPaidVoiceChatMessage(userId, paidMessageNumber, sessionData);
+      
+      if (success) {
+        console.log(`Paid voice chat progress recorded: paid message ${paidMessageNumber}`);
+      } else {
+        console.warn(`Failed to record paid voice chat progress for message ${paidMessageNumber}`);
+      }
+    } catch (error) {
+      console.error(`Error recording paid voice chat progress for message ${paidMessageNumber}:`, error);
+      // Don't throw - we don't want to interrupt the user's chat experience
+    }
+  }
+
+  /**
+   * Toggle suggestions drawer
+   */
+  toggleSuggestionsDrawer() {
+    this.showSuggestionsDrawer = !this.showSuggestionsDrawer;
+  }
+
+  /**
+   * Close suggestions drawer
+   */
+  closeSuggestionsDrawer() {
+    this.showSuggestionsDrawer = false;
+  }
+
+  /**
+   * Open suggestions drawer
+   */
+  openSuggestionsDrawer() {
+    this.showSuggestionsDrawer = true;
   }
 }

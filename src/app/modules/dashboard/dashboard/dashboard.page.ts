@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { WalletService } from '../../../shared/services/wallet.service';
 import { TokenService } from '../../../services/token.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { ProgressService } from '../../../services/progress.service';
 import { ToastController, ModalController } from '@ionic/angular';
 import * as moment from 'moment-timezone';
 import { LessonService, Lesson } from '../../../shared/services/lesson.service';
@@ -137,11 +138,21 @@ export class DashboardPage implements OnInit, OnDestroy {
     canAccessQuiz: false
   };
 
+  // Batch processing status
+  batchStatus = {
+    pendingSubmissions: 0,
+    processedSubmissions: 0,
+    lastBatchTime: null as Date | null,
+    nextBatchTime: null as Date | null,
+    isProcessing: false
+  };
+
   constructor(
     private router: Router,
     private walletService: WalletService,
     private tokenService: TokenService,
     private authService: AuthService,
+    private progressService: ProgressService,
     private toastCtrl: ToastController,
     private modalController: ModalController,
     private lessonService: LessonService,
@@ -250,6 +261,10 @@ export class DashboardPage implements OnInit, OnDestroy {
     this.subscriptions.push(lessonAccessSub);
     
     await this.loadUserData();
+    
+    // Load voice chat progress and batch status
+    await this.loadVoiceChatProgress();
+    await this.loadBatchStatus();
     
     // Load lessons for today
     this.lessonService.loadLessonsForDay('today').subscribe();
@@ -453,7 +468,7 @@ export class DashboardPage implements OnInit, OnDestroy {
 
   continueLearning() {
     this.showLevelDropdown = false; // Ensure dropdown is closed
-    this.router.navigate(['/vocab-practice']);
+    this.router.navigate(['/ai-chat']);
   }
 
   withdraw() {
@@ -709,7 +724,7 @@ export class DashboardPage implements OnInit, OnDestroy {
   
   goToPronunciationPractice() {
     this.showLevelDropdown = false; // Ensure dropdown is closed
-    this.router.navigate(['/practice']);
+    this.router.navigate(['/ai-chat']);
   }
 
   /**
@@ -1096,58 +1111,33 @@ export class DashboardPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Get today's voice chat words for quiz integration
+   * Load batch processing status
    */
-  getTodaysVoiceChatWords(): ChatWordAnalysis[] {
-    return AiChatPage.getTodaysChatWords();
-  }
-
-  /**
-   * Check if voice chat is completed (required for quiz access)
-   */
-  hasCompletedVoiceChatToday(): boolean {
-    return AiChatPage.hasCompletedVoiceChatToday();
-  }
-
-  /**
-   * Get voice chat completion status for UI display
-   */
-  getVoiceChatCompletionStatus(): string {
-    if (this.voiceChatStats.hasEarnedDailyToken) {
-      return 'completed';
-    } else if (this.voiceChatStats.freeMessagesUsed > 0) {
-      return 'in-progress';
-    } else {
-      return 'not-started';
-    }
-  }
-
-  /**
-   * Get progress message for voice chat
-   */
-  getVoiceChatProgressMessage(): string {
-    const remaining = this.voiceChatStats.freeMessagesLimit - this.voiceChatStats.freeMessagesUsed;
-    
-    if (this.voiceChatStats.hasEarnedDailyToken) {
-      return `✅ Daily voice chat completed! ${this.voiceChatStats.extractedWords} words ready for quiz`;
-    } else if (remaining > 0) {
-      return `${remaining} free voice messages remaining`;
-    } else {
-      return '🎯 Complete voice chat to unlock daily quiz';
-    }
-  }
-
-  /**
-   * Get mega bonus progress message
-   */
-  getMegaBonusProgressMessage(): string {
-    if (this.voiceChatStats.hasEarnedMegaBonus) {
-      return '🌟 Mega bonus earned! (+10 tokens)';
-    } else if (this.voiceChatStats.paidMessagesUsed > 0) {
-      const remaining = this.voiceChatStats.megaBonusTarget - this.voiceChatStats.paidMessagesUsed;
-      return `🎯 ${remaining} more paid messages = 10 token mega bonus!`;
-    } else {
-      return '💎 Reach 10 paid voice messages for 10 token bonus (50% cashback!)';
+  async loadBatchStatus(): Promise<void> {
+    try {
+      const batchStatus = await this.progressService.getBatchStatus().toPromise();
+      
+      if (batchStatus?.success) {
+        this.batchStatus = {
+          pendingSubmissions: batchStatus.progressStats?.pending || 0,
+          processedSubmissions: batchStatus.progressStats?.processed || 0,
+          lastBatchTime: batchStatus.batchProcessor?.lastBatchTime ? new Date(batchStatus.batchProcessor.lastBatchTime) : null,
+          nextBatchTime: batchStatus.batchProcessor?.nextBatchTime ? new Date(batchStatus.batchProcessor.nextBatchTime) : null,
+          isProcessing: batchStatus.batchProcessor?.isProcessing || false
+        };
+        
+        console.log('Batch status loaded:', this.batchStatus);
+      }
+    } catch (error) {
+      console.error('Error loading batch status:', error);
+      // Set default values if loading fails
+      this.batchStatus = {
+        pendingSubmissions: 0,
+        processedSubmissions: 0,
+        lastBatchTime: null,
+        nextBatchTime: null,
+        isProcessing: false
+      };
     }
   }
 }

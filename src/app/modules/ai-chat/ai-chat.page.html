@@ -5,7 +5,7 @@
         <ion-icon name="arrow-back" slot="icon-only"></ion-icon>
       </ion-button>
     </ion-buttons>
-    <ion-title>AI Conversation Practice</ion-title>
+    <ion-title>{{ userLanguage }}</ion-title>
     <ion-buttons slot="end">
       <ion-button fill="clear" class="token-indicator">
         <ion-icon name="diamond" color="warning" slot="start"></ion-icon>
@@ -31,7 +31,8 @@
         [class.user-message]="message.isUser"
         [class.ai-message]="!message.isUser">
         
-        <div class="message-bubble">
+        <div class="message-bubble" (click)="!message.isUser && playMessageTTS(message)"
+             [style.cursor]="!message.isUser ? 'pointer' : 'default'">
           <!-- Text Content -->
           <div class="message-content" *ngIf="!message.isAudio" style="color: inherit !important;">
             {{ message.content }}
@@ -179,16 +180,32 @@
 
 <!-- Chat Input Footer -->
 <ion-footer class="chat-footer">
-  <!-- Suggested Responses Section -->
-  <div class="suggested-responses-section">
+  <!-- Suggestions Drawer Toggle Button -->
+  <div class="drawer-toggle-container">
+    <ion-button 
+      fill="clear" 
+      size="small" 
+      (click)="toggleSuggestionsDrawer()"
+      class="drawer-toggle-button">
+      <ion-icon [name]="showSuggestionsDrawer ? 'chevron-down' : 'chevron-up'" slot="start"></ion-icon>
+      {{ showSuggestionsDrawer ? 'Hide suggestions' : 'Show suggested responses' }}
+    </ion-button>
+  </div>
+
+  <!-- Sliding Suggestions Drawer -->
+  <div class="suggestions-drawer" [class.open]="showSuggestionsDrawer">
     <div class="suggestions-header">
       <ion-icon name="bulb" color="warning"></ion-icon>
       <span>Try responding with:</span>
+      <ion-button fill="clear" size="small" (click)="closeSuggestionsDrawer()" class="close-drawer-btn">
+        <ion-icon name="close" slot="icon-only"></ion-icon>
+      </ion-button>
     </div>
     <div class="suggestions-container">
       <div class="suggestion-item" 
-           *ngFor="let response of getFallbackSuggestions().slice(0, 2)" 
+           *ngFor="let response of getFallbackSuggestions().slice(0, 3)" 
            [class.difficulty-easy]="response.difficulty === 'easy'"
+           [class.difficulty-medium]="response.difficulty === 'medium'"
            [class.selected-for-practice]="selectedResponseForPractice?.id === response.id"
            (click)="selectSuggestedResponse(response)">
         
@@ -242,10 +259,6 @@
   <!-- Chat Features Info -->
   <div class="chat-info">
     <div class="info-tags">
-      <span class="info-tag">
-        <ion-icon name="diamond" size="small"></ion-icon>
-        1 token per message
-      </span>
       <span class="info-tag">
         <ion-icon name="mic" size="small"></ion-icon>
         Voice supported

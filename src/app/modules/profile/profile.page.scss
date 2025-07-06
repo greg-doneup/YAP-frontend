@@ -158,6 +158,43 @@
   }
 }
 
+// Learning Preferences Section
+.preferences-section {
+  margin-bottom: 2rem;
+  
+  .preferences-content {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    .preference-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      
+      &:last-child {
+        border-bottom: none;
+      }
+      
+      .preference-label {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        font-weight: 500;
+      }
+      
+      .preference-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #ffdb45;
+      }
+    }
+  }
+}
+
 // Wallet Section
 .wallet-section {
   margin-bottom: 2rem;

@@ -29,6 +29,8 @@ interface ProfileData {
 interface EditForm {
   displayName: string;
   username: string;
+  languageToLearn: string;
+  nativeLanguage: string;
 }
 
 @Component({
@@ -57,7 +59,9 @@ export class ProfilePage implements OnInit {
 
   editForm: EditForm = {
     displayName: '',
-    username: ''
+    username: '',
+    languageToLearn: 'spanish',
+    nativeLanguage: 'english'
   };
 
   constructor(
@@ -292,9 +296,15 @@ export class ProfilePage implements OnInit {
     this.isEditing = !this.isEditing;
     
     if (this.isEditing) {
-      // Initialize edit form with current data
-      this.editForm.displayName = this.profileData.profile?.displayName || '';
-      this.editForm.username = this.profileData.profile?.username || '';
+      // Initialize edit form with current data from both profile and user objects
+      this.editForm.displayName = this.profileData.profile?.displayName || 
+                                  this.profileData.user?.displayName || 
+                                  this.profileData.user?.name || '';
+      this.editForm.username = this.profileData.profile?.username || 
+                               this.profileData.user?.username || '';
+      this.editForm.languageToLearn = this.profileData.user?.language_to_learn || 'spanish';
+      this.editForm.nativeLanguage = this.profileData.user?.nativeLanguage || 
+                                     this.profileData.user?.native_language || 'english';
     }
   }
 
@@ -302,7 +312,9 @@ export class ProfilePage implements OnInit {
     this.isEditing = false;
     this.editForm = {
       displayName: '',
-      username: ''
+      username: '',
+      languageToLearn: 'spanish',
+      nativeLanguage: 'english'
     };
   }
 
@@ -318,12 +330,34 @@ export class ProfilePage implements OnInit {
         username: this.editForm.username
       };
 
+      // Update backend profile
       await firstValueFrom(this.profileService.updateUserProfile(this.profileData.user.walletAddress, updateData));
       
-      // Update local data
+      // Update local profile data
       if (this.profileData.profile) {
         this.profileData.profile.displayName = this.editForm.displayName;
         this.profileData.profile.username = this.editForm.username;
+      }
+
+      // Update the current user object in localStorage
+      const currentUser = this.profileData.user;
+      if (currentUser) {
+        // Update the user object with new profile data
+        currentUser.displayName = this.editForm.displayName;
+        currentUser.username = this.editForm.username;
+        currentUser.language_to_learn = this.editForm.languageToLearn;
+        currentUser.nativeLanguage = this.editForm.nativeLanguage;
+        currentUser.native_language = this.editForm.nativeLanguage; // Support both formats
+        
+        // Save updated user to localStorage
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        
+        // Update the profileData.user reference
+        this.profileData.user = currentUser;
+        
+        // Also update the AuthService and WalletAuthService if they have the user
+        this.authService.loadUserFromStorage();
+        await this.walletAuthService.refreshWalletAuth();
       }
 
       this.isEditing = false;

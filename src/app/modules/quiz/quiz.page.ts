@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { ToastController, AlertController, LoadingController } from '@ionic/angular';
 import { Subscription } from 'rxjs';
@@ -30,6 +30,9 @@ export class QuizPage implements OnInit, OnDestroy {
   isProcessing = false;
   userAnswer = '';
   
+  // Dynamic header
+  userLanguage = 'Language Quiz';
+  
   // Quiz session data
   sessionAttempts: QuizAttempt[] = [];
   sessionScore = 0;
@@ -57,16 +60,84 @@ export class QuizPage implements OnInit, OnDestroy {
     private loadingController: LoadingController,
     private userProgressService: UserProgressService,
     private tokenService: TokenService,
-    private quizService: QuizService
+    private quizService: QuizService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
+    // Load user language preference
+    this.loadUserLanguage();
+    
     this.initializeQuiz();
   }
 
   ngOnDestroy() {
     this.subscriptions.forEach(sub => sub.unsubscribe());
     this.stopRecording();
+  }
+
+  ionViewWillEnter() {
+    console.log('🚀 QuizPage: ionViewWillEnter called');
+    
+    // Refresh user language preference each time the page is entered
+    this.loadUserLanguage();
+    
+    // Force change detection to ensure the header updates
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Load user's language preference from localStorage
+   */
+  private loadUserLanguage() {
+    try {
+      console.log('🔄 Quiz: Loading user language...');
+      
+      // Try multiple sources for user language data
+      let languageToLearn = null;
+      
+      // First try currentUser in localStorage
+      const currentUser = localStorage.getItem('currentUser');
+      console.log('Quiz: currentUser from localStorage:', currentUser);
+      
+      if (currentUser) {
+        const userData = JSON.parse(currentUser);
+        languageToLearn = userData.language_to_learn || userData.languageToLearn;
+        console.log('Quiz: Found user language from currentUser:', languageToLearn, 'from userData:', userData);
+      }
+      
+      // If still no language, try to get it from the registration data
+      if (!languageToLearn) {
+        const registrationData = localStorage.getItem('registrationData');
+        console.log('Quiz: registrationData from localStorage:', registrationData);
+        
+        if (registrationData) {
+          const regData = JSON.parse(registrationData);
+          languageToLearn = regData.language_to_learn || regData.languageToLearn;
+          console.log('Quiz: Found user language from registrationData:', languageToLearn, 'from regData:', regData);
+        }
+      }
+      
+      // Also try direct language_to_learn key
+      if (!languageToLearn) {
+        languageToLearn = localStorage.getItem('language_to_learn');
+        console.log('Quiz: Found direct language_to_learn:', languageToLearn);
+      }
+      
+      // If we found a language, format it for display
+      if (languageToLearn) {
+        // Capitalize first letter for display
+        this.userLanguage = languageToLearn.charAt(0).toUpperCase() + 
+                           languageToLearn.slice(1) + ' Quiz';
+        console.log('✅ Quiz: Set userLanguage to:', this.userLanguage);
+      } else {
+        console.log('⚠️ Quiz: No language found, using fallback');
+        this.userLanguage = 'Daily Quiz'; // Fallback
+      }
+    } catch (error) {
+      console.error('Error loading user language preference:', error);
+      this.userLanguage = 'Daily Quiz'; // Fallback
+    }
   }
 
   /**
