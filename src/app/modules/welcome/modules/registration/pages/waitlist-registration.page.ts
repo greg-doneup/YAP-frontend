@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
-import { LoadingController, AlertController } from '@ionic/angular';
+import { LoadingController, AlertController, ToastController } from '@ionic/angular';
 import { HttpClient } from '@angular/common/http';
 import { RegistrationService, StandardWalletCreationResult, WaitlistUserData } from '../services/registration.service';
 import { RegistrationAuthService } from '../services/registration-auth.service';
@@ -26,6 +26,7 @@ export class WaitlistRegistrationPage {
     private router: Router,
     private loadingController: LoadingController,
     private alertController: AlertController,
+    private toastController: ToastController,
     private http: HttpClient,
     private registrationService: RegistrationService,
     private authService: RegistrationAuthService,
@@ -116,6 +117,7 @@ export class WaitlistRegistrationPage {
           sei_address: result.walletAddress || '',
           eth_address: result.ethWalletAddress || '',
           waitlist_bonus: result.starting_points || 0,
+          token_bonus: result.token_bonus || 0, // Include token bonus
           message: result.message || 'Account converted successfully',
           starting_points: result.starting_points || 0,
           token: result.token,
@@ -129,6 +131,18 @@ export class WaitlistRegistrationPage {
 
         // Use the registration auth service to complete authentication properly
         await this.authService.completeAuthentication(standardResult, this.email);
+
+        // Show success toast with token bonus information
+        if (standardResult.token_bonus && standardResult.token_bonus > 0) {
+          const toast = await this.toastController.create({
+            message: `🎉 Welcome back! You've received ${standardResult.token_bonus} tokens as a waitlist bonus!`,
+            duration: 4000,
+            position: 'top',
+            color: 'success',
+            cssClass: 'waitlist-bonus-toast'
+          });
+          await toast.present();
+        }
 
         // Small delay to ensure authentication state is fully updated
         await new Promise(resolve => setTimeout(resolve, 100));

@@ -59,6 +59,39 @@
           </ion-input>
         </ion-item>
 
+        <ion-item class="edit-item">
+          <ion-label position="stacked">Language to Learn</ion-label>
+          <ion-select 
+            [(ngModel)]="editForm.languageToLearn" 
+            placeholder="Select language to learn"
+            class="edit-select">
+            <ion-select-option value="spanish">Spanish</ion-select-option>
+            <ion-select-option value="french">French</ion-select-option>
+          </ion-select>
+        </ion-item>
+
+        <ion-item class="edit-item">
+          <ion-label position="stacked">Native Language</ion-label>
+          <ion-select 
+            [(ngModel)]="editForm.nativeLanguage" 
+            placeholder="Select native language"
+            class="edit-select">
+            <ion-select-option value="english">English</ion-select-option>
+            <ion-select-option value="spanish">Spanish</ion-select-option>
+            <ion-select-option value="french">French</ion-select-option>
+            <ion-select-option value="german">German</ion-select-option>
+            <ion-select-option value="italian">Italian</ion-select-option>
+            <ion-select-option value="portuguese">Portuguese</ion-select-option>
+            <ion-select-option value="chinese">Chinese</ion-select-option>
+            <ion-select-option value="japanese">Japanese</ion-select-option>
+            <ion-select-option value="korean">Korean</ion-select-option>
+            <ion-select-option value="arabic">Arabic</ion-select-option>
+            <ion-select-option value="hindi">Hindi</ion-select-option>
+            <ion-select-option value="russian">Russian</ion-select-option>
+            <ion-select-option value="other">Other</ion-select-option>
+          </ion-select>
+        </ion-item>
+
         <div class="edit-actions">
           <ion-button 
             fill="outline" 
@@ -74,6 +107,27 @@
             class="save-btn">
             Save
           </ion-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Learning Preferences Section -->
+    <div class="preferences-section" *ngIf="!isEditing">
+      <div class="section-header">
+        <h2 class="section-title">
+          <ion-icon name="language" color="primary"></ion-icon>
+          Learning Preferences
+        </h2>
+      </div>
+      
+      <div class="preferences-content">
+        <div class="preference-item">
+          <div class="preference-label">Language to Learn</div>
+          <div class="preference-value">{{ (profileData.user?.language_to_learn || 'spanish') | titlecase }}</div>
+        </div>
+        <div class="preference-item">
+          <div class="preference-label">Native Language</div>
+          <div class="preference-value">{{ (profileData.user?.nativeLanguage || profileData.user?.native_language || 'english') | titlecase }}</div>
         </div>
       </div>
     </div>

@@ -2190,3 +2190,90 @@ ion-button {
     }
   }
 }
+
+// Batch Processing Status Card
+.progress-batch-card {
+  background: rgba(33, 150, 243, 0.1);
+  border: 1px solid rgba(33, 150, 243, 0.2);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  .batch-status-content {
+    color: var(--ion-color-dark);
+
+    .batch-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+
+      ion-icon {
+        font-size: 1.25rem;
+        color: var(--ion-color-primary);
+        margin-right: 8px;
+
+        &.spinning {
+          animation: spin 2s linear infinite;
+        }
+      }
+
+      h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--ion-color-dark);
+      }
+    }
+
+    .batch-info {
+      .batch-stat {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+
+        .stat-label {
+          font-size: 0.9rem;
+          color: var(--ion-color-medium);
+        }
+
+        .stat-value {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: var(--ion-color-primary);
+        }
+      }
+
+      .batch-message {
+        display: flex;
+        align-items: flex-start;
+        margin-top: 12px;
+        padding: 12px;
+        background: rgba(33, 150, 243, 0.05);
+        border-radius: 8px;
+        border-left: 3px solid var(--ion-color-primary);
+
+        ion-icon {
+          font-size: 1rem;
+          color: var(--ion-color-primary);
+          margin-right: 8px;
+          margin-top: 2px;
+          flex-shrink: 0;
+        }
+
+        span {
+          font-size: 0.85rem;
+          line-height: 1.4;
+          color: var(--ion-color-dark);
+        }
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

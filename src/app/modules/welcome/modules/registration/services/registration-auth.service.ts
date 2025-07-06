@@ -9,6 +9,7 @@ import { TokenService } from '../../../../../core/token/token.service';
 import { WalletStorageService, WalletStorageData } from '../../../../../services/wallet-storage.service';
 import { environment } from '../../../../../../environments/environment';
 import { WalletAuthService } from '../../../../../core/auth/wallet-auth.service';
+import { WalletActivationService } from '../../../../../services/wallet-activation.service';
 
 @Injectable({
   providedIn: 'root'
@@ -19,7 +20,8 @@ export class RegistrationAuthService {
     private authService: AuthService,
     private tokenService: TokenService,
     private walletStorageService: WalletStorageService,
-    private walletAuthService: WalletAuthService
+    private walletAuthService: WalletAuthService,
+    private walletActivationService: WalletActivationService
   ) {}
   
   /**
@@ -43,12 +45,13 @@ export class RegistrationAuthService {
           this.tokenService.setRefreshToken(result.refreshToken);
         }
         
-        // Store user information with wallet addresses
+        // Store user information with wallet addresses and language preference
         const user = {
           id: result.userId || `user_${Math.random().toString(36).substring(2, 15)}`,
           email: email,
           walletAddress: result.walletAddress || result.sei_address,
           ethWalletAddress: result.ethWalletAddress || result.eth_address,
+          language_to_learn: result.language_to_learn || 'spanish', // Store language preference
           createdAt: new Date().toISOString() // Add creation timestamp for new user detection
         };
         
@@ -64,7 +67,28 @@ export class RegistrationAuthService {
         // Store wallet data securely in IndexedDB
         await this.storeWalletInIndexedDB(result, email, user.id);
         
-        // 🚀 NEW: Complete wallet-first authentication
+        // � NEW: Activate wallet on blockchain immediately after registration
+        try {
+          console.log('🔗 Activating wallet on blockchain...');
+          const activationResult = await this.walletActivationService.activateWalletOnBlockchain({
+            userId: user.id,
+            email: email,
+            seiAddress: result.walletAddress || result.sei_address,
+            evmAddress: result.ethWalletAddress || result.eth_address,
+            registrationType: result.isWaitlistConversion ? 'waitlist_conversion' : 'new_user'
+          });
+          
+          if (activationResult.success) {
+            console.log('✅ Wallet successfully activated on blockchain:', activationResult.transactionHash);
+          } else {
+            console.log('⚠️ Wallet activation will be retried later:', activationResult.message);
+          }
+        } catch (activationError) {
+          console.warn('⚠️ Wallet activation failed, will retry later:', activationError);
+          // Don't fail registration if activation fails - it can be retried
+        }
+        
+        // 🚀 Complete wallet-first authentication
         await this.walletAuthService.completeWalletAuth(
           email,
           result.walletAddress || result.sei_address,
@@ -98,6 +122,7 @@ export class RegistrationAuthService {
           email: email,
           walletAddress: result.walletAddress || result.sei_address,
           ethWalletAddress: result.ethWalletAddress || result.eth_address,
+          language_to_learn: result.language_to_learn || 'spanish', // Store language preference
           createdAt: new Date().toISOString() // Add creation timestamp for new user detection
         };
         
@@ -112,6 +137,27 @@ export class RegistrationAuthService {
         
         // Store wallet data securely in IndexedDB
         await this.storeWalletInIndexedDB(result, email, user.id);
+        
+        // 🔗 NEW: Activate wallet on blockchain immediately after registration (backend auth flow)
+        try {
+          console.log('🔗 Activating wallet on blockchain (backend auth)...');
+          const activationResult = await this.walletActivationService.activateWalletOnBlockchain({
+            userId: user.id,
+            email: email,
+            seiAddress: result.walletAddress || result.sei_address,
+            evmAddress: result.ethWalletAddress || result.eth_address,
+            registrationType: result.isWaitlistConversion ? 'waitlist_conversion' : 'new_user'
+          });
+          
+          if (activationResult.success) {
+            console.log('✅ Wallet successfully activated on blockchain (backend auth):', activationResult.transactionHash);
+          } else {
+            console.log('⚠️ Wallet activation will be retried later (backend auth):', activationResult.message);
+          }
+        } catch (activationError) {
+          console.warn('⚠️ Wallet activation failed (backend auth), will retry later:', activationError);
+          // Don't fail registration if activation fails - it can be retried
+        }
         
         // Force refresh the AuthService to load the wallet addresses
         this.authService.loadUserFromStorage();
@@ -280,6 +326,7 @@ export class RegistrationAuthService {
       email: email,
       walletAddress: result.walletAddress || result.sei_address,
       ethWalletAddress: result.ethWalletAddress || result.eth_address,
+      language_to_learn: result.language_to_learn || 'spanish', // Include language preference
       createdAt: new Date().toISOString() // Add creation timestamp for new user detection
     };
     

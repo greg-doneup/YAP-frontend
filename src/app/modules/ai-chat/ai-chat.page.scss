@@ -533,16 +533,35 @@
   }
 }
 
-/* Suggested Responses Section */
-.suggested-responses-section {
+/* Suggestions Drawer */
+.drawer-toggle-container {
   background: #ffffff !important;
   color: #333333 !important;
-  min-height: 60px;
+  padding: 8px 16px !important;
+  border-top: 1px solid #e0e0e0 !important;
+  text-align: center;
+  
+  .drawer-toggle-button {
+    --color: #4285f4 !important;
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+.suggestions-drawer {
+  background: #ffffff !important;
+  color: #333333 !important;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
   border-top: 2px solid #4285f4 !important;
-  padding: 16px !important;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1) !important;
   z-index: 1000;
-  text-align: center;
+  
+  &.open {
+    max-height: 300px;
+    padding: 16px !important;
+  }
   
   * {
     color: #333333 !important;
@@ -551,9 +570,17 @@
   .suggestions-header {
     color: #4285f4 !important;
     font-weight: 600 !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
     
     span {
       color: #4285f4 !important;
+    }
+    
+    .close-drawer-btn {
+      --color: #666666 !important;
     }
   }
   
@@ -571,9 +598,10 @@
     align-items: center;
     justify-content: space-between;
     background: #f8f9fa;
-    border: 1px solid #e9ecef; // Thinner border
-    border-radius: 10px; // Less rounded
-    padding: 10px 12px; // Smaller padding
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     
@@ -584,7 +612,7 @@
     }
     
     &.difficulty-easy {
-      border-left: 3px solid #28a745; // Thinner accent
+      border-left: 3px solid #28a745;
     }
     
     &.difficulty-medium {
@@ -609,7 +637,7 @@
       flex: 1;
       
       .suggestion-spanish {
-        font-size: 15px; // Smaller Spanish text
+        font-size: 15px;
         font-weight: 500;
         color: #333333;
         margin-bottom: 4px;
@@ -617,7 +645,7 @@
       }
       
       .suggestion-english {
-        font-size: 13px; // Smaller English text
+        font-size: 13px;
         color: #666666;
         font-style: italic;
         line-height: 1.2;
@@ -1095,8 +1123,8 @@
   color: #333333 !important;
 }
 
-.suggested-responses-section,
-.suggested-responses-section * {
+.suggestions-drawer,
+.suggestions-drawer * {
   color: #333333 !important;
 }
 

@@ -235,7 +235,6 @@ export class IntroPage implements OnInit, AfterViewInit {
       description: '',
       buttonText: 'GET STARTED',
       secondButtonText: 'I WAS ON THE WAITLIST',
-      thirdButtonText: 'I HAVE A YAP WALLET',
       backgroundClass: 'slide-primary',
       isLastSlide: true
     }
@@ -360,13 +359,6 @@ export class IntroPage implements OnInit, AfterViewInit {
     // Navigate to waitlist registration for waitlist users without wallet
     console.log('Navigating to waitlist registration for users without existing wallet');
     this.router.navigate(['/welcome/registration/waitlist']);
-  }
-
-  /** Called when user has existing YAP wallet (recovery scenario) */
-  recoverWallet() {
-    // Navigate to wallet recovery flow for existing wallet users
-    console.log('Navigating to wallet recovery flow for existing wallet users');
-    this.router.navigate(['/welcome/registration/recovery']);
   }
 
   /** Set up dynamic viewport height for mobile browsers */

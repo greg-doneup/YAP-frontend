@@ -281,16 +281,33 @@ export class VoiceService {
         
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = language;
+        utterance.rate = 0.6; // Slower for language learning
+        utterance.pitch = 1.0;
+        utterance.volume = 0.9;
         
-        // Try to find a voice for the language
-        const voices = this.ttsVoices.filter(voice => voice.lang.startsWith(language.split('-')[0]));
-        if (voices.length > 0) {
-          utterance.voice = voices[0];
+        // Try to find the best neural voice for the language
+        const languageCode = language.split('-')[0];
+        let targetVoice = this.ttsVoices.find(voice => 
+          voice.lang.startsWith(languageCode) && 
+          voice.name.toLowerCase().includes('neural')
+        );
+        
+        if (!targetVoice) {
+          // Fallback to any voice for the language
+          targetVoice = this.ttsVoices.find(voice => voice.lang.startsWith(languageCode));
+        }
+        
+        if (targetVoice) {
+          utterance.voice = targetVoice;
+          console.log('Using voice:', targetVoice.name, 'for language:', language);
         }
         
         // Handle events
         utterance.onstart = () => {
           observer.next();
+        };
+        
+        utterance.onend = () => {
           observer.complete();
         };
         

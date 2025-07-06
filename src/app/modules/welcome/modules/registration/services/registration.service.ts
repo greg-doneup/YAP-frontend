@@ -14,6 +14,7 @@ export interface StandardWalletCreationResult {
   sei_address: string;
   eth_address: string;
   waitlist_bonus: number;
+  token_bonus?: number; // New field for waitlist token bonus  
   message: string;
   starting_points: number;
   token?: string;

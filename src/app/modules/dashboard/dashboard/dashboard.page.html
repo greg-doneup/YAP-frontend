@@ -384,6 +384,39 @@
       </div>
     </div>
 
+    <!-- Batch Processing Status Card -->
+    <div *ngIf="batchStatus.pendingSubmissions > 0 || batchStatus.isProcessing" class="progress-batch-card">
+      <div class="batch-status-content">
+        <div class="batch-header">
+          <ion-icon name="sync" [class.spinning]="batchStatus.isProcessing"></ion-icon>
+          <h3>Progress Processing</h3>
+        </div>
+        
+        <div class="batch-info">
+          <div class="batch-stat" *ngIf="batchStatus.pendingSubmissions > 0">
+            <span class="stat-label">Pending:</span>
+            <span class="stat-value">{{ batchStatus.pendingSubmissions }} actions</span>
+          </div>
+          
+          <div class="batch-stat" *ngIf="batchStatus.processedSubmissions > 0">
+            <span class="stat-label">Processed:</span>
+            <span class="stat-value">{{ batchStatus.processedSubmissions }} actions</span>
+          </div>
+          
+          <div class="batch-message">
+            <ion-icon name="information-circle" color="primary"></ion-icon>
+            <span *ngIf="batchStatus.isProcessing">Your progress is being recorded on the blockchain...</span>
+            <span *ngIf="!batchStatus.isProcessing && batchStatus.nextBatchTime">
+              Next batch processing: {{ batchStatus.nextBatchTime | date:'short' }}
+            </span>
+            <span *ngIf="!batchStatus.isProcessing && !batchStatus.nextBatchTime">
+              Your actions will be processed in the next batch
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Your Progress Card - Dismissible (Non-persistent) -->
     <div *ngIf="showProgressCard" class="dismissible-card progress-section">
       <div class="dismiss-button" (click)="dismissCard('progress-card', false)">
