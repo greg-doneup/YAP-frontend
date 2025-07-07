@@ -39,11 +39,6 @@ export class StandardRegistrationPage {
   goBack() {
     this.router.navigate(['/welcome']);
   }
-  
-  /** Navigate to waitlist registration */
-  navigateToWaitlistRegistration() {
-    this.router.navigate(['/welcome/registration/waitlist']);
-  }
 
   /** Check if email exists in waitlist when user finishes typing */
   async onEmailBlur() {
