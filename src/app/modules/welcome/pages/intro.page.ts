@@ -234,7 +234,6 @@ export class IntroPage implements OnInit, AfterViewInit {
       title: 'Learn. Talk. Earn.',
       description: '',
       buttonText: 'GET STARTED',
-      secondButtonText: 'I WAS ON THE WAITLIST',
       backgroundClass: 'slide-primary',
       isLastSlide: true
     }
@@ -352,13 +351,6 @@ export class IntroPage implements OnInit, AfterViewInit {
     // Navigate to standard registration flow for new users
     console.log('Navigating to standard registration flow for new users');
     this.router.navigate(['/welcome/registration/standard']);
-  }
-
-  /** Called when user was on the waitlist (without existing wallet) */
-  joinFromWaitlist() {
-    // Navigate to waitlist registration for waitlist users without wallet
-    console.log('Navigating to waitlist registration for users without existing wallet');
-    this.router.navigate(['/welcome/registration/waitlist']);
   }
 
   /** Set up dynamic viewport height for mobile browsers */
